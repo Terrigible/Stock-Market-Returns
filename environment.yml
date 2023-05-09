@@ -1,0 +1,14 @@
+name: market-returns
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - ipykernel
+  - matplotlib
+  - nbformat
+  - pandas
+  - pip
+  - plotly
+  - python
+  - xlrd
+prefix: C:\Users\leowy\anaconda3\envs\market-returns
