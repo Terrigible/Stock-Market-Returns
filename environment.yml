@@ -9,6 +9,6 @@ dependencies:
   - pandas
   - pip
   - plotly
-  - python
+  - python=3.10
   - xlrd
 prefix: C:\Users\leowy\anaconda3\envs\market-returns
