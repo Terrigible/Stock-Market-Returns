@@ -6,6 +6,7 @@ dependencies:
   - ipykernel
   - matplotlib
   - nbformat
+  - openpyxl
   - pandas
   - pip
   - plotly
