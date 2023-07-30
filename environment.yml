@@ -12,6 +12,7 @@ dependencies:
   - pip
   - plotly
   - python=3.10
+  - requests
   - scikit-learn
   - seaborn
   - xlrd
