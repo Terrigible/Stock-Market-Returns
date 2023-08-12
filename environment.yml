@@ -4,6 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - ipykernel
+  - lxml
   - matplotlib
   - nbformat
   - numba
@@ -16,6 +17,7 @@ dependencies:
   - scikit-learn
   - seaborn
   - xlrd
+  - yfinance
   - pip:
     - fredapi
 prefix: C:\Users\leowy\anaconda3\envs\market-returns
