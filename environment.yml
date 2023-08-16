@@ -18,6 +18,7 @@ dependencies:
   - seaborn
   - xlrd
   - yfinance
+  - conda-forge::selenium
   - pip:
     - fredapi
 prefix: C:\Users\leowy\anaconda3\envs\market-returns
