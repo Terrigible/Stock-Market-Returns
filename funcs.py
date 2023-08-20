@@ -59,7 +59,7 @@ def read_shiller_sp500_data(net=False):
     shiller_sp500 = shiller_sp500.rename('shiller_sp500')
     return shiller_sp500
 
-def download_usdsgd():
+def download_usdsgd_monthly():
     usd_sgd_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
                    params={'resource_id': '10eafb90-11a2-4fbd-b7a7-ac15a42d60b6',
                            'between[end_of_month]': f'1969-12,{pd.to_datetime("today").strftime("%Y-%m")}',
@@ -69,6 +69,25 @@ def download_usdsgd():
     usdsgd = pd.DataFrame(usd_sgd_response['result']['records'])[['end_of_month', 'usd_sgd']]
     usdsgd['end_of_month'] = pd.to_datetime(usdsgd['end_of_month']) + BMonthEnd()
     return usdsgd
+
+def download_usdsgd_daily():
+    usd_sgd_response = usdsgd_daily_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
+             params={'resource_id': '95932927-c8bc-4e7a-b484-68a66a24edfe',
+                     'between[end_of_day]': f'1988-01-01,{pd.to_datetime("today").strftime("%Y-%m-%d")}',
+                     'fields': 'end_of_day,usd_sgd'
+                     }).json()
+    usdsgd = pd.DataFrame(usdsgd_daily_response['result']['records'])
+    usdsgd['end_of_day'] = usdsgd['end_of_day'].apply(pd.to_datetime)
+    usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
+    
+    return usdsgd
+
+def read_mas_swap_points():
+    df = pd.concat([pd.read_excel('data/SwapPoint_202308.xlsx', None, skiprows=3, skipfooter=6, index_col=0, header=[0,1])[key].unstack().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1).dropna() for key in reversed(pd.read_excel('data/SwapPoint_202308.xlsx', None).keys())])
+    df['end_of_day'] = pd.to_datetime(df['month'].dt.year.astype('str')+df['month'].dt.month.astype('str').str.pad(2, 'left', '0')+df['day'].astype('str').str.pad(2, 'left', '0'))
+    swap_points = df.set_index('end_of_day').drop(columns=['month', 'day'])
+    swap_points = swap_points.pivot_table(columns='tenor', index='end_of_day').droplevel(0, axis=1)
+    return swap_points
 
 def download_sgd_interest_rates():
     offset = 0
@@ -270,15 +289,13 @@ __all__ = [
     'group_by_b_month_end',
     'read_msci_data',
     'extract_financialtimes_data',
-    'download_fed_funds_rate',
     'load_fed_funds_rate',
     'read_shiller_sp500_data',
-    'download_usdsgd',
-    'download_sgd_interest_rates',
+    'download_usdsgd_monthly',
+    'download_usdsgd_daily',
+    'read_mas_swap_points',
     'load_sgd_interest_rates',
-    'download_sg_cpi',
     'load_sg_cpi',
-    'download_us_cpi',
     'load_us_cpi',
     'calculate_return',
     'calculate_return_vector',
