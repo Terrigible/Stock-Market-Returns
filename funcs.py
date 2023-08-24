@@ -69,7 +69,7 @@ def download_usdsgd_monthly():
     return usdsgd
 
 def download_usdsgd_daily():
-    usd_sgd_response = usdsgd_daily_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
+    usdsgd_daily_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
              params={'resource_id': '95932927-c8bc-4e7a-b484-68a66a24edfe',
                      'between[end_of_day]': f'1988-01-01,{pd.to_datetime("today").strftime("%Y-%m-%d")}',
                      'fields': 'end_of_day,usd_sgd'
