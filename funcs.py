@@ -8,9 +8,6 @@ from fredapi import Fred
 from numba import float64, guvectorize, int64, njit
 from pandas.tseries.offsets import BMonthEnd
 
-def group_by_b_month_end(dt):
-    end_date = dt + BMonthEnd(0)
-    return end_date
 
 def read_msci_data(filename):
     df = pd.read_excel(filename, skiprows=6, skipfooter=19)
@@ -48,15 +45,16 @@ def load_fed_funds_rate():
     except FileNotFoundError:
         fed_funds_rate = download_fed_funds_rate()
     
-    fed_funds_rate_1m = fed_funds_rate.div(36000).add(1).groupby(group_by_b_month_end).prod().pow(12).sub(1).mul(100)
+    fed_funds_rate_1m = fed_funds_rate.div(36000).add(1).resample('BM').prod().pow(12).sub(1).mul(100)
     
     return fed_funds_rate, fed_funds_rate_1m
 
 def read_shiller_sp500_data(net=False):
     df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1).drop(['Unnamed: 13','Unnamed: 15'], axis=1)
-    df.index = pd.to_datetime(df['Date'].astype(str).str.split('.').apply(lambda x: '-'.join(x)).str.ljust(7, '0')) + BMonthEnd(0)
-    shiller_sp500 = df['P'].add(df['D'].ffill().div(12).mul(0.7 if net else 1)).div(df['P'].shift(1)).fillna(1).cumprod()
-    shiller_sp500 = shiller_sp500.rename('shiller_sp500')
+    df['Date'] = df['Date'].astype('str').str.ljust(7, '0').apply(lambda x: pd.to_datetime(x, format='%Y.%m'))
+    df = df.set_index('Date')
+    shiller_sp500 = df['P'].add(df['D'].ffill().div(12).mul(0.7 if True else 1)).div(df['P'].shift(1)).fillna(1).cumprod()
+    shiller_sp500 = pd.DataFrame(shiller_sp500.rename_axis('date').rename('price'))
     return shiller_sp500
 
 def download_usdsgd_monthly():
@@ -126,7 +124,7 @@ def load_sgd_interest_rates():
         sgd_interest_rates = download_sgd_interest_rates()
         sgd_interest_rates.to_csv('data/sgd_interest_rates.csv')
         
-    sgd_interest_rates_1m = sgd_interest_rates.resample('D').ffill().div(36500).add(1).groupby(group_by_b_month_end).prod().pow(12).sub(1).mul(100).replace(0, np.nan)
+    sgd_interest_rates_1m = sgd_interest_rates.resample('D').ffill().div(36500).add(1).resample('BM').prod().pow(12).sub(1).mul(100).replace(0, np.nan)
     sgd_interest_rates_1m.loc['2014-01-31', 'interbank_overnight'] = np.nan
     sgd_interest_rates_1m['sgd_ir_1m'] = sgd_interest_rates_1m['interbank_overnight'].fillna(sgd_interest_rates['sora'])
     return sgd_interest_rates, sgd_interest_rates_1m
@@ -136,8 +134,8 @@ def download_sg_cpi():
         sg_cpi_response = requests.get('https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882')
         sg_cpi = pd.DataFrame(sg_cpi_response.json()['Data']['row'][0]['columns'])
         sg_cpi.columns = ['date', 'sg_cpi']
-        sg_cpi['date'] = pd.to_datetime(sg_cpi['date']) + BMonthEnd()
-        sg_cpi = sg_cpi.set_index('date')
+        sg_cpi['date'] = pd.to_datetime(sg_cpi['date'])
+        sg_cpi = sg_cpi.set_index('date').resample('BM').last()
     except JSONDecodeError:
         sg_cpi = pd.read_csv('data/sg_cpi.csv', index_col='date')
     return sg_cpi
@@ -286,7 +284,6 @@ def add_return_columns(df, periods, durations):
         df[f'{period}_difference_in_annualized'] = df[f'{period}_annualized'] - df[f'{period}_dca_annualized']
         
 __all__ = [
-    'group_by_b_month_end',
     'read_msci_data',
     'extract_financialtimes_data',
     'load_fed_funds_rate',
