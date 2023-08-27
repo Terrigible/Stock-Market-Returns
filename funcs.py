@@ -53,7 +53,7 @@ def read_shiller_sp500_data(net=False):
     df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1).drop(['Unnamed: 13','Unnamed: 15'], axis=1)
     df['Date'] = df['Date'].astype('str').str.ljust(7, '0').apply(lambda x: pd.to_datetime(x, format='%Y.%m'))
     df = df.set_index('Date')
-    shiller_sp500 = df['P'].add(df['D'].ffill().div(12).mul(0.7 if True else 1)).div(df['P'].shift(1)).fillna(1).cumprod()
+    shiller_sp500 = df['P'].add(df['D'].ffill().div(12).mul(0.7 if net else 1)).div(df['P'].shift(1)).fillna(1).cumprod()
     shiller_sp500 = pd.DataFrame(shiller_sp500.rename_axis('date').rename('price'))
     return shiller_sp500
 
@@ -66,6 +66,7 @@ def download_usdsgd_monthly():
                    ).json()
     usdsgd = pd.DataFrame(usd_sgd_response['result']['records'])[['end_of_month', 'usd_sgd']]
     usdsgd['end_of_month'] = pd.to_datetime(usdsgd['end_of_month']) + BMonthEnd()
+    usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
     return usdsgd
 
 def download_usdsgd_daily():
@@ -74,7 +75,7 @@ def download_usdsgd_daily():
                      'between[end_of_day]': f'1988-01-01,{pd.to_datetime("today").strftime("%Y-%m-%d")}',
                      'fields': 'end_of_day,usd_sgd'
                      }).json()
-    usdsgd = pd.DataFrame(usdsgd_daily_response['result']['records'])
+    usdsgd = pd.DataFrame(usdsgd_daily_response['result']['records'])[['end_of_day', 'usd_sgd']]
     usdsgd['end_of_day'] = usdsgd['end_of_day'].apply(pd.to_datetime)
     usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
     
@@ -282,7 +283,7 @@ def add_return_columns(df, periods, durations):
         df[f'{period}_cumulative_difference'] = df[f'{period}_cumulative'] - df[f'{period}_dca_cumulative']
     for period, duration in zip(periods, durations):
         df[f'{period}_difference_in_annualized'] = df[f'{period}_annualized'] - df[f'{period}_dca_annualized']
-        
+
 __all__ = [
     'read_msci_data',
     'extract_financialtimes_data',
