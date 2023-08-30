@@ -49,6 +49,15 @@ def load_fed_funds_rate():
     
     return fed_funds_rate, fed_funds_rate_1m
 
+def download_us_treasury_5y():
+    fred = Fred()
+    treasury_5y = fred.get_series('DGS5').resample('D').ffill().ffill().rename_axis('date').rename('rate').reset_index().set_index('date')
+    treasury_5y['old_issue_start_price'] = treasury_5y['rate'].div(100).add(1).pow(-5).shift()
+    treasury_5y['old_issue_end_price'] = treasury_5y['rate'].div(100).add(1).pow(1 / 365 - 5)
+    treasury_5y['change'] = treasury_5y['old_issue_end_price'].div(treasury_5y['old_issue_start_price'])
+    treasury_5y['price'] = np.exp(np.log(treasury_5y['change']).cumsum()).fillna(1)
+    return treasury_5y
+
 def read_shiller_sp500_data(net=False):
     df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1).drop(['Unnamed: 13','Unnamed: 15'], axis=1)
     df['Date'] = df['Date'].astype('str').str.ljust(7, '0').apply(lambda x: pd.to_datetime(x, format='%Y.%m'))
@@ -294,6 +303,7 @@ __all__ = [
     'read_msci_data',
     'extract_financialtimes_data',
     'load_fed_funds_rate',
+    'download_us_treasury_5y',
     'read_shiller_sp500_data',
     'download_usdsgd_monthly',
     'download_usdsgd_daily',
