@@ -228,9 +228,13 @@ def calculate_return_vector(dca_length, monthly_returns, investment_horizon, res
 @guvectorize([(float64, float64, float64, float64, int64, int64, int64, float64[:], float64[:], float64[:])], '(),(),(),(),(),(),(),(n),(n)->(n)', target='parallel', nopython=True)
 def calculate_lumpsum_return_with_fees_and_interest_vector(variable_transaction_fees, fixed_transaction_fees, annualised_holding_fees, total_investment, dca_length, dca_interval, investment_horizon, monthly_returns, interest_rates, res=np.array([])):
     if investment_horizon < dca_length:
-        raise ValueError('Investment horizon must be greater than or equal to DCA length')
+        raise ValueError(f'Investment horizon ({investment_horizon}) must be greater than or equal to DCA length ({dca_length})')
     if fixed_transaction_fees >= total_investment / dca_length * dca_interval:
-        raise ValueError('Fixed fees must be less than the amount invested in each DCA')
+        raise ValueError(f'Fixed fees ({fixed_transaction_fees}) must be less than the amount invested in each DCA ({total_investment / dca_length * dca_interval})')
+    if dca_interval > dca_length:
+        raise ValueError(f'DCA interval ({dca_interval}) must be less than or equal to DCA length ({dca_length})')
+    if dca_interval >= investment_horizon/2:
+        print(f'Warning: DCA interval ({dca_interval}) is large relative to investment horizon ({investment_horizon}). Figures might not be representative of market returns')
     for i in range(len(monthly_returns)):
         if i < investment_horizon:
             res[i] = np.nan
@@ -256,6 +260,8 @@ def calculate_dca_return_with_fees_and_interest_vector(variable_transaction_fees
     dca_amount = monthly_amount * dca_interval
     if fixed_transaction_fees >= dca_amount:
         raise ValueError('Fixed fees must be less than the amount invested in each DCA')
+    if dca_interval > dca_length:
+        raise ValueError(f'DCA interval ({dca_interval}) must be less than or equal to DCA length ({dca_length})')
     for i in range(len(monthly_returns)):
         if i < dca_length:
             res[i] = np.nan
