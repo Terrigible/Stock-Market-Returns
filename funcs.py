@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import requests
+from typing import Literal
 from requests.exceptions import JSONDecodeError
 from fredapi import Fred
 from numba import float64, guvectorize, int64, njit
@@ -49,14 +50,33 @@ def load_fed_funds_rate():
     
     return fed_funds_rate, fed_funds_rate_1m
 
-def download_us_treasury_5y():
+def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
     fred = Fred()
-    treasury_5y = fred.get_series('DGS5').resample('D').ffill().ffill().rename_axis('date').rename('rate').reset_index().set_index('date')
-    treasury_5y['old_issue_start_price'] = treasury_5y['rate'].div(100).add(1).pow(-5).shift()
-    treasury_5y['old_issue_end_price'] = treasury_5y['rate'].div(100).add(1).pow(1 / 365 - 5)
-    treasury_5y['change'] = treasury_5y['old_issue_end_price'].div(treasury_5y['old_issue_start_price'])
-    treasury_5y['price'] = np.exp(np.log(treasury_5y['change']).cumsum()).fillna(1)
-    return treasury_5y
+    treasury = fred.get_series(f'DGS{duration}').resample('D').ffill().ffill().rename_axis('date').rename('rate').reset_index().set_index('date')
+
+    return treasury
+
+def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
+    try:
+        treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'])
+        if pd.to_datetime(treasury_rate['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+            raise FileNotFoundError
+        treasury_rate = treasury_rate.set_index('date')
+    
+    except FileNotFoundError:
+        treasury_rate = download_us_treasury_rate(duration)
+        treasury_rate.to_csv(f'data/us_treasury_{duration.lower()}.csv')
+    
+    return treasury_rate
+
+def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
+    treasury = load_us_treasury_rate(duration)
+    treasury['old_issue_start_price'] = treasury['rate'].div(100).add(1).pow(-int(duration)).shift()
+    treasury['old_issue_end_price'] = treasury['rate'].div(100).add(1).pow(1 / 365 - int(duration))
+    treasury['change'] = treasury['old_issue_end_price'].div(treasury['old_issue_start_price'])
+    treasury['price'] = np.exp(np.log(treasury['change']).cumsum()).fillna(1)
+    
+    return treasury
 
 def read_shiller_sp500_data(net=False):
     df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1).drop(['Unnamed: 13','Unnamed: 15'], axis=1)
@@ -303,7 +323,8 @@ __all__ = [
     'read_msci_data',
     'extract_financialtimes_data',
     'load_fed_funds_rate',
-    'download_us_treasury_5y',
+    'load_us_treasury_rate',
+    'load_us_treasury_returns',
     'read_shiller_sp500_data',
     'download_usdsgd_monthly',
     'download_usdsgd_daily',
