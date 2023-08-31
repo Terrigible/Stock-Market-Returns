@@ -52,7 +52,7 @@ def load_fed_funds_rate():
 
 def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
     fred = Fred()
-    treasury = fred.get_series(f'DGS{duration}').resample('D').ffill().ffill().rename_axis('date').rename('rate').reset_index().set_index('date')
+    treasury = fred.get_series(f'DGS{duration}').rename_axis('date').rename('rate')
 
     return treasury
 
@@ -61,11 +61,13 @@ def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', 
         treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'])
         if pd.to_datetime(treasury_rate['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
-        treasury_rate = treasury_rate.set_index('date')
+        treasury_rate = treasury_rate.set_index('date')['rate']
     
     except FileNotFoundError:
         treasury_rate = download_us_treasury_rate(duration)
         treasury_rate.to_csv(f'data/us_treasury_{duration.lower()}.csv')
+    
+    treasury_rate = treasury_rate.resample('D').last().interpolate().reset_index().set_index('date')
     
     return treasury_rate
 
