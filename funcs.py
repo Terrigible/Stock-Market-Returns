@@ -71,7 +71,7 @@ def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', 
     
     return treasury_rate
 
-def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
+def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
     treasury = load_us_treasury_rate(duration)
     treasury['old_issue_start_price'] = treasury['rate'].div(100).add(1).pow(-int(duration)).shift()
     treasury['old_issue_end_price'] = treasury['rate'].div(100).add(1).pow(1 / 365 - int(duration))
