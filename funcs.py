@@ -1,13 +1,14 @@
 import os
+from glob import glob
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 import requests
-from typing import Literal
-from requests.exceptions import JSONDecodeError
 from fredapi import Fred
 from numba import float64, guvectorize, int64, njit
 from pandas.tseries.offsets import BMonthEnd
+from requests.exceptions import JSONDecodeError
 
 
 def read_msci_data(filename):
@@ -18,6 +19,9 @@ def read_msci_data(filename):
     df = df.replace(',','', regex=True)
     df['price'] = df['price'].astype(float)
     return df
+
+def read_msci_data_daily(filename_pattern):
+    return pd.concat(map(read_msci_data, glob(filename_pattern)))
 
 def extract_financialtimes_data(filepaths):
     dfs = [pd.read_html(filepath)[2].iloc[::-1] for filepath in filepaths]
@@ -323,6 +327,7 @@ def add_return_columns(df, periods, durations):
 
 __all__ = [
     'read_msci_data',
+    'read_msci_data_daily',
     'extract_financialtimes_data',
     'load_fed_funds_rate',
     'load_us_treasury_rate',
