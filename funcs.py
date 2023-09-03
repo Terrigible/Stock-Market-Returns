@@ -13,7 +13,7 @@ from requests.exceptions import JSONDecodeError
 
 def read_msci_data(filename):
     df = pd.read_excel(filename, skiprows=6, skipfooter=19)
-    df.columns = ['date', 'price']
+    df = df.set_axis(['date', 'price'], axis=1)
     df['date'] = pd.to_datetime(df['date'])
     df = df.set_index('date')
     df = df.replace(',','', regex=True)
@@ -159,7 +159,7 @@ def download_sg_cpi():
     try:
         sg_cpi_response = requests.get('https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882')
         sg_cpi = pd.DataFrame(sg_cpi_response.json()['Data']['row'][0]['columns'])
-        sg_cpi.columns = ['date', 'sg_cpi']
+        sg_cpi = sg_cpi.set_axis(['date', 'sg_cpi'], axis=1)
         sg_cpi['date'] = pd.to_datetime(sg_cpi['date'], format='%Y %b')
         sg_cpi = sg_cpi.set_index('date').resample('BM').last()
     except JSONDecodeError:
@@ -199,7 +199,7 @@ def download_us_cpi():
     us_cpi['date'] = pd.to_datetime(us_cpi['year'] + '-' + us_cpi['month']) + BMonthEnd()
     us_cpi['value'] = us_cpi['value'].astype(float)
     us_cpi = us_cpi[['date', 'value']]
-    us_cpi.columns = ['date', 'us_cpi']
+    us_cpi = us_cpi.set_axis(['date', 'us_cpi'], axis=1)
     us_cpi = us_cpi.set_index('date')
     return us_cpi
 
