@@ -168,7 +168,7 @@ def download_sg_cpi():
 def load_sg_cpi():
     try:
         sg_cpi = pd.read_csv('data/sg_cpi.csv', parse_dates=['date'])
-        if pd.to_datetime(sg_cpi['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        if pd.to_datetime(sg_cpi['date']).iloc[-1] + pd.DateOffset(days=55) < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
         sg_cpi = sg_cpi.set_index('date')
         return sg_cpi
@@ -206,7 +206,7 @@ def download_us_cpi():
 def load_us_cpi():
     try:
         us_cpi = pd.read_csv('data/us_cpi.csv', parse_dates=['date'])
-        if pd.to_datetime(us_cpi['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        if pd.to_datetime(us_cpi['date']).iloc[-1] + pd.DateOffset(days=45) < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
         us_cpi = us_cpi.set_index('date')
         return us_cpi
