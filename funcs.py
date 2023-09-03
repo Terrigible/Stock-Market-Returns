@@ -23,17 +23,7 @@ def read_msci_data(filename):
 def read_msci_data_daily(filename_pattern):
     return pd.concat(map(read_msci_data, glob(filename_pattern)))
 
-def extract_financialtimes_data(filepaths):
-    dfs = [pd.read_html(filepath)[2].iloc[::-1] for filepath in filepaths]
-    df = pd.concat(dfs, ignore_index=True)
-    df['Date'] = pd.to_datetime(df['Date'].apply(lambda x: ''.join(x.rsplit(',', maxsplit=2)[-2:])[1:]))
-    df = df[df['Date'].isin(pd.date_range(df['Date'].iloc[0], df['Date'].iloc[-1], freq='BM'))]
-    df = df.reset_index(drop=True)
-    df = df[['Date', 'Close']]
-    df.columns = ['date', 'price']
-    df = df.set_index('date')
-    return df
-    
+
 def download_fed_funds_rate():
     fred = Fred()
     fed_funds_rate = fred.get_series('DFF').rename('ffr').rename_axis('date')
@@ -328,7 +318,6 @@ def add_return_columns(df, periods, durations):
 __all__ = [
     'read_msci_data',
     'read_msci_data_daily',
-    'extract_financialtimes_data',
     'load_fed_funds_rate',
     'load_us_treasury_rate',
     'load_us_treasury_returns',
