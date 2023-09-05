@@ -306,14 +306,6 @@ def add_return_columns(df, periods, durations):
         df[f'{period}_cumulative'] = df['price'].pct_change(periods=duration)
     for period, duration in zip(periods, durations):
         df[f'{period}_annualized'] = (1 + df[f'{period}_cumulative'])**(12/duration) - 1
-    for period, duration in zip(periods, durations):
-        df[f'{period}_dca_cumulative'] = calculate_return_vector(duration, df['1m_cumulative'].values, duration)
-    for period, duration in zip(periods, durations):
-        df[f'{period}_dca_annualized'] = (1 + df[f'{period}_dca_cumulative'])**(12/duration) - 1
-    for period, duration in zip(periods, durations):
-        df[f'{period}_cumulative_difference'] = df[f'{period}_cumulative'] - df[f'{period}_dca_cumulative']
-    for period, duration in zip(periods, durations):
-        df[f'{period}_difference_in_annualized'] = df[f'{period}_annualized'] - df[f'{period}_dca_annualized']
 
 __all__ = [
     'read_msci_data',
