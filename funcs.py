@@ -95,8 +95,8 @@ def download_usdsgd():
     return usdsgd
 
 def read_mas_swap_points():
-    df = pd.concat([pd.read_excel('data/SwapPoint_202308.xlsx', None, skiprows=3, skipfooter=6, index_col=0, header=[0,1])[key].unstack().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1).dropna() for key in reversed(pd.read_excel('data/SwapPoint_202308.xlsx', None).keys())])
-    df['end_of_day'] = pd.to_datetime(df['month'].dt.year.astype('str')+df['month'].dt.month.astype('str').str.pad(2, 'left', '0')+df['day'].astype('str').str.pad(2, 'left', '0'))
+    df = pd.concat(pd.read_excel('data/SwapPoint_202308.xlsx', None, skiprows=3, skipfooter=6, index_col=0, header=[0,1]).values(), axis=1).unstack().dropna().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1)
+    df['end_of_day'] = df['month'].dt.to_period('M').dt.to_timestamp() + pd.TimedeltaIndex(df['day'].sub(1), unit='D')
     swap_points = df.set_index('end_of_day').drop(columns=['month', 'day'])
     swap_points = swap_points.pivot_table(columns='tenor', index='end_of_day').droplevel(0, axis=1)
     return swap_points
