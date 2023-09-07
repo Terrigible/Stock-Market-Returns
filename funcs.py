@@ -82,25 +82,13 @@ def read_shiller_sp500_data(net=False):
     shiller_sp500 = pd.DataFrame(shiller_sp500.rename_axis('date').rename('price'))
     return shiller_sp500
 
-def download_usdsgd_monthly():
-    usd_sgd_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
-                   params={'resource_id': '10eafb90-11a2-4fbd-b7a7-ac15a42d60b6',
-                           'between[end_of_month]': f'1969-12,{pd.to_datetime("today").strftime("%Y-%m")}',
-                           'fields': 'end_of_month,usd_sgd'
-                           }
-                   ).json()
-    usdsgd = pd.DataFrame(usd_sgd_response['result']['records'])[['end_of_month', 'usd_sgd']]
-    usdsgd['end_of_month'] = pd.to_datetime(usdsgd['end_of_month']) + BMonthEnd()
-    usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
-    return usdsgd
-
-def download_usdsgd_daily():
-    usdsgd_daily_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
+def download_usdsgd():
+    usdsgd_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
              params={'resource_id': '95932927-c8bc-4e7a-b484-68a66a24edfe',
                      'between[end_of_day]': f'1988-01-01,{pd.to_datetime("today").strftime("%Y-%m-%d")}',
                      'fields': 'end_of_day,usd_sgd'
                      }).json()
-    usdsgd = pd.DataFrame(usdsgd_daily_response['result']['records'])[['end_of_day', 'usd_sgd']]
+    usdsgd = pd.DataFrame(usdsgd_response['result']['records'])[['end_of_day', 'usd_sgd']]
     usdsgd['end_of_day'] = usdsgd['end_of_day'].apply(pd.to_datetime)
     usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
     
@@ -314,8 +302,7 @@ __all__ = [
     'load_us_treasury_rate',
     'load_us_treasury_returns',
     'read_shiller_sp500_data',
-    'download_usdsgd_monthly',
-    'download_usdsgd_daily',
+    'download_usdsgd',
     'read_mas_swap_points',
     'load_sgd_interest_rates',
     'load_sg_cpi',
