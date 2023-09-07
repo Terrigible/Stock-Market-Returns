@@ -44,13 +44,13 @@ def load_fed_funds_rate():
     
     return fed_funds_rate, fed_funds_rate_1m
 
-def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
+def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
     fred = Fred()
     treasury = fred.get_series(f'DGS{duration}').rename_axis('date').rename('rate')
 
     return treasury
 
-def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '5', '7', '10', '20', '30']):
+def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
     try:
         treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'])
         if pd.to_datetime(treasury_rate['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
