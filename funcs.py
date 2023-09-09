@@ -91,8 +91,22 @@ def download_usdsgd():
     usdsgd = pd.DataFrame(usdsgd_response['result']['records'])[['end_of_day', 'usd_sgd']]
     usdsgd['end_of_day'] = usdsgd['end_of_day'].apply(pd.to_datetime)
     usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
+    usdsgd = usdsgd.set_index('end_of_day').rename_axis('date')
+    usdsgd.to_csv('data/usdsgd.csv')
     
     return usdsgd
+
+def load_usdsgd():
+    try:
+        usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'])
+        if pd.to_datetime(usdsgd['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+            raise FileNotFoundError
+        
+    except FileNotFoundError:
+        usdsgd = download_usdsgd()
+    
+    return usdsgd
+    
 
 def read_mas_swap_points():
     df = pd.concat(pd.read_excel('data/SwapPoint_202308.xlsx', None, skiprows=3, skipfooter=6, index_col=0, header=[0,1]).values(), axis=1).unstack().dropna().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1)
@@ -302,7 +316,7 @@ __all__ = [
     'load_us_treasury_rate',
     'load_us_treasury_returns',
     'read_shiller_sp500_data',
-    'download_usdsgd',
+    'load_usdsgd',
     'read_mas_swap_points',
     'load_sgd_interest_rates',
     'load_sg_cpi',
