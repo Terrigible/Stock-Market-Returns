@@ -110,9 +110,9 @@ def load_usdsgd():
 
 def read_mas_swap_points():
     df = pd.concat(pd.read_excel('data/SwapPoint_202308.xlsx', None, skiprows=3, skipfooter=6, index_col=0, header=[0,1]).values(), axis=1).unstack().dropna().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1)
-    df['end_of_day'] = df['month'].dt.to_period('M').dt.to_timestamp() + pd.TimedeltaIndex(df['day'].sub(1), unit='D')
-    swap_points = df.set_index('end_of_day').drop(columns=['month', 'day'])
-    swap_points = swap_points.pivot_table(columns='tenor', index='end_of_day').droplevel(0, axis=1)
+    df['date'] = df['month'].dt.to_period('M').dt.to_timestamp() + pd.TimedeltaIndex(df['day'].sub(1), unit='D')
+    swap_points = df.set_index('date').drop(columns=['month', 'day'])
+    swap_points = swap_points.pivot_table(columns='tenor', index='date').droplevel(0, axis=1)
     return swap_points
 
 def download_sgd_interest_rates():
@@ -132,21 +132,21 @@ def download_sgd_interest_rates():
             dfs.append(df)
             if len(df) < 100:
                 break
-    sgd_interest_rates = pd.concat(dfs)
+    sgd_interest_rates = pd.concat(dfs).rename({'end_of_day': 'date'}, axis=1)
     sgd_interest_rates['interbank_overnight'] = sgd_interest_rates['interbank_overnight'].astype(float)
-    sgd_interest_rates['end_of_day'] = pd.to_datetime(sgd_interest_rates['end_of_day'])
+    sgd_interest_rates['date'] = pd.to_datetime(sgd_interest_rates['date'])
     sgd_interest_rates = sgd_interest_rates.dropna(how='all', subset=['interbank_overnight', 'sora'])
-    sgd_interest_rates = sgd_interest_rates.drop_duplicates().drop_duplicates(subset=['end_of_day', 'interbank_overnight']).drop_duplicates(subset=['end_of_day', 'sora'])
+    sgd_interest_rates = sgd_interest_rates.drop_duplicates().drop_duplicates(subset=['date', 'interbank_overnight']).drop_duplicates(subset=['date', 'sora'])
     sgd_interest_rates = sgd_interest_rates.reset_index(drop=True)
-    sgd_interest_rates = sgd_interest_rates.set_index('end_of_day')
+    sgd_interest_rates = sgd_interest_rates.set_index('date')
     return sgd_interest_rates
 
 def load_sgd_interest_rates():
     try:
-        sgd_interest_rates = pd.read_csv('data/sgd_interest_rates.csv', parse_dates=['end_of_day'])
-        if pd.to_datetime(sgd_interest_rates['end_of_day']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1):
+        sgd_interest_rates = pd.read_csv('data/sgd_interest_rates.csv', parse_dates=['date'])
+        if pd.to_datetime(sgd_interest_rates['date']).iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1):
             raise FileNotFoundError
-        sgd_interest_rates = sgd_interest_rates.set_index('end_of_day')
+        sgd_interest_rates = sgd_interest_rates.set_index('date')
         
     except FileNotFoundError:
         sgd_interest_rates = download_sgd_interest_rates()
