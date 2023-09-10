@@ -32,10 +32,10 @@ def download_fed_funds_rate():
 
 def load_fed_funds_rate():
     try:
-        fed_funds_rate = pd.read_csv('data/fed_funds_rate.csv', parse_dates=['date'])
-        if fed_funds_rate['date'].iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        fed_funds_rate = pd.read_csv('data/fed_funds_rate.csv', parse_dates=['date'], index_col='date')
+        if fed_funds_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
-        fed_funds_rate = fed_funds_rate.set_index('date')['ffr']
+        fed_funds_rate = fed_funds_rate['ffr']
     
     except FileNotFoundError:
         fed_funds_rate = download_fed_funds_rate()
@@ -52,10 +52,10 @@ def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '
 
 def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
     try:
-        treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'])
-        if treasury_rate['date'].iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'], index_col='date')
+        if treasury_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
-        treasury_rate = treasury_rate.set_index('date')['rate']
+        treasury_rate = treasury_rate['rate']
     
     except FileNotFoundError:
         treasury_rate = download_us_treasury_rate(duration)
@@ -98,8 +98,8 @@ def download_usdsgd():
 
 def load_usdsgd():
     try:
-        usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'])
-        if usdsgd['date'].iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'], index_col='date')
+        if usdsgd.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
         
     except FileNotFoundError:
@@ -143,10 +143,9 @@ def download_sgd_interest_rates():
 
 def load_sgd_interest_rates():
     try:
-        sgd_interest_rates = pd.read_csv('data/sgd_interest_rates.csv', parse_dates=['date'])
-        if sgd_interest_rates['date'].iloc[-1] < pd.to_datetime('today') + BMonthEnd(-1):
+        sgd_interest_rates = pd.read_csv('data/sgd_interest_rates.csv', parse_dates=['date'], index_col='date')
+        if sgd_interest_rates.index[-1] < pd.to_datetime('today') + BMonthEnd(-1):
             raise FileNotFoundError
-        sgd_interest_rates = sgd_interest_rates.set_index('date')
         
     except FileNotFoundError:
         sgd_interest_rates = download_sgd_interest_rates()
@@ -169,10 +168,9 @@ def download_sg_cpi():
     return sg_cpi
 def load_sg_cpi():
     try:
-        sg_cpi = pd.read_csv('data/sg_cpi.csv', parse_dates=['date'])
-        if sg_cpi['date'].iloc[-1] + pd.DateOffset(days=55) < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        sg_cpi = pd.read_csv('data/sg_cpi.csv', parse_dates=['date'], index_col='date')
+        if sg_cpi.index[-1] + pd.DateOffset(days=55) < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
-        sg_cpi = sg_cpi.set_index('date')
         return sg_cpi
     except FileNotFoundError:
         sg_cpi = download_sg_cpi()
@@ -207,10 +205,9 @@ def download_us_cpi():
 
 def load_us_cpi():
     try:
-        us_cpi = pd.read_csv('data/us_cpi.csv', parse_dates=['date'])
-        if us_cpi['date'].iloc[-1] + pd.DateOffset(days=45) < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        us_cpi = pd.read_csv('data/us_cpi.csv', parse_dates=['date'], index_col='date')
+        if us_cpi.index[-1] + pd.DateOffset(days=45) < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
-        us_cpi = us_cpi.set_index('date')
         return us_cpi
     except FileNotFoundError:
         us_cpi = download_us_cpi()
