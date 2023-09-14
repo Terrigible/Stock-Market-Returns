@@ -3,6 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
+  - conda-forge::dash
   - geckodriver
   - ipykernel
   - lxml
