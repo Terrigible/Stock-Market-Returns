@@ -83,7 +83,12 @@ app.layout = html.Div(
             ),
         html.Div(
             [
-                dcc.Graph(id='graph'),
+                dcc.Graph(
+                    id='graph',
+                    style={
+                        'height': '90vh'
+                    }
+                ),
             ],
             style={
                 "margin-left": "18rem",
