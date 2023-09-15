@@ -1,6 +1,8 @@
 from dash import Dash, html, dcc
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
+
+from funcs import read_msci_data
 
 app = Dash()
 
@@ -69,6 +71,18 @@ app.layout = html.Div(
                     ],
                     value='Monthly',
                     id='interval-selection'
+                ),
+                html.P(),
+                html.Button(
+                    'Add Index',
+                    id='add-index-button'
+                ),
+                html.P(),
+                html.Label('Selected Indexes'),
+                dcc.Dropdown(
+                    {},
+                    multi=True,
+                    id='selected-indexes',
                 )
                 ],
             style={
@@ -77,7 +91,7 @@ app.layout = html.Div(
                 "top": 0,
                 "left": 0,
                 "bottom": 0,
-                "width": "16rem",
+                "width": "18rem",
                 "padding": "2rem 1rem"
             }
             ),
@@ -91,7 +105,7 @@ app.layout = html.Div(
                 ),
             ],
             style={
-                "margin-left": "18rem",
+                "margin-left": "20rem",
                 "margin-right": "2rem",
                 "padding": "2rem 1rem"
             }
@@ -99,20 +113,26 @@ app.layout = html.Div(
     ]
 )
 
-@app.callback(Output('graph', 'figure'),
-              Input('index-provider-selection', 'value'),
-              Input('index-provider-selection', 'options'),
-              Input('index-selection', 'value'),
-              Input('index-selection', 'options'),
-              Input('size-selection', 'value'),
-              Input('size-selection', 'options'),
-              Input('style-selection', 'value'),
-              Input('style-selection', 'options'),
-              Input('currency-selection', 'value'),
-              Input('tax-treatment-selection', 'value'),
-              Input('interval-selection', 'value')
-              )
-def update_graph(
+@app.callback(
+    Output('selected-indexes', 'value'),
+    Output('selected-indexes', 'options'),
+    Input('add-index-button', 'n_clicks'),
+    State('selected-indexes', 'options'),
+    State('index-provider-selection', 'value'),
+    State('index-provider-selection', 'options'),
+    State('index-selection', 'value'),
+    State('index-selection', 'options'),
+    State('size-selection', 'value'),
+    State('size-selection', 'options'),
+    State('style-selection', 'value'),
+    State('style-selection', 'options'),
+    State('currency-selection', 'value'),
+    State('tax-treatment-selection', 'value'),
+    State('interval-selection', 'value')
+)
+def add_index(
+    _,
+    selected_indexes_options: dict[str, str],
     index_provider: str,
     index_provider_options: dict[str, str],
     index: str,
@@ -125,29 +145,41 @@ def update_graph(
     tax_treatment: str,
     interval: str
     ):
-    df = read_msci_data(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment} {interval}*.xls')
+    selected_indexes_options[f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}'] = " ".join(
+                filter(
+                    None,
+                    [
+                        index_provider_options[index_provider],
+                        index_options[index],
+                        (None if size == 'STANDARD' else size_options[size]),
+                        (None if style == 'BLEND' else style_options[style]),
+                        currency,
+                        tax_treatment,
+                        interval
+                    ]
+                )
+            )
+    return list(selected_indexes_options.keys()), selected_indexes_options
+
+@app.callback(Output('graph', 'figure'),
+              Input('selected-indexes', 'value'),
+              Input('selected-indexes', 'options'),
+              )
+def update_graph(
+    selected_indexes: list[str],
+    selected_indexes_options: dict[str, str]
+    ):
     data = [
         go.Scatter(
-            x=df.index,
-            y=df['price'],
+            x=read_msci_data('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'))).index,
+            y=read_msci_data('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-')))['price'],
             mode='lines',
+            name=selected_indexes_options[selected_index]
         )
+        for selected_index in selected_indexes
     ]
     layout = go.Layout(
-        title=" ".join(
-            filter(
-                None,
-                [
-                    index_provider_options[index_provider],
-                    index_options[index],
-                    (None if size == 'STANDARD' else size_options[size]),
-                    (None if style == 'BLEND' else style_options[style]),
-                    currency,
-                    tax_treatment,
-                    interval
-                ]
-            )
-        )
+        title='price'
     )
     return dict(data=data, layout=layout)
 
