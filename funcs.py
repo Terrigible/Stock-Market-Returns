@@ -11,7 +11,7 @@ from pandas.tseries.offsets import BMonthEnd
 from requests.exceptions import JSONDecodeError
 
 
-def read_msci_data(filename):
+def read_msci_source(filename):
     df = pd.read_excel(filename, skiprows=6, skipfooter=19)
     df = df.set_axis(['date', 'price'], axis=1)
     df['date'] = pd.to_datetime(df['date'])
@@ -20,8 +20,8 @@ def read_msci_data(filename):
     df['price'] = df['price'].astype(float)
     return df
 
-def read_msci_data_daily(filename_pattern):
-    return pd.concat(map(read_msci_data, glob(filename_pattern)))
+def read_msci_data(filename_pattern):
+    return pd.concat(map(read_msci_source, glob(filename_pattern)))
 
 
 def download_fed_funds_rate():
@@ -308,7 +308,6 @@ def add_return_columns(df, periods, durations):
 
 __all__ = [
     'read_msci_data',
-    'read_msci_data_daily',
     'load_fed_funds_rate',
     'load_us_treasury_rate',
     'load_us_treasury_returns',
