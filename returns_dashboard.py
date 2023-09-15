@@ -120,8 +120,30 @@ def update_graph(
     tax_treatment: str,
     interval: str
     ):
-    data = go.Scatter()
-    layout = go.Layout(title=" ".join(filter(None, [index_provider_options[index_provider], index_options[index], (None if size == 'STANDARD' else size_options[size]), (None if style == 'BLEND' else style_options[style]), currency, tax_treatment, interval])))
+    df = read_msci_data(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment} {interval}*.xls')
+    data = [
+        go.Scatter(
+            x=df.index,
+            y=df['price'],
+            mode='lines',
+        )
+    ]
+    layout = go.Layout(
+        title=" ".join(
+            filter(
+                None,
+                [
+                    index_provider_options[index_provider],
+                    index_options[index],
+                    (None if size == 'STANDARD' else size_options[size]),
+                    (None if style == 'BLEND' else style_options[style]),
+                    currency,
+                    tax_treatment,
+                    interval
+                ]
+            )
+        )
+    )
     return dict(data=data, layout=layout)
 
 if __name__ == '__main__':
