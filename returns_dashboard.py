@@ -96,10 +96,32 @@ app.layout = html.Div(
 
 @app.callback(Output('graph', 'figure'),
               Input('index-provider-selection', 'value'),
-              Input('index-selection', 'value'))
-def update_graph(index_provider, index):
+              Input('index-provider-selection', 'options'),
+              Input('index-selection', 'value'),
+              Input('index-selection', 'options'),
+              Input('size-selection', 'value'),
+              Input('size-selection', 'options'),
+              Input('style-selection', 'value'),
+              Input('style-selection', 'options'),
+              Input('currency-selection', 'value'),
+              Input('tax-treatment-selection', 'value'),
+              Input('interval-selection', 'value')
+              )
+def update_graph(
+    index_provider: str,
+    index_provider_options: dict[str, str],
+    index: str,
+    index_options: dict[str, str],
+    size: str,
+    size_options: dict[str, str],
+    style: str,
+    style_options: dict[str, str],
+    currency: str,
+    tax_treatment: str,
+    interval: str
+    ):
     data = go.Scatter()
-    layout = go.Layout(title=f'{index_provider} {index}')
+    layout = go.Layout(title=" ".join(filter(None, [index_provider_options[index_provider], index_options[index], (None if size == 'STANDARD' else size_options[size]), (None if style == 'BLEND' else style_options[style]), currency, tax_treatment, interval])))
     return dict(data=data, layout=layout)
 
 if __name__ == '__main__':
