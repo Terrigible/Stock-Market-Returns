@@ -118,6 +118,7 @@ app.layout = html.Div(
     Output('selected-indexes', 'value'),
     Output('selected-indexes', 'options'),
     Input('add-index-button', 'n_clicks'),
+    State('selected-indexes', 'value'),
     State('selected-indexes', 'options'),
     State('index-provider-selection', 'value'),
     State('index-provider-selection', 'options'),
@@ -133,6 +134,7 @@ app.layout = html.Div(
 )
 def add_index(
     _,
+    selected_indexes: None | list[str],
     selected_indexes_options: dict[str, str],
     index_provider: str,
     index_provider_options: dict[str, str],
@@ -160,7 +162,13 @@ def add_index(
                     ]
                 )
             )
-    return list(selected_indexes_options.keys()), selected_indexes_options
+    if selected_indexes is None:
+        return [f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}'], selected_indexes_options
+    elif f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}' in selected_indexes:
+        return selected_indexes, selected_indexes_options
+    else:
+        selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}')
+        return selected_indexes, selected_indexes_options
 
 @app.callback(Output('graph', 'figure'),
               Input('selected-indexes', 'value'),
