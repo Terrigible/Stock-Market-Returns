@@ -1,8 +1,11 @@
+from functools import cache
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 
 from funcs import read_msci_data
+
+read_msci_data = cache(read_msci_data)
 
 app = Dash()
 
