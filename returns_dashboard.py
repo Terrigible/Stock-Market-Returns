@@ -31,7 +31,8 @@ app.layout = html.Div(
                 html.Label('Size'),
                 dcc.Dropdown(
                     {
-                        'STANDARD': 'Standard'
+                        'STANDARD': 'Standard',
+                        'SMALL': 'Small',
                     },
                     value='STANDARD',
                     id='size-selection'
