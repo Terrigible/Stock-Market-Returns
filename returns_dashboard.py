@@ -33,7 +33,8 @@ app.layout = html.Div(
                     {
                         'WORLD': 'World',
                         'ACWI': 'ACWI',
-                        'SINGAPORE': 'Singapore'
+                        'SINGAPORE': 'Singapore',
+                        'EM (EMERGING MARKETS)': 'Emerging Markets',
                     },
                     value='WORLD',
                     id='index-selection'
@@ -43,6 +44,7 @@ app.layout = html.Div(
                     {
                         'STANDARD': 'Standard',
                         'SMALL': 'Small',
+                        'MID': 'Mid',
                     },
                     value='STANDARD',
                     id='size-selection'
