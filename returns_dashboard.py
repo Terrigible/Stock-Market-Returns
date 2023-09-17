@@ -1,11 +1,18 @@
-from functools import cache
+from glob import glob
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 
-from funcs import read_msci_data
+from funcs import read_msci_data, add_return_columns
 
-read_msci_data = cache(read_msci_data)
+def load_msci_df_with_return_columns(filename: str):
+    df = read_msci_data(filename)
+    add_return_columns(
+        df,
+        periods = ['1m', '3m', '6m', '1y', '2y', '3y', '5y', '10y', '15y', '20y', '25y', '30y'],
+        durations = [1, 3, 6, 12, 24, 36, 60, 120, 180, 240, 300, 360]
+        )
+    return df
 
 app = Dash()
 
@@ -87,6 +94,37 @@ app.layout = html.Div(
                     {},
                     multi=True,
                     id='selected-indexes',
+                ),
+                dcc.Dropdown(
+                    {
+                        'price': 'Price',
+                        '1m_cumulative': '1m Cumulative Return',
+                        '3m_cumulative': '3m Cumulative Return',
+                        '6m_cumulative': '6m Cumulative Return',
+                        '1y_cumulative': '1y Cumulative Return',
+                        '2y_cumulative': '2y Cumulative Return',
+                        '3y_cumulative': '3y Cumulative Return',
+                        '5y_cumulative': '5y Cumulative Return',
+                        '10y_cumulative': '10y Cumulative Return',
+                        '15y_cumulative': '15y Cumulative Return',
+                        '20y_cumulative': '20y Cumulative Return',
+                        '25y_cumulative': '25y Cumulative Return',
+                        '30y_cumulative': '30y Cumulative Return',
+                        '1m_annualized': '1m Annualized Return',
+                        '3m_annualized': '3m Annualized Return',
+                        '6m_annualized': '6m Annualized Return',
+                        '1y_annualized': '1y Annualized Return',
+                        '2y_annualized': '2y Annualized Return',
+                        '3y_annualized': '3y Annualized Return',
+                        '5y_annualized': '5y Annualized Return',
+                        '10y_annualized': '10y Annualized Return',
+                        '15y_annualized': '15y Annualized Return',
+                        '20y_annualized': '20y Annualized Return',
+                        '25y_annualized': '25y Annualized Return',
+                        '30y_annualized': '30y Annualized Return',
+                    },
+                    value='price',
+                    id='column-selection'
                 )
                 ],
             style={
@@ -178,22 +216,28 @@ def add_index(
 @app.callback(Output('graph', 'figure'),
               Input('selected-indexes', 'value'),
               Input('selected-indexes', 'options'),
+              Input('column-selection', 'value')
               )
 def update_graph(
     selected_indexes: list[str],
-    selected_indexes_options: dict[str, str]
+    selected_indexes_options: dict[str, str],
+    column: str
     ):
     data = [
         go.Scatter(
-            x=read_msci_data('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'))).index,
-            y=read_msci_data('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-')))['price'],
+            x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'))).index,
+            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-')))[column],
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
         for selected_index in selected_indexes
     ]
     layout = go.Layout(
-        title='price'
+        title=column,
+        hovermode='x unified',
+        yaxis=dict(
+            tickformat='.2f' if column == 'price' else '.2%',
+        )
     )
     return dict(data=data, layout=layout)
 
