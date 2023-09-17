@@ -151,6 +151,8 @@ def add_index(
     tax_treatment: str,
     interval: str
     ):
+    if glob(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment} {interval}*.xls') == []:
+        return selected_indexes, selected_indexes_options
     selected_indexes_options[f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}'] = " ".join(
                 filter(
                     None,
