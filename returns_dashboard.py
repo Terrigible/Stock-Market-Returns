@@ -220,15 +220,18 @@ def add_index(
         selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}')
         return selected_indexes, selected_indexes_options
 
-@app.callback(Output('graph', 'figure'),
-              Input('selected-indexes', 'value'),
-              Input('selected-indexes', 'options'),
-              Input('column-selection', 'value')
-              )
+@app.callback(
+    Output('graph', 'figure'),
+    Input('selected-indexes', 'value'),
+    Input('selected-indexes', 'options'),
+    Input('column-selection', 'value'),
+    Input('column-selection', 'options')
+)
 def update_graph(
     selected_indexes: list[str],
     selected_indexes_options: dict[str, str],
-    column: str
+    column: str,
+    column_options: dict[str, str]
     ):
     data = [
         go.Scatter(
@@ -240,7 +243,7 @@ def update_graph(
         for selected_index in selected_indexes
     ]
     layout = go.Layout(
-        title=column,
+        title=column_options[column],
         hovermode='x unified',
         yaxis=dict(
             tickformat='.2f' if column == 'price' else '.2%',
