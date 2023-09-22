@@ -81,15 +81,6 @@ app.layout = html.Div(
                     value='Gross',
                     id='tax-treatment-selection'
                     ),
-                html.Label('Interval'),
-                dcc.Dropdown(
-                    [
-                        'Monthly',
-                        'Daily'
-                    ],
-                    value='Monthly',
-                    id='interval-selection'
-                ),
                 html.P(),
                 html.Button(
                     'Add Index',
@@ -101,6 +92,15 @@ app.layout = html.Div(
                     {},
                     multi=True,
                     id='selected-indexes',
+                ),
+                html.Label('Interval'),
+                dcc.Dropdown(
+                    [
+                        'Monthly',
+                        'Daily'
+                    ],
+                    value='Monthly',
+                    id='interval-selection'
                 ),
                 dcc.Dropdown(
                     {
@@ -177,8 +177,7 @@ app.layout = html.Div(
     State('style-selection', 'value'),
     State('style-selection', 'options'),
     State('currency-selection', 'value'),
-    State('tax-treatment-selection', 'value'),
-    State('interval-selection', 'value')
+    State('tax-treatment-selection', 'value')
 )
 def add_index(
     _,
@@ -193,12 +192,11 @@ def add_index(
     style: str,
     style_options: dict[str, str],
     currency: str,
-    tax_treatment: str,
-    interval: str
+    tax_treatment: str
     ):
-    if glob(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment} {interval}*.xls') == []:
+    if glob(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment}*.xls') == []:
         return selected_indexes, selected_indexes_options
-    selected_indexes_options[f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}'] = " ".join(
+    selected_indexes_options[f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}'] = " ".join(
                 filter(
                     None,
                     [
@@ -207,17 +205,16 @@ def add_index(
                         (None if size == 'STANDARD' else size_options[size]),
                         (None if style == 'BLEND' else style_options[style]),
                         currency,
-                        tax_treatment,
-                        interval
+                        tax_treatment
                     ]
                 )
             )
     if selected_indexes is None:
-        return [f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}'], selected_indexes_options
-    elif f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}' in selected_indexes:
+        return [f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}'], selected_indexes_options
+    elif f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}' in selected_indexes:
         return selected_indexes, selected_indexes_options
     else:
-        selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}-{interval}')
+        selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}')
         return selected_indexes, selected_indexes_options
 
 @app.callback(
@@ -225,18 +222,20 @@ def add_index(
     Input('selected-indexes', 'value'),
     Input('selected-indexes', 'options'),
     Input('column-selection', 'value'),
-    Input('column-selection', 'options')
+    Input('column-selection', 'options'),
+    Input('interval-selection', 'value')
 )
 def update_graph(
     selected_indexes: list[str],
     selected_indexes_options: dict[str, str],
     column: str,
-    column_options: dict[str, str]
+    column_options: dict[str, str],
+    interval: str
     ):
     data = [
         go.Scatter(
-            x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'))).index,
-            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-')))[column],
+            x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval)).index,
+            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column],
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
