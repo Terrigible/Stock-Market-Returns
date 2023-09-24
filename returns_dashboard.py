@@ -102,6 +102,7 @@ app.layout = html.Div(
                     value='Monthly',
                     id='interval-selection'
                 ),
+                html.Label('Value'),
                 dcc.Dropdown(
                     {
                         'price': 'Price',
@@ -131,7 +132,7 @@ app.layout = html.Div(
                         '30y_annualized': '30y Annualized Return',
                     },
                     value='price',
-                    id='column-selection'
+                    id='y-var-selection'
                 )
                 ],
             style={
@@ -221,31 +222,31 @@ def add_index(
     Output('graph', 'figure'),
     Input('selected-indexes', 'value'),
     Input('selected-indexes', 'options'),
-    Input('column-selection', 'value'),
-    Input('column-selection', 'options'),
+    Input('y-var-selection', 'value'),
+    Input('y-var-selection', 'options'),
     Input('interval-selection', 'value')
 )
 def update_graph(
     selected_indexes: list[str],
     selected_indexes_options: dict[str, str],
-    column: str,
-    column_options: dict[str, str],
+    y_var: str,
+    y_var_options: dict[str, str],
     interval: str
     ):
     data = [
         go.Scatter(
             x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval)).index,
-            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column],
+            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[y_var],
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
         for selected_index in selected_indexes
     ]
     layout = go.Layout(
-        title=column_options[column],
+        title=y_var_options[y_var],
         hovermode='x unified',
         yaxis=dict(
-            tickformat='.2f' if column == 'price' else '.2%',
+            tickformat='.2f' if y_var == 'price' else '.2%',
         )
     )
     return dict(data=data, layout=layout)
