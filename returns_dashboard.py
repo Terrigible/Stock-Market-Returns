@@ -106,33 +106,46 @@ app.layout = html.Div(
                 dcc.Dropdown(
                     {
                         'price': 'Price',
-                        '1m_cumulative': '1m Cumulative Return',
-                        '3m_cumulative': '3m Cumulative Return',
-                        '6m_cumulative': '6m Cumulative Return',
-                        '1y_cumulative': '1y Cumulative Return',
-                        '2y_cumulative': '2y Cumulative Return',
-                        '3y_cumulative': '3y Cumulative Return',
-                        '5y_cumulative': '5y Cumulative Return',
-                        '10y_cumulative': '10y Cumulative Return',
-                        '15y_cumulative': '15y Cumulative Return',
-                        '20y_cumulative': '20y Cumulative Return',
-                        '25y_cumulative': '25y Cumulative Return',
-                        '30y_cumulative': '30y Cumulative Return',
-                        '1m_annualized': '1m Annualized Return',
-                        '3m_annualized': '3m Annualized Return',
-                        '6m_annualized': '6m Annualized Return',
-                        '1y_annualized': '1y Annualized Return',
-                        '2y_annualized': '2y Annualized Return',
-                        '3y_annualized': '3y Annualized Return',
-                        '5y_annualized': '5y Annualized Return',
-                        '10y_annualized': '10y Annualized Return',
-                        '15y_annualized': '15y Annualized Return',
-                        '20y_annualized': '20y Annualized Return',
-                        '25y_annualized': '25y Annualized Return',
-                        '30y_annualized': '30y Annualized Return',
+                        'return': 'Return'
                     },
                     value='price',
                     id='y-var-selection'
+                ),
+                html.Div(
+                    [
+                        html.Label('Return Duration'),
+                        dcc.Dropdown(
+                            {
+                                '1m': '1 Month',
+                                '3m': '3 Months',
+                                '6m': '6 Months',
+                                '1y': '1 Year',
+                                '2y': '2 Years',
+                                '3y': '3 Years',
+                                '5y': '5 Years',
+                                '10y': '10 Years',
+                                '15y': '15 Years',
+                                '20y': '20 Years',
+                                '25y': '25 Years',
+                                '30y': '30 Years',
+                            },
+                            value='1m',
+                            id='return-duration-selection'
+                        ),
+                        html.Label('Return Type'),
+                        dcc.Dropdown(
+                            {
+                                'cumulative': 'Cumulative',
+                                'annualized': 'Annualized'
+                            },
+                            value='cumulative',
+                            id='return-type-selection'
+                        )
+                    ],
+                    id='return-selection',
+                    style={
+                        'display': 'block'
+                    }
                 )
                 ],
             style={
@@ -217,6 +230,16 @@ def add_index(
     else:
         selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}')
         return selected_indexes, selected_indexes_options
+    
+@app.callback(
+    Output('return-selection', 'style'),
+    Input('y-var-selection', 'value')
+)
+def update_return_selection_visibility(y_var: str):
+    if y_var == 'price':
+        return {'display': 'none'}
+    else:
+        return {'display': 'block'}
 
 @app.callback(
     Output('graph', 'figure'),
@@ -224,6 +247,10 @@ def add_index(
     Input('selected-indexes', 'options'),
     Input('y-var-selection', 'value'),
     Input('y-var-selection', 'options'),
+    Input('return-duration-selection', 'value'),
+    Input('return-duration-selection', 'options'),
+    Input('return-type-selection', 'value'),
+    Input('return-type-selection', 'options'),
     Input('interval-selection', 'value')
 )
 def update_graph(
@@ -231,19 +258,27 @@ def update_graph(
     selected_indexes_options: dict[str, str],
     y_var: str,
     y_var_options: dict[str, str],
+    return_duration: str,
+    return_duration_options: dict[str, str],
+    return_type: str,
+    return_type_options: dict[str, str],
     interval: str
     ):
+    if y_var == 'price':
+        column = 'price'
+    else:
+        column = f'{return_duration}_{return_type}'
     data = [
         go.Scatter(
             x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval)).index,
-            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[y_var],
+            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column],
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
         for selected_index in selected_indexes
     ]
     layout = go.Layout(
-        title=y_var_options[y_var],
+        title=y_var_options[y_var] if y_var == 'price' else f'{return_duration_options[return_duration]} {return_type_options[return_type]} Return',
         hovermode='x unified',
         yaxis=dict(
             tickformat='.2f' if y_var == 'price' else '.2%',
