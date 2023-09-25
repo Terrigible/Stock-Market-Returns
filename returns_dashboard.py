@@ -48,6 +48,7 @@ app.layout = html.Div(
                     {
                         'STANDARD': 'Standard',
                         'SMALL': 'Small',
+                        'SMID': 'SMID',
                         'MID': 'Mid',
                         'LARGE': 'Large',
                     },
