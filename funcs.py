@@ -107,12 +107,36 @@ def load_usdsgd():
     
     return usdsgd
     
+def download_mas_swap_points():
+    swap_points_response = requests.get(
+        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/swap-points/SwapPoint_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    )
+    if swap_points_response.status_code == 200:
+        with open('data/SwapPoint.xlsx', 'wb') as f:
+            f.write(swap_points_response.content)
+    else:
+        raise Exception(f'Error downloading MAS swap points: {swap_points_response.status_code} {swap_points_response.reason}')
 
 def read_mas_swap_points():
     df = pd.concat(pd.read_excel('data/SwapPoint.xlsx', None, skiprows=3, skipfooter=6, index_col=0, header=[0,1]).values(), axis=1).unstack().dropna().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1)
     df['date'] = df['month'].dt.to_period('M').dt.to_timestamp() + pd.TimedeltaIndex(df['day'].sub(1), unit='D')
     swap_points = df.set_index('date').drop(columns=['month', 'day'])
     swap_points = swap_points.pivot_table(columns='tenor', index='date').droplevel(0, axis=1)
+    return swap_points
+
+def load_mas_swap_points():
+    try:
+        swap_points = read_mas_swap_points()
+    except FileNotFoundError:
+        download_mas_swap_points()
+        swap_points = read_mas_swap_points()
+    if (
+        pd.Timestamp('today').tz_localize('Asia/Singapore')
+        > (swap_points.index[-1] + pd.offsets.MonthBegin(2) + pd.offsets.Week(weekday=0) + pd.offsets.Hour(12)).tz_localize('Asia/Singapore')
+        ):
+        download_mas_swap_points()
+    swap_points = read_mas_swap_points()
     return swap_points
 
 def download_sgd_interest_rates():
@@ -313,7 +337,7 @@ __all__ = [
     'load_us_treasury_returns',
     'read_shiller_sp500_data',
     'load_usdsgd',
-    'read_mas_swap_points',
+    'load_mas_swap_points',
     'load_sgd_interest_rates',
     'load_sg_cpi',
     'load_us_cpi',
