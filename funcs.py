@@ -139,6 +139,35 @@ def load_mas_swap_points():
     swap_points = read_mas_swap_points()
     return swap_points
 
+def download_sgd_neer():
+    sgd_neer_response = requests.get(
+        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/s$neer/S$NEER_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    )
+    if sgd_neer_response.status_code == 200:
+        with open('data/S$NEER.xlsx', 'wb') as f:
+            f.write(sgd_neer_response.content)
+    else:
+        raise Exception(f'Error downloading MAS swap points: {sgd_neer_response.status_code} {sgd_neer_response.reason}')
+
+def read_sgd_neer():
+    sgd_neer = pd.concat(pd.read_excel('data/S$NEER.xlsx', None, names=['date', 'neer'], dtype={'date': str, 'neer': float}, skiprows=6).values()).dropna().reset_index(drop=True)
+    sgd_neer['date'] = pd.to_datetime(pd.DataFrame(sgd_neer['date'].str.split().apply(lambda x: ([np.nan] * (3-len(x)) + x)).to_list()).ffill().sum(axis=1), format='%Y%b%d')
+    return sgd_neer.set_index('date')
+
+def load_sgd_neer():
+    try:
+        sgd_neer = read_sgd_neer()
+    except FileNotFoundError:
+        download_sgd_neer()
+        sgd_neer = read_sgd_neer()
+    if (
+        pd.Timestamp('today').tz_localize('Asia/Singapore')
+        > (sgd_neer.index[-1] + pd.offsets.MonthBegin(2) + pd.offsets.Week(weekday=0) + pd.offsets.Hour(12)).tz_localize('Asia/Singapore')
+        ):
+        download_sgd_neer()
+    return sgd_neer
+
 def download_sgd_interest_rates():
     offset = 0
     dfs = []
@@ -338,6 +367,7 @@ __all__ = [
     'read_shiller_sp500_data',
     'load_usdsgd',
     'load_mas_swap_points',
+    'load_sgd_neer',
     'load_sgd_interest_rates',
     'load_sg_cpi',
     'load_us_cpi',
