@@ -10,7 +10,7 @@ def load_msci_df_with_return_columns(filename: str):
     if 'Monthly' in filename:
         durations = [1, 3, 6, 12, 24, 36, 60, 120, 180, 240, 300, 360]
     else:
-        durations = [22, 66, 131, 261, 522, 783, 1305, 2609, 3915, 5218, 6523, 7827]
+        durations = [21, 63, 126, 251, 503, 754, 1256, 2513, 3769, 5025, 6281, 7538]
     add_return_columns(
         df,
         periods = ['1m', '3m', '6m', '1y', '2y', '3y', '5y', '10y', '15y', '20y', '25y', '30y'],
