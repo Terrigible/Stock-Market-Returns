@@ -39,6 +39,7 @@ app.layout = html.Div(
                         'ACWI': 'ACWI',
                         'SINGAPORE': 'Singapore',
                         'EM (EMERGING MARKETS)': 'Emerging Markets',
+                        'USA': 'USA',
                     },
                     value='WORLD',
                     id='index-selection'
