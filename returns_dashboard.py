@@ -52,6 +52,7 @@ app.layout = html.Div(
                         'SMID': 'SMID',
                         'MID': 'Mid',
                         'LARGE': 'Large',
+                        'IMI': 'IMI',
                     },
                     value='STANDARD',
                     id='size-selection'
