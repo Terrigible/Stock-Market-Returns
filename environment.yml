@@ -22,5 +22,5 @@ dependencies:
   - yfinance
   - conda-forge::selenium
   - pip:
-    - fredapi
+      - fredapi
 prefix: C:\Users\leowy\anaconda3\envs\market-returns

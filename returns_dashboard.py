@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 
 from funcs import read_msci_data, add_return_columns
 
+
 def load_msci_df_with_return_columns(filename: str):
     df = read_msci_data(filename)
     if 'Monthly' in filename:
@@ -13,10 +14,11 @@ def load_msci_df_with_return_columns(filename: str):
         durations = [21, 63, 126, 251, 503, 754, 1256, 2513, 3769, 5025, 6281, 7538]
     add_return_columns(
         df,
-        periods = ['1m', '3m', '6m', '1y', '2y', '3y', '5y', '10y', '15y', '20y', '25y', '30y'],
-        durations = durations
-        )
+        periods=['1m', '3m', '6m', '1y', '2y', '3y', '5y', '10y', '15y', '20y', '25y', '30y'],
+        durations=durations
+    )
     return df
+
 
 app = Dash()
 
@@ -74,7 +76,7 @@ app.layout = html.Div(
                     ],
                     value='USD',
                     id='currency-selection'
-                    ),
+                ),
                 html.Label('Tax Treatment'),
                 dcc.Dropdown(
                     [
@@ -83,7 +85,7 @@ app.layout = html.Div(
                     ],
                     value='Gross',
                     id='tax-treatment-selection'
-                    ),
+                ),
                 html.P(),
                 html.Button(
                     'Add Index',
@@ -150,7 +152,7 @@ app.layout = html.Div(
                         'display': 'block'
                     }
                 )
-                ],
+            ],
             style={
                 "overflow": "scroll",
                 "position": "fixed",
@@ -160,7 +162,7 @@ app.layout = html.Div(
                 "width": "18rem",
                 "padding": "2rem 1rem"
             }
-            ),
+        ),
         html.Div(
             [
                 dcc.Graph(
@@ -178,6 +180,7 @@ app.layout = html.Div(
         )
     ]
 )
+
 
 @app.callback(
     Output('selected-indexes', 'value'),
@@ -210,22 +213,22 @@ def add_index(
     style_options: dict[str, str],
     currency: str,
     tax_treatment: str
-    ):
+):
     if glob(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment}*.xls') == []:
         return selected_indexes, selected_indexes_options
     selected_indexes_options[f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}'] = " ".join(
-                filter(
-                    None,
-                    [
-                        index_provider_options[index_provider],
-                        index_options[index],
-                        (None if size == 'STANDARD' else size_options[size]),
-                        (None if style == 'BLEND' else style_options[style]),
-                        currency,
-                        tax_treatment
-                    ]
-                )
-            )
+        filter(
+            None,
+            [
+                index_provider_options[index_provider],
+                index_options[index],
+                (None if size == 'STANDARD' else size_options[size]),
+                (None if style == 'BLEND' else style_options[style]),
+                currency,
+                tax_treatment
+            ]
+        )
+    )
     if selected_indexes is None:
         return [f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}'], selected_indexes_options
     elif f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}' in selected_indexes:
@@ -233,7 +236,8 @@ def add_index(
     else:
         selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}')
         return selected_indexes, selected_indexes_options
-    
+
+
 @app.callback(
     Output('return-selection', 'style'),
     Input('y-var-selection', 'value')
@@ -243,6 +247,7 @@ def update_return_selection_visibility(y_var: str):
         return {'display': 'none'}
     else:
         return {'display': 'block'}
+
 
 @app.callback(
     Output('graph', 'figure'),
@@ -266,7 +271,7 @@ def update_graph(
     return_type: str,
     return_type_options: dict[str, str],
     interval: str
-    ):
+):
     if y_var == 'price':
         column = 'price'
     else:
@@ -288,6 +293,7 @@ def update_graph(
         )
     )
     return dict(data=data, layout=layout)
+
 
 if __name__ == '__main__':
     app.run()
