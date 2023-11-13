@@ -273,8 +273,8 @@ def update_graph(
         column = f'{return_duration}_{return_type}'
     data = [
         go.Scatter(
-            x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval)).index,
-            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column],
+            x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column].dropna().index,
+            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column].dropna(),
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
