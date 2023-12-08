@@ -25,6 +25,10 @@ def read_msci_data(filename_pattern):
     return pd.concat(map(read_msci_source, glob(filename_pattern)))
 
 
+def read_sti_data():
+    return pd.read_csv('data/Straits Times Index USD Gross.csv', parse_dates=['Date'], index_col='Date').rename_axis('date')[['Close']].set_axis(['price'], axis=1)
+
+
 def download_fed_funds_rate():
     fred = Fred()
     fed_funds_rate = fred.get_series('DFF').rename('ffr').rename_axis('date')
@@ -389,6 +393,7 @@ def add_return_columns(df: pd.DataFrame, periods: list[str], durations: list[int
 
 __all__ = [
     'read_msci_data',
+    'read_sti_data',
     'load_fed_funds_rate',
     'load_us_treasury_rate',
     'load_us_treasury_returns',
