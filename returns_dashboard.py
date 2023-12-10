@@ -29,62 +29,82 @@ app.layout = html.Div(
                 html.Label('Index Provider'),
                 dcc.Dropdown(
                     {
-                        'MSCI': 'MSCI'
+                        'MSCI': 'MSCI',
+                        'Others': 'Others'
                     },
                     value='MSCI',
                     id='index-provider-selection'
                 ),
-                html.Label('Index'),
-                dcc.Dropdown(
-                    {
-                        'WORLD': 'World',
-                        'ACWI': 'ACWI',
-                        'SINGAPORE': 'Singapore',
-                        'EM (EMERGING MARKETS)': 'Emerging Markets',
-                        'USA': 'USA',
-                    },
-                    value='WORLD',
-                    id='index-selection'
-                ),
-                html.Label('Size'),
-                dcc.Dropdown(
-                    {
-                        'STANDARD': 'Standard',
-                        'SMALL': 'Small',
-                        'SMID': 'SMID',
-                        'MID': 'Mid',
-                        'LARGE': 'Large',
-                        'IMI': 'IMI',
-                    },
-                    value='STANDARD',
-                    id='size-selection'
-                ),
-                html.Label('Style'),
-                dcc.Dropdown(
-                    {
-                        'BLEND': 'None',
-                        'GROWTH': 'Growth',
-                        'VALUE': 'Value'
-                    },
-                    value='BLEND',
-                    id='style-selection'
-                ),
-                html.Label('Currency'),
-                dcc.Dropdown(
+                html.Div(
                     [
-                        'USD'
+                        html.Label('Index'),
+                        dcc.Dropdown(
+                            {
+                                'WORLD': 'World',
+                                'ACWI': 'ACWI',
+                                'SINGAPORE': 'Singapore',
+                                'EM (EMERGING MARKETS)': 'Emerging Markets',
+                                'USA': 'USA',
+                            },
+                            value='WORLD',
+                            id='msci-index-selection'
+                        ),
+                        html.Label('Size'),
+                        dcc.Dropdown(
+                            {
+                                'STANDARD': 'Standard',
+                                'SMALL': 'Small',
+                                'SMID': 'SMID',
+                                'MID': 'Mid',
+                                'LARGE': 'Large',
+                                'IMI': 'IMI',
+                            },
+                            value='STANDARD',
+                            id='msci-size-selection'
+                        ),
+                        html.Label('Style'),
+                        dcc.Dropdown(
+                            {
+                                'BLEND': 'None',
+                                'GROWTH': 'Growth',
+                                'VALUE': 'Value'
+                            },
+                            value='BLEND',
+                            id='msci-style-selection'
+                        ),
+                        html.Label('Currency'),
+                        dcc.Dropdown(
+                            [
+                                'USD'
+                            ],
+                            value='USD',
+                            id='msci-currency-selection'
+                        ),
+                        html.Label('Tax Treatment'),
+                        dcc.Dropdown(
+                            [
+                                'Gross',
+                                'Net'
+                            ],
+                            value='Gross',
+                            id='msci-tax-treatment-selection'
+                        ),
                     ],
-                    value='USD',
-                    id='currency-selection'
+                    id='msci-index-selection-container'
                 ),
-                html.Label('Tax Treatment'),
-                dcc.Dropdown(
+                html.Div(
                     [
-                        'Gross',
-                        'Net'
+                        html.Label('Index'),
+                        dcc.Dropdown(
+                            {
+                                'STI': 'STI',
+                                'SPX': 'S&P 500',
+                            },
+                            value='STI',
+                            id='others-index-selection'
+                        ),
                     ],
-                    value='Gross',
-                    id='tax-treatment-selection'
+                    id='others-index-selection-container'
                 ),
                 html.P(),
                 html.Button(
@@ -183,6 +203,18 @@ app.layout = html.Div(
 
 
 @app.callback(
+    Output('msci-index-selection-container', 'style'),
+    Output('others-index-selection-container', 'style'),
+    Input('index-provider-selection', 'value'),
+)
+def update_msci_index_selection_visibility(index_provider: str):
+    if index_provider == 'MSCI':
+        return {'display': 'block'}, {'display': 'none'}
+    else:
+        return {'display': 'none'}, {'display': 'block'}
+
+
+@app.callback(
     Output('selected-indexes', 'value'),
     Output('selected-indexes', 'options'),
     Input('add-index-button', 'n_clicks'),
@@ -190,14 +222,16 @@ app.layout = html.Div(
     State('selected-indexes', 'options'),
     State('index-provider-selection', 'value'),
     State('index-provider-selection', 'options'),
-    State('index-selection', 'value'),
-    State('index-selection', 'options'),
-    State('size-selection', 'value'),
-    State('size-selection', 'options'),
-    State('style-selection', 'value'),
-    State('style-selection', 'options'),
-    State('currency-selection', 'value'),
-    State('tax-treatment-selection', 'value')
+    State('msci-index-selection', 'value'),
+    State('msci-index-selection', 'options'),
+    State('msci-size-selection', 'value'),
+    State('msci-size-selection', 'options'),
+    State('msci-style-selection', 'value'),
+    State('msci-style-selection', 'options'),
+    State('msci-currency-selection', 'value'),
+    State('msci-tax-treatment-selection', 'value'),
+    State('others-index-selection', 'value'),
+    State('others-index-selection', 'options'),
 )
 def add_index(
     _,
@@ -205,37 +239,49 @@ def add_index(
     selected_indexes_options: dict[str, str],
     index_provider: str,
     index_provider_options: dict[str, str],
-    index: str,
-    index_options: dict[str, str],
-    size: str,
-    size_options: dict[str, str],
-    style: str,
-    style_options: dict[str, str],
-    currency: str,
-    tax_treatment: str
+    msci_index: str,
+    msci_index_options: dict[str, str],
+    msci_size: str,
+    msci_size_options: dict[str, str],
+    msci_style: str,
+    msci_style_options: dict[str, str],
+    msci_currency: str,
+    msci_tax_treatment: str,
+    others_index: str,
+    others_index_options: dict[str, str]
 ):
-    if glob(f'data/{index_provider}/{index}/{size}/{style}/*{currency} {tax_treatment}*.xls') == []:
-        return selected_indexes, selected_indexes_options
-    selected_indexes_options[f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}'] = " ".join(
-        filter(
-            None,
-            [
-                index_provider_options[index_provider],
-                index_options[index],
-                (None if size == 'STANDARD' else size_options[size]),
-                (None if style == 'BLEND' else style_options[style]),
-                currency,
-                tax_treatment
-            ]
+    if index_provider == 'MSCI':
+        if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/*{msci_currency} {msci_tax_treatment}*.xls') == []:
+            return selected_indexes, selected_indexes_options
+        selected_indexes_options[f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}'] = " ".join(
+            filter(
+                None,
+                [
+                    index_provider_options[index_provider],
+                    msci_index_options[msci_index],
+                    (None if msci_size == 'STANDARD' else msci_size_options[msci_size]),
+                    (None if msci_style == 'BLEND' else msci_style_options[msci_style]),
+                    msci_currency,
+                    msci_tax_treatment
+                ]
+            )
         )
-    )
-    if selected_indexes is None:
-        return [f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}'], selected_indexes_options
-    elif f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}' in selected_indexes:
-        return selected_indexes, selected_indexes_options
+        if selected_indexes is None:
+            return [f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}'], selected_indexes_options
+        elif f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}' in selected_indexes:
+            return selected_indexes, selected_indexes_options
+        else:
+            selected_indexes.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}')
+            return selected_indexes, selected_indexes_options
     else:
-        selected_indexes.append(f'{index_provider}-{index}-{size}-{style}-{currency}-{tax_treatment}')
-        return selected_indexes, selected_indexes_options
+        if selected_indexes is None:
+            return [f'{others_index}'], selected_indexes_options
+        elif f'{others_index}' in selected_indexes:
+            return selected_indexes, selected_indexes_options
+        else:
+            selected_indexes.append(f'{others_index}')
+            selected_indexes_options[f'{others_index}'] = others_index_options[others_index]
+            return selected_indexes, selected_indexes_options
 
 
 @app.callback(
