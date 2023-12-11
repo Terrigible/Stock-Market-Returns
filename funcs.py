@@ -94,17 +94,22 @@ def read_shiller_sp500_data(net=False):
 
 
 def download_usdsgd():
-    usdsgd_response = requests.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
-                                   params={'resource_id': '95932927-c8bc-4e7a-b484-68a66a24edfe',
-                                           'between[end_of_day]': f'1988-01-01,{pd.to_datetime("today").strftime("%Y-%m-%d")}',
-                                           'fields': 'end_of_day,usd_sgd'
-                                           }).json()
-    usdsgd = pd.DataFrame(usdsgd_response['result']['records'])[['end_of_day', 'usd_sgd']]
-    usdsgd['end_of_day'] = usdsgd['end_of_day'].apply(pd.to_datetime)
-    usdsgd['usd_sgd'] = usdsgd['usd_sgd'].astype(float)
-    usdsgd = usdsgd.set_index('end_of_day').rename_axis('date')
-    usdsgd.to_csv('data/usdsgd.csv')
-
+    usdsgd_response = requests.get(
+        'https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily',
+        headers={
+            'keyid': os.environ['MAS_EXCHANGE_RATE_API_KEY']
+        }
+    )
+    usdsgd = (
+        pd.DataFrame(usdsgd_response.json()['elements'])
+        .loc[:, ['end_of_day', 'usd_sgd']]
+        .assign(
+            end_of_day=lambda df: pd.to_datetime(df['end_of_day']),
+            usd_sgd=lambda df: pd.to_numeric(df['usd_sgd']),
+        )
+        .set_index('end_of_day')
+        .rename_axis('date')
+    )
     return usdsgd
 
 
@@ -113,10 +118,9 @@ def load_usdsgd():
         usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'], index_col='date')
         if usdsgd.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
-
     except FileNotFoundError:
         usdsgd = download_usdsgd()
-
+        usdsgd.to_csv('data/usdsgd.csv')
     return usdsgd
 
 
@@ -189,29 +193,25 @@ def load_sgd_neer():
 
 
 def download_sgd_interest_rates():
-    offset = 0
-    dfs = []
-    with requests.Session() as session:
-        while True:
-            sgd_interest_rates_response = session.get('https://eservices.mas.gov.sg/api/action/datastore/search.json',
-                                                      params={'resource_id': '9a0bf149-308c-4bd2-832d-76c8e6cb47ed',
-                                                              'between[end_of_day]': f'1987-07-01,{pd.to_datetime("today").strftime("%Y-%m-%d")}',
-                                                              'offset': f'{offset}',
-                                                              'fields': 'end_of_day,interbank_overnight,sora'
-                                                              }
-                                                      ).json()
-            df = pd.DataFrame(sgd_interest_rates_response['result']['records'])[['end_of_day', 'interbank_overnight', 'sora']]
-            offset += 100
-            dfs.append(df)
-            if len(df) < 100:
-                break
-    sgd_interest_rates = pd.concat(dfs).rename({'end_of_day': 'date'}, axis=1)
-    sgd_interest_rates['interbank_overnight'] = sgd_interest_rates['interbank_overnight'].astype(float)
-    sgd_interest_rates['date'] = pd.to_datetime(sgd_interest_rates['date'])
-    sgd_interest_rates = sgd_interest_rates.dropna(how='all', subset=['interbank_overnight', 'sora'])
-    sgd_interest_rates = sgd_interest_rates.drop_duplicates().drop_duplicates(subset=['date', 'interbank_overnight']).drop_duplicates(subset=['date', 'sora'])
-    sgd_interest_rates = sgd_interest_rates.reset_index(drop=True)
-    sgd_interest_rates = sgd_interest_rates.set_index('date')
+    sgd_interest_rates_response = requests.get(
+        'https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily',
+        headers={
+            'keyid': os.environ['MAS_INTEREST_RATE_API_KEY']
+        }
+    )
+
+    sgd_interest_rates = (
+        pd.DataFrame(sgd_interest_rates_response.json()['elements'])
+        .loc[:, ['end_of_day', 'interbank_overnight', 'sora']]
+        .assign(
+            end_of_day=lambda df: pd.to_datetime(df['end_of_day']),
+            interbank_overnight=lambda df: pd.to_numeric(df['interbank_overnight']),
+            sora=lambda df: pd.to_numeric(df['sora']),
+        )
+        .drop_duplicates(subset='end_of_day')
+        .set_index('end_of_day')
+        .rename_axis('date')
+    )
     return sgd_interest_rates
 
 
