@@ -2,22 +2,50 @@ from glob import glob
 from dash import Dash, html, dcc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
+import pandas as pd
 
-from funcs import read_msci_data, add_return_columns
+from funcs import read_msci_data, add_return_columns, read_sti_data, read_spx_data
 
 
-def load_msci_df_with_return_columns(filename: str):
-    df = read_msci_data(filename)
-    if 'Monthly' in filename:
-        durations = [1, 3, 6, 12, 24, 36, 60, 120, 180, 240, 300, 360]
-    else:
-        durations = [21, 63, 126, 251, 503, 754, 1256, 2513, 3769, 5025, 6281, 7538]
-    add_return_columns(
-        df,
-        periods=['1m', '3m', '6m', '1y', '2y', '3y', '5y', '10y', '15y', '20y', '25y', '30y'],
-        durations=durations
-    )
-    return df
+def load_df(index: str, interval: str):
+    if index.split('-')[0] == 'MSCI':
+        return read_msci_data('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*index.split('-'), interval))
+    if index.split('-')[0] == 'Others':
+        if index.split('-')[1] == 'STI':
+            df = read_sti_data()
+        elif index.split('-')[1] == 'SPX':
+            df = read_spx_data()
+        else:
+            raise ValueError('Invalid index')
+        if interval == 'Monthly':
+            df = df.resample('BM').last()
+        return df
+    raise ValueError('Invalid index')
+
+
+def transform_df(df: pd.DataFrame, interval: str, y_var: str, return_duration: str, return_type: str) -> pd.Series:
+    series = df['price']
+    if y_var == 'price':
+        return series
+    return_durations = {
+        '1m': 1,
+        '3m': 3,
+        '6m': 6,
+        '1y': 12,
+        '2y': 24,
+        '3y': 36,
+        '5y': 60,
+        '10y': 120,
+        '15y': 180,
+        '20y': 240,
+        '25y': 300,
+        '30y': 360,
+    }
+    interval_multiplier = 1 if interval == 'Monthly' else 21.5
+    series = series.pct_change(periods=round(return_durations[return_duration]*interval_multiplier))
+    if return_type == 'annualized':
+        series = series.add(1).pow(12 / round(return_durations[return_duration]*interval_multiplier)).sub(1)
+    return series.dropna()
 
 
 app = Dash()
@@ -275,12 +303,12 @@ def add_index(
             return selected_indexes, selected_indexes_options
     else:
         if selected_indexes is None:
-            return [f'{others_index}'], selected_indexes_options
-        elif f'{others_index}' in selected_indexes:
+            return [f'Others-{others_index}'], selected_indexes_options
+        elif f'Others-{others_index}' in selected_indexes:
             return selected_indexes, selected_indexes_options
         else:
-            selected_indexes.append(f'{others_index}')
-            selected_indexes_options[f'{others_index}'] = others_index_options[others_index]
+            selected_indexes.append(f'Others-{others_index}')
+            selected_indexes_options[f'Others-{others_index}'] = others_index_options[others_index]
             return selected_indexes, selected_indexes_options
 
 
@@ -318,14 +346,10 @@ def update_graph(
     return_type_options: dict[str, str],
     interval: str
 ):
-    if y_var == 'price':
-        column = 'price'
-    else:
-        column = f'{return_duration}_{return_type}'
     data = [
         go.Scatter(
-            x=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column].dropna().index,
-            y=load_msci_df_with_return_columns('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*selected_index.split('-'), interval))[column].dropna(),
+            x=transform_df(load_df(selected_index, interval), interval, y_var, return_duration, return_type).index,
+            y=transform_df(load_df(selected_index, interval), interval, y_var, return_duration, return_type),
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
