@@ -41,10 +41,27 @@ def transform_df(df: pd.DataFrame, interval: str, y_var: str, return_duration: s
         '25y': 300,
         '30y': 360,
     }
-    interval_multiplier = 1 if interval == 'Monthly' else 21.5
-    series = series.pct_change(periods=round(return_durations[return_duration]*interval_multiplier))
+    if interval == 'Monthly':
+        series = series.pct_change(return_durations[return_duration])
+    elif interval == 'Daily':
+        series = (
+            series
+            .div(
+                series
+                .reindex(
+                    (series.index - pd.offsets.DateOffset(months=return_durations[return_duration]))
+                    .to_series()
+                    .apply(pd.offsets.BusinessDay().rollback)
+                    .set_axis(series.index)
+                )
+                .set_axis(series.index, axis=0)
+            )
+            .sub(1)
+        )
+    else:
+        raise ValueError('Invalid interval')
     if return_type == 'annualized':
-        series = series.add(1).pow(12 / round(return_durations[return_duration]*interval_multiplier)).sub(1)
+        series = series.add(1).pow(12 / round(return_durations[return_duration])).sub(1)
     return series.dropna()
 
 
