@@ -74,21 +74,21 @@ def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', 
         treasury_rate.to_csv(f'data/us_treasury_{duration.lower()}.csv')
 
     if duration == '20':
-        treasury_rate = treasury_rate.fillna(load_us_treasury_rate('10')['rate'].add(load_us_treasury_rate('30')['rate']).div(2))
+        treasury_rate = treasury_rate.fillna(load_us_treasury_rate('10').add(load_us_treasury_rate('30')).div(2))
 
-    treasury_rate = treasury_rate.resample('D').last().interpolate().reset_index().set_index('date')
+    treasury_rate = treasury_rate.resample('D').last().interpolate()
 
     return treasury_rate
 
 
 def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
     treasury = load_us_treasury_rate(duration)
-    treasury['old_issue_start_price'] = treasury['rate'].div(100).add(1).pow(-eval(duration.replace('MO', '/12'))).shift()
-    treasury['old_issue_end_price'] = treasury['rate'].div(100).add(1).pow(1 / 365 - eval(duration.replace('MO', '/12')))
-    treasury['change'] = treasury['old_issue_end_price'].div(treasury['old_issue_start_price'])
-    treasury['price'] = np.exp(np.log(treasury['change']).cumsum()).fillna(1)
+    old_issue_start_price = treasury.div(100).add(1).pow(-eval(duration.replace('MO', '/12'))).shift()
+    old_issue_end_price = treasury.div(100).add(1).pow(1 / 365 - eval(duration.replace('MO', '/12')))
+    change = old_issue_end_price.div(old_issue_start_price)
+    price = np.exp(np.log(change).cumsum()).fillna(1)
 
-    return treasury
+    return price
 
 
 def read_shiller_sp500_data(net=False):
