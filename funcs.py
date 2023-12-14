@@ -73,6 +73,9 @@ def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', 
         treasury_rate = download_us_treasury_rate(duration)
         treasury_rate.to_csv(f'data/us_treasury_{duration.lower()}.csv')
 
+    if duration == '20':
+        treasury_rate = treasury_rate.fillna(load_us_treasury_rate('10')['rate'].add(load_us_treasury_rate('30')['rate']).div(2))
+
     treasury_rate = treasury_rate.resample('D').last().interpolate().reset_index().set_index('date')
 
     return treasury_rate
