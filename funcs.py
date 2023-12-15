@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 from fredapi import Fred
 from numba import float64, guvectorize, int64, njit
-from pandas.tseries.offsets import BMonthEnd
+from pandas.tseries.offsets import BMonthEnd, MonthEnd
 from requests.exceptions import JSONDecodeError
 
 
@@ -146,7 +146,7 @@ def download_mas_swap_points():
 def read_mas_swap_points():
     df = pd.concat(pd.read_excel('data/SwapPoint.xlsx', None, skiprows=3, skipfooter=6, index_col=0,
                    header=[0, 1]).values(), axis=1).unstack().dropna().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1)
-    df['date'] = df['month'].dt.to_period('M').dt.to_timestamp() + pd.TimedeltaIndex(df['day'].sub(1), unit='D')
+    df['date'] = df['month'] - MonthEnd() + pd.TimedeltaIndex(df['day'], unit='D')
     swap_points = df.set_index('date').drop(columns=['month', 'day'])
     swap_points = swap_points.pivot_table(columns='tenor', index='date').droplevel(0, axis=1)
     return swap_points
