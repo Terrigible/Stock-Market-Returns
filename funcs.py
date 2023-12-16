@@ -99,22 +99,9 @@ def read_shiller_sp500_data(net=False):
 
 
 def download_usdsgd():
-    usdsgd_response = requests.get(
-        'https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily',
-        headers={
-            'keyid': os.environ['MAS_EXCHANGE_RATE_API_KEY']
-        }
-    )
-    usdsgd = (
-        pd.DataFrame(usdsgd_response.json()['elements'])
-        .loc[:, ['end_of_day', 'usd_sgd']]
-        .assign(
-            end_of_day=lambda df: pd.to_datetime(df['end_of_day']),
-            usd_sgd=lambda df: pd.to_numeric(df['usd_sgd']),
-        )
-        .set_index('end_of_day')
-        .rename_axis('date')
-    )
+    fred = Fred()
+    usdsgd = fred.get_series('DEXSIUS').rename('usdsgd').rename_axis('date')
+    usdsgd.to_csv('data/usdsgd.csv')
     return usdsgd
 
 
@@ -123,6 +110,7 @@ def load_usdsgd():
         usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'], index_col='date')
         if usdsgd.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
             raise FileNotFoundError
+        usdsgd = usdsgd['usdsgd']
     except FileNotFoundError:
         usdsgd = download_usdsgd()
         usdsgd.to_csv('data/usdsgd.csv')
