@@ -30,6 +30,8 @@ def load_df(index: str, interval: str, currency: str):
 def transform_df(series: pd.Series, interval: str, y_var: str, return_duration: str, return_type: str) -> pd.Series:
     if y_var == 'price':
         return series
+    if y_var == 'drawdown':
+        return series.div(series.cummax()).sub(1)
     return_durations = {
         '1m': 1,
         '3m': 3,
@@ -180,6 +182,7 @@ app.layout = html.Div(
                 dcc.Dropdown(
                     {
                         'price': 'Price',
+                        'drawdown': 'Drawdown',
                         'return': 'Return'
                     },
                     value='price',
@@ -335,10 +338,10 @@ def add_index(
     Input('y-var-selection', 'value')
 )
 def update_return_selection_visibility(y_var: str):
-    if y_var == 'price':
-        return {'display': 'none'}
-    else:
+    if y_var == 'return':
         return {'display': 'block'}
+    else:
+        return {'display': 'none'}
 
 
 @app.callback(
