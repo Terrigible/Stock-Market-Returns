@@ -4,13 +4,13 @@ from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 import pandas as pd
 
-from funcs import read_msci_data, add_return_columns, read_sti_data, read_spx_data
+from funcs import read_msci_data, add_return_columns, read_sti_data, read_spx_data, load_usdsgd
 
 
-def load_df(index: str, interval: str):
+def load_df(index: str, interval: str, currency: str):
     if index.split('-')[0] == 'MSCI':
-        return read_msci_data('data/{}/{}/{}/{}/*{} {} {}*.xls'.format(*index.split('-'), interval))
-    if index.split('-')[0] == 'Others':
+        df = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*index.split('-'), interval))
+    elif index.split('-')[0] == 'Others':
         if index.split('-')[1] == 'STI':
             df = read_sti_data()
         elif index.split('-')[1] == 'SPX':
@@ -19,12 +19,15 @@ def load_df(index: str, interval: str):
             raise ValueError('Invalid index')
         if interval == 'Monthly':
             df = df.resample('BM').last()
-        return df
-    raise ValueError('Invalid index')
+    else:
+        raise ValueError('Invalid index')
+    series = df.iloc[:, 0]
+    if currency == 'SGD':
+        series = series.mul(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
+    return series
 
 
-def transform_df(df: pd.DataFrame, interval: str, y_var: str, return_duration: str, return_type: str) -> pd.Series:
-    series = df['price']
+def transform_df(series: pd.Series, interval: str, y_var: str, return_duration: str, return_type: str) -> pd.Series:
     if y_var == 'price':
         return series
     return_durations = {
@@ -117,14 +120,6 @@ app.layout = html.Div(
                             value='BLEND',
                             id='msci-style-selection'
                         ),
-                        html.Label('Currency'),
-                        dcc.Dropdown(
-                            [
-                                'USD'
-                            ],
-                            value='USD',
-                            id='msci-currency-selection'
-                        ),
                         html.Label('Tax Treatment'),
                         dcc.Dropdown(
                             [
@@ -171,6 +166,15 @@ app.layout = html.Div(
                     ],
                     value='Monthly',
                     id='interval-selection'
+                ),
+                html.Label('Currency'),
+                dcc.Dropdown(
+                    [
+                        'SGD',
+                        'USD',
+                    ],
+                    value='USD',
+                    id='currency-selection'
                 ),
                 html.Label('Value'),
                 dcc.Dropdown(
@@ -273,7 +277,6 @@ def update_msci_index_selection_visibility(index_provider: str):
     State('msci-size-selection', 'options'),
     State('msci-style-selection', 'value'),
     State('msci-style-selection', 'options'),
-    State('msci-currency-selection', 'value'),
     State('msci-tax-treatment-selection', 'value'),
     State('others-index-selection', 'value'),
     State('others-index-selection', 'options'),
@@ -290,15 +293,14 @@ def add_index(
     msci_size_options: dict[str, str],
     msci_style: str,
     msci_style_options: dict[str, str],
-    msci_currency: str,
     msci_tax_treatment: str,
     others_index: str,
     others_index_options: dict[str, str]
 ):
     if index_provider == 'MSCI':
-        if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/*{msci_currency} {msci_tax_treatment}*.xls') == []:
+        if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls') == []:
             return selected_indexes, selected_indexes_options
-        selected_indexes_options[f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}'] = " ".join(
+        selected_indexes_options[f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'] = " ".join(
             filter(
                 None,
                 [
@@ -306,17 +308,16 @@ def add_index(
                     msci_index_options[msci_index],
                     (None if msci_size == 'STANDARD' else msci_size_options[msci_size]),
                     (None if msci_style == 'BLEND' else msci_style_options[msci_style]),
-                    msci_currency,
-                    msci_tax_treatment
+                    msci_tax_treatment,
                 ]
             )
         )
         if selected_indexes is None:
-            return [f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}'], selected_indexes_options
-        elif f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}' in selected_indexes:
+            return [f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'], selected_indexes_options
+        elif f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}' in selected_indexes:
             return selected_indexes, selected_indexes_options
         else:
-            selected_indexes.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_currency}-{msci_tax_treatment}')
+            selected_indexes.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}')
             return selected_indexes, selected_indexes_options
     else:
         if selected_indexes is None:
@@ -344,6 +345,7 @@ def update_return_selection_visibility(y_var: str):
     Output('graph', 'figure'),
     Input('selected-indexes', 'value'),
     Input('selected-indexes', 'options'),
+    Input('currency-selection', 'value'),
     Input('y-var-selection', 'value'),
     Input('y-var-selection', 'options'),
     Input('return-duration-selection', 'value'),
@@ -355,6 +357,7 @@ def update_return_selection_visibility(y_var: str):
 def update_graph(
     selected_indexes: list[str],
     selected_indexes_options: dict[str, str],
+    currency: str,
     y_var: str,
     y_var_options: dict[str, str],
     return_duration: str,
@@ -365,8 +368,8 @@ def update_graph(
 ):
     data = [
         go.Scatter(
-            x=transform_df(load_df(selected_index, interval), interval, y_var, return_duration, return_type).index,
-            y=transform_df(load_df(selected_index, interval), interval, y_var, return_duration, return_type),
+            x=transform_df(load_df(selected_index, interval, currency), interval, y_var, return_duration, return_type).index,
+            y=transform_df(load_df(selected_index, interval, currency), interval, y_var, return_duration, return_type),
             mode='lines',
             name=selected_indexes_options[selected_index]
         )
