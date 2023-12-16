@@ -12,12 +12,10 @@ from requests.exceptions import JSONDecodeError
 
 
 def read_msci_source(filename):
-    df = pd.read_excel(filename, skiprows=6, skipfooter=19, parse_dates=['Date'], date_format='%b %d, %Y')
+    df = pd.read_excel(filename, skiprows=6, skipfooter=19, parse_dates=['Date'], date_format='%b %d, %Y', thousands=',')
     df = df.set_axis(['date', 'price'], axis=1)
     df['date'] = pd.to_datetime(df['date'])
     df = df.set_index('date')
-    df = df.replace(',', '', regex=True)
-    df['price'] = df['price'].astype(float)
     return df
 
 
