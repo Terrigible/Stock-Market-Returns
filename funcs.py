@@ -26,7 +26,9 @@ def read_msci_data(filename_pattern):
 
 
 def read_sti_data():
-    return pd.read_csv('data/Straits Times Index USD Gross.csv', parse_dates=['Date'], index_col='Date').rename_axis('date')[['Close']].set_axis(['price'], axis=1)
+    df = pd.read_csv('data/Straits Times Index USD Gross.csv', parse_dates=['Date'], index_col='Date').rename_axis('date')[['Close']].set_axis(['price'], axis=1)
+    df.loc['2022-10-07'] = 5467.64
+    return df
 
 
 def read_spx_data():
