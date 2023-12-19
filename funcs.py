@@ -1,6 +1,8 @@
 import os
 from glob import glob
+from io import BytesIO
 from typing import Literal
+from zipfile import ZipFile
 
 import numpy as np
 import pandas as pd
@@ -98,11 +100,52 @@ def read_shiller_sp500_data(net=False):
     return shiller_sp500
 
 
-def download_usdsgd():
+def download_fred_usdsgd():
     fred = Fred()
     usdsgd = fred.get_series('DEXSIUS').rename('usdsgd').rename_axis('date')
-    usdsgd.to_csv('data/usdsgd.csv')
     return usdsgd
+
+
+def load_fred_usdsgd():
+    try:
+        usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'], index_col='date')
+        if usdsgd.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+            raise FileNotFoundError
+        usdsgd = usdsgd['usdsgd']
+    except FileNotFoundError:
+        usdsgd = download_fred_usdsgd()
+    return usdsgd
+
+
+def download_worldbank_exchange_rates():
+    res = requests.get('https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF?downloadformat=csv')
+    res.raise_for_status()
+    with ZipFile(BytesIO(res.content)) as zf:
+        for filename in zf.namelist():
+            if not filename.startswith('API'):
+                continue
+            with zf.open(filename) as f:
+                df = pd.read_csv(f, skiprows=4)
+            break
+        else:
+            raise FileNotFoundError('No file found in zip file')
+    series = df.loc[208].loc['1960':'2022'].astype(float)
+    return series
+
+
+def load_worldbank_usdsgd():
+    series = download_worldbank_exchange_rates()
+    return (
+        pd.concat(
+            [
+                series.set_axis(pd.to_datetime(series.index, format='%Y') + pd.DateOffset(months=6)).loc[:load_fred_usdsgd().index[0]],
+                load_fred_usdsgd().iloc[[0]]
+            ],
+        )
+        .resample('D')
+        .interpolate('polynomial', order=3)
+        .iloc[:-1]
+    )
 
 
 def load_usdsgd():
@@ -112,7 +155,7 @@ def load_usdsgd():
             raise FileNotFoundError
         usdsgd = usdsgd['usdsgd']
     except FileNotFoundError:
-        usdsgd = download_usdsgd()
+        usdsgd = pd.concat([load_worldbank_usdsgd(), load_fred_usdsgd()]).rename('usdsgd').rename_axis('date')
         usdsgd.to_csv('data/usdsgd.csv')
     return usdsgd
 
