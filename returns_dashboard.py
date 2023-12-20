@@ -3,20 +3,26 @@ from dash import Dash, html, dcc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 import pandas as pd
+import yfinance as yf
 
 from funcs import read_msci_data, add_return_columns, read_sti_data, read_spx_data, load_usdsgd
 
 
-def load_df(index: str, interval: str, currency: str):
-    if index.split('-')[0] == 'MSCI':
-        df = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*index.split('-'), interval))
-    elif index.split('-')[0] == 'Others':
-        if index.split('-')[1] == 'STI':
+def load_df(security: str, interval: str, currency: str):
+    if security.split('-')[0] == 'MSCI':
+        df = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval))
+    elif security.split('-')[0] == 'Others':
+        if security.split('-')[1] == 'STI':
             df = read_sti_data()
-        elif index.split('-')[1] == 'SPX':
+        elif security.split('-')[1] == 'SPX':
             df = read_spx_data()
         else:
             raise ValueError('Invalid index')
+        if interval == 'Monthly':
+            df = df.resample('BM').last()
+    elif security.split('-')[0] == 'YF':
+        df: pd.DataFrame = yf.download(security.split('-')[1], period='max')
+        df = df['Adj Close'].to_frame()
         if interval == 'Monthly':
             df = df.resample('BM').last()
     else:
@@ -76,89 +82,118 @@ app.layout = html.Div(
     [
         html.Div(
             [
-                html.Label('Index Provider'),
+                html.Label('Security Type'),
                 dcc.Dropdown(
-                    {
-                        'MSCI': 'MSCI',
-                        'Others': 'Others'
-                    },
-                    value='MSCI',
-                    id='index-provider-selection'
+                    [
+                        'Index',
+                        'Stock/ETF'
+                    ],
+                    value='Index',
+                    id='security-type-selection'
                 ),
                 html.Div(
                     [
-                        html.Label('Index'),
+                        html.Label('Index Provider'),
                         dcc.Dropdown(
                             {
-                                'WORLD': 'World',
-                                'ACWI': 'ACWI',
-                                'SINGAPORE': 'Singapore',
-                                'EM (EMERGING MARKETS)': 'Emerging Markets',
-                                'USA': 'USA',
+                                'MSCI': 'MSCI',
+                                'Others': 'Others'
                             },
-                            value='WORLD',
-                            id='msci-index-selection'
+                            value='MSCI',
+                            id='index-provider-selection'
                         ),
-                        html.Label('Size'),
-                        dcc.Dropdown(
-                            {
-                                'STANDARD': 'Standard',
-                                'SMALL': 'Small',
-                                'SMID': 'SMID',
-                                'MID': 'Mid',
-                                'LARGE': 'Large',
-                                'IMI': 'IMI',
-                            },
-                            value='STANDARD',
-                            id='msci-size-selection'
-                        ),
-                        html.Label('Style'),
-                        dcc.Dropdown(
-                            {
-                                'BLEND': 'None',
-                                'GROWTH': 'Growth',
-                                'VALUE': 'Value'
-                            },
-                            value='BLEND',
-                            id='msci-style-selection'
-                        ),
-                        html.Label('Tax Treatment'),
-                        dcc.Dropdown(
+                        html.Div(
                             [
-                                'Gross',
-                                'Net'
+                                html.Label('Index'),
+                                dcc.Dropdown(
+                                    {
+                                        'WORLD': 'World',
+                                        'ACWI': 'ACWI',
+                                        'SINGAPORE': 'Singapore',
+                                        'EM (EMERGING MARKETS)': 'Emerging Markets',
+                                        'USA': 'USA',
+                                    },
+                                    value='WORLD',
+                                    id='msci-index-selection'
+                                ),
+                                html.Label('Size'),
+                                dcc.Dropdown(
+                                    {
+                                        'STANDARD': 'Standard',
+                                        'SMALL': 'Small',
+                                        'SMID': 'SMID',
+                                        'MID': 'Mid',
+                                        'LARGE': 'Large',
+                                        'IMI': 'IMI',
+                                    },
+                                    value='STANDARD',
+                                    id='msci-size-selection'
+                                ),
+                                html.Label('Style'),
+                                dcc.Dropdown(
+                                    {
+                                        'BLEND': 'None',
+                                        'GROWTH': 'Growth',
+                                        'VALUE': 'Value'
+                                    },
+                                    value='BLEND',
+                                    id='msci-style-selection'
+                                ),
+                                html.Label('Tax Treatment'),
+                                dcc.Dropdown(
+                                    [
+                                        'Gross',
+                                        'Net'
+                                    ],
+                                    value='Gross',
+                                    id='msci-tax-treatment-selection'
+                                ),
                             ],
-                            value='Gross',
-                            id='msci-tax-treatment-selection'
+                            id='msci-index-selection-container'
+                        ),
+                        html.Div(
+                            [
+                                html.Label('Index'),
+                                dcc.Dropdown(
+                                    {
+                                        'STI': 'STI',
+                                        'SPX': 'S&P 500',
+                                    },
+                                    value='STI',
+                                    id='others-index-selection'
+                                ),
+                            ],
+                            id='others-index-selection-container'
+                        ),
+                        html.P(),
+                        html.Button(
+                            'Add Index',
+                            id='add-index-button'
                         ),
                     ],
-                    id='msci-index-selection-container'
+                    id='index-selection-container',
                 ),
                 html.Div(
                     [
-                        html.Label('Index'),
-                        dcc.Dropdown(
-                            {
-                                'STI': 'STI',
-                                'SPX': 'S&P 500',
-                            },
-                            value='STI',
-                            id='others-index-selection'
+                        html.P(),
+                        html.Label('Stock/ETF (Yahoo Finance Ticker)'),
+                        html.Br(),
+                        dcc.Input(id='stock-etf-input', type='text'),
+                        html.P('Warning: Data is not cached. Loading Yahoo Finance data may take a while'),
+                        html.P(),
+                        html.Button(
+                            'Add Stock/ETF',
+                            id='add-stock-etf-button'
                         ),
                     ],
-                    id='others-index-selection-container'
+                    id='stock-etf-selection-container',
                 ),
                 html.P(),
-                html.Button(
-                    'Add Index',
-                    id='add-index-button'
-                ),
-                html.P(),
-                html.Label('Selected Indexes'),
+                html.Label('Selected Securities'),
                 dcc.Dropdown(
                     {},
                     multi=True,
-                    id='selected-indexes',
+                    id='selected-securities',
                 ),
                 html.Label('Interval'),
                 dcc.Dropdown(
@@ -255,6 +290,18 @@ app.layout = html.Div(
 
 
 @app.callback(
+    Output('index-selection-container', 'style'),
+    Output('stock-etf-selection-container', 'style'),
+    Input('security-type-selection', 'value'),
+)
+def update_index_selection_visibility(security_type: str):
+    if security_type == 'Index':
+        return {'display': 'block'}, {'display': 'none'}
+    else:
+        return {'display': 'none'}, {'display': 'block'}
+
+
+@app.callback(
     Output('msci-index-selection-container', 'style'),
     Output('others-index-selection-container', 'style'),
     Input('index-provider-selection', 'value'),
@@ -267,11 +314,11 @@ def update_msci_index_selection_visibility(index_provider: str):
 
 
 @app.callback(
-    Output('selected-indexes', 'value'),
-    Output('selected-indexes', 'options'),
+    Output('selected-securities', 'value'),
+    Output('selected-securities', 'options'),
     Input('add-index-button', 'n_clicks'),
-    State('selected-indexes', 'value'),
-    State('selected-indexes', 'options'),
+    State('selected-securities', 'value'),
+    State('selected-securities', 'options'),
     State('index-provider-selection', 'value'),
     State('index-provider-selection', 'options'),
     State('msci-index-selection', 'value'),
@@ -286,8 +333,8 @@ def update_msci_index_selection_visibility(index_provider: str):
 )
 def add_index(
     _,
-    selected_indexes: None | list[str],
-    selected_indexes_options: dict[str, str],
+    selected_securities: None | list[str],
+    selected_securities_options: dict[str, str],
     index_provider: str,
     index_provider_options: dict[str, str],
     msci_index: str,
@@ -302,8 +349,8 @@ def add_index(
 ):
     if index_provider == 'MSCI':
         if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls') == []:
-            return selected_indexes, selected_indexes_options
-        selected_indexes_options[f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'] = " ".join(
+            return selected_securities, selected_securities_options
+        selected_securities_options[f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'] = " ".join(
             filter(
                 None,
                 [
@@ -315,22 +362,45 @@ def add_index(
                 ]
             )
         )
-        if selected_indexes is None:
-            return [f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'], selected_indexes_options
-        elif f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}' in selected_indexes:
-            return selected_indexes, selected_indexes_options
+        if selected_securities is None:
+            return [f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'], selected_securities_options
+        elif f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}' in selected_securities:
+            return selected_securities, selected_securities_options
         else:
-            selected_indexes.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}')
-            return selected_indexes, selected_indexes_options
+            selected_securities.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}')
+            return selected_securities, selected_securities_options
     else:
-        if selected_indexes is None:
-            return [f'Others-{others_index}'], selected_indexes_options
-        elif f'Others-{others_index}' in selected_indexes:
-            return selected_indexes, selected_indexes_options
+        if selected_securities is None:
+            return [f'Others-{others_index}'], selected_securities_options
+        elif f'Others-{others_index}' in selected_securities:
+            return selected_securities, selected_securities_options
         else:
-            selected_indexes.append(f'Others-{others_index}')
-            selected_indexes_options[f'Others-{others_index}'] = others_index_options[others_index]
-            return selected_indexes, selected_indexes_options
+            selected_securities.append(f'Others-{others_index}')
+            selected_securities_options[f'Others-{others_index}'] = others_index_options[others_index]
+            return selected_securities, selected_securities_options
+
+
+@app.callback(
+    Output('selected-securities', 'value', allow_duplicate=True),
+    Output('selected-securities', 'options', allow_duplicate=True),
+    Input('add-stock-etf-button', 'n_clicks'),
+    State('selected-securities', 'value'),
+    State('selected-securities', 'options'),
+    State('stock-etf-input', 'value'),
+    prevent_initial_call=True
+)
+def add_stock_etf(
+    _,
+    selected_securities: list[str],
+    selected_securities_options: dict[str, str],
+    stock_etf: str,
+):
+    if f'YF-{stock_etf}' in selected_securities:
+        return selected_securities, selected_securities_options
+    else:
+        selected_securities.append(f'YF-{stock_etf}')
+        selected_securities_options[f'YF-{stock_etf}'] = stock_etf
+        return selected_securities, selected_securities_options
 
 
 @app.callback(
@@ -346,8 +416,8 @@ def update_return_selection_visibility(y_var: str):
 
 @app.callback(
     Output('graph', 'figure'),
-    Input('selected-indexes', 'value'),
-    Input('selected-indexes', 'options'),
+    Input('selected-securities', 'value'),
+    Input('selected-securities', 'options'),
     Input('currency-selection', 'value'),
     Input('y-var-selection', 'value'),
     Input('y-var-selection', 'options'),
@@ -358,8 +428,8 @@ def update_return_selection_visibility(y_var: str):
     Input('interval-selection', 'value')
 )
 def update_graph(
-    selected_indexes: list[str],
-    selected_indexes_options: dict[str, str],
+    selected_securities: list[str],
+    selected_securities_options: dict[str, str],
     currency: str,
     y_var: str,
     y_var_options: dict[str, str],
@@ -371,12 +441,12 @@ def update_graph(
 ):
     data = [
         go.Scatter(
-            x=transform_df(load_df(selected_index, interval, currency), interval, y_var, return_duration, return_type).index,
-            y=transform_df(load_df(selected_index, interval, currency), interval, y_var, return_duration, return_type),
+            x=transform_df(load_df(selected_security, interval, currency), interval, y_var, return_duration, return_type).index,
+            y=transform_df(load_df(selected_security, interval, currency), interval, y_var, return_duration, return_type),
             mode='lines',
-            name=selected_indexes_options[selected_index]
+            name=selected_securities_options[selected_security]
         )
-        for selected_index in selected_indexes
+        for selected_security in selected_securities
     ]
     layout = go.Layout(
         title=y_var_options[y_var] if y_var == 'price' else f'{return_duration_options[return_duration]} {return_type_options[return_type]} Return',
