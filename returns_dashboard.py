@@ -1,14 +1,16 @@
 from glob import glob
-from dash import Dash, html, dcc
-from dash.dependencies import Input, Output, State
-import plotly.graph_objects as go
+from io import StringIO
+
 import pandas as pd
+import plotly.graph_objects as go
 import yahooquery as yq
+from dash import Dash, dcc, html
+from dash.dependencies import Input, Output, State
 
-from funcs import read_msci_data, add_return_columns, read_sti_data, read_spx_data, load_usdsgd
+from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data
 
 
-def load_df(security: str, interval: str, currency: str):
+def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
     if security.split('-')[0] == 'MSCI':
         df = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval))
     elif security.split('-')[0] == 'Others':
@@ -21,8 +23,7 @@ def load_df(security: str, interval: str, currency: str):
         if interval == 'Monthly':
             df = df.resample('BM').last()
     elif security.split('-')[0] == 'YF':
-        df = yq.Ticker(security.split('-')[1]).history(period='max').droplevel(0)
-        df = df.set_index(pd.to_datetime(df.index))['adjclose'].to_frame()
+        df = pd.read_json(StringIO(yf_securities[security.split('-')[1]]), orient='index')
         if interval == 'Monthly':
             df = df.resample('BM').last()
     else:
@@ -179,7 +180,7 @@ app.layout = html.Div(
                         html.Label('Stock/ETF (Yahoo Finance Ticker)'),
                         html.Br(),
                         dcc.Input(id='stock-etf-input', type='text'),
-                        html.P('Warning: Data is not cached. Loading Yahoo Finance data may take a while'),
+                        html.P('Warning: Loading Yahoo Finance data may take a while'),
                         html.P(),
                         html.Button(
                             'Add Stock/ETF',
@@ -188,6 +189,7 @@ app.layout = html.Div(
                     ],
                     id='stock-etf-selection-container',
                 ),
+                dcc.Store(id='yf-securities-store', storage_type='memory', data={}),
                 html.P(),
                 html.Label('Selected Securities'),
                 dcc.Dropdown(
@@ -408,6 +410,22 @@ def add_stock_etf(
 
 
 @app.callback(
+    Output('yf-securities-store', 'data'),
+    Input('yf-securities-store', 'data'),
+    Input('selected-securities', 'value'),
+)
+def update_yf_securities_store(yf_securities: dict[str, str], selected_securities: list[str]):
+    yf_securities = yf_securities or {}
+    for selected_security in selected_securities:
+        if selected_security.split('-')[0] == 'YF':
+            ticker = selected_security.split('-')[1]
+            if ticker not in yf_securities:
+                df = yq.Ticker(ticker).history(period='max').droplevel(0)
+                yf_securities[ticker] = df['adjclose'].to_json(orient='index')
+    return yf_securities
+
+
+@app.callback(
     Output('return-selection', 'style'),
     Input('y-var-selection', 'value')
 )
@@ -422,6 +440,7 @@ def update_return_selection_visibility(y_var: str):
     Output('graph', 'figure'),
     Input('selected-securities', 'value'),
     Input('selected-securities', 'options'),
+    Input('yf-securities-store', 'data'),
     Input('currency-selection', 'value'),
     Input('y-var-selection', 'value'),
     Input('y-var-selection', 'options'),
@@ -429,11 +448,12 @@ def update_return_selection_visibility(y_var: str):
     Input('return-duration-selection', 'options'),
     Input('return-type-selection', 'value'),
     Input('return-type-selection', 'options'),
-    Input('interval-selection', 'value')
+    Input('interval-selection', 'value'),
 )
 def update_graph(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
+    yf_securities: dict[str, str],
     currency: str,
     y_var: str,
     y_var_options: dict[str, str],
@@ -441,12 +461,12 @@ def update_graph(
     return_duration_options: dict[str, str],
     return_type: str,
     return_type_options: dict[str, str],
-    interval: str
+    interval: str,
 ):
     data = [
         go.Scatter(
-            x=transform_df(load_df(selected_security, interval, currency), interval, y_var, return_duration, return_type).index,
-            y=transform_df(load_df(selected_security, interval, currency), interval, y_var, return_duration, return_type),
+            x=transform_df(load_df(selected_security, interval, currency, yf_securities), interval, y_var, return_duration, return_type).index,
+            y=transform_df(load_df(selected_security, interval, currency, yf_securities), interval, y_var, return_duration, return_type),
             mode='lines',
             name=selected_securities_options[selected_security]
         )
