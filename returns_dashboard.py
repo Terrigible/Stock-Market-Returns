@@ -3,7 +3,7 @@ from dash import Dash, html, dcc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 import pandas as pd
-import yfinance as yf
+import yahooquery as yq
 
 from funcs import read_msci_data, add_return_columns, read_sti_data, read_spx_data, load_usdsgd
 
@@ -21,8 +21,8 @@ def load_df(security: str, interval: str, currency: str):
         if interval == 'Monthly':
             df = df.resample('BM').last()
     elif security.split('-')[0] == 'YF':
-        df: pd.DataFrame = yf.download(security.split('-')[1], period='max')
-        df = df['Adj Close'].to_frame()
+        df = yq.Ticker(security.split('-')[1]).history(period='max').droplevel(0)
+        df = df.set_index(pd.to_datetime(df.index))['adjclose'].to_frame()
         if interval == 'Monthly':
             df = df.resample('BM').last()
     else:
@@ -395,6 +395,10 @@ def add_stock_etf(
     selected_securities_options: dict[str, str],
     stock_etf: str,
 ):
+    ticker = yq.Ticker(stock_etf)
+    ticker.validation
+    if ticker.invalid_symbols:
+        return selected_securities, selected_securities_options
     if f'YF-{stock_etf}' in selected_securities:
         return selected_securities, selected_securities_options
     else:

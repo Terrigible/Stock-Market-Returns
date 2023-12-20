@@ -19,8 +19,8 @@ dependencies:
   - scikit-learn
   - seaborn
   - xlrd
-  - yfinance
   - conda-forge::selenium
   - pip:
       - fredapi
+      - yahooquery
 prefix: C:\Users\leowy\anaconda3\envs\market-returns
