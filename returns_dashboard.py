@@ -90,6 +90,7 @@ app.layout = html.Div(
                         'Stock/ETF'
                     ],
                     value='Index',
+                    clearable=False,
                     id='security-type-selection'
                 ),
                 html.Div(
@@ -101,6 +102,7 @@ app.layout = html.Div(
                                 'Others': 'Others'
                             },
                             value='MSCI',
+                            clearable=False,
                             id='index-provider-selection'
                         ),
                         html.Div(
@@ -115,6 +117,7 @@ app.layout = html.Div(
                                         'USA': 'USA',
                                     },
                                     value='WORLD',
+                                    clearable=False,
                                     id='msci-index-selection'
                                 ),
                                 html.Label('Size'),
@@ -128,6 +131,7 @@ app.layout = html.Div(
                                         'IMI': 'IMI',
                                     },
                                     value='STANDARD',
+                                    clearable=False,
                                     id='msci-size-selection'
                                 ),
                                 html.Label('Style'),
@@ -138,6 +142,7 @@ app.layout = html.Div(
                                         'VALUE': 'Value'
                                     },
                                     value='BLEND',
+                                    clearable=False,
                                     id='msci-style-selection'
                                 ),
                                 html.Label('Tax Treatment'),
@@ -147,6 +152,7 @@ app.layout = html.Div(
                                         'Net'
                                     ],
                                     value='Gross',
+                                    clearable=False,
                                     id='msci-tax-treatment-selection'
                                 ),
                             ],
@@ -161,6 +167,7 @@ app.layout = html.Div(
                                         'SPX': 'S&P 500',
                                     },
                                     value='STI',
+                                    clearable=False,
                                     id='others-index-selection'
                                 ),
                             ],
@@ -204,6 +211,7 @@ app.layout = html.Div(
                         'Daily'
                     ],
                     value='Monthly',
+                    clearable=False,
                     id='interval-selection'
                 ),
                 html.Label('Currency'),
@@ -213,6 +221,7 @@ app.layout = html.Div(
                         'USD',
                     ],
                     value='USD',
+                    clearable=False,
                     id='currency-selection'
                 ),
                 html.Label('Value'),
@@ -223,6 +232,7 @@ app.layout = html.Div(
                         'return': 'Return'
                     },
                     value='price',
+                    clearable=False,
                     id='y-var-selection'
                 ),
                 html.Div(
@@ -244,6 +254,7 @@ app.layout = html.Div(
                                 '30y': '30 Years',
                             },
                             value='1m',
+                            clearable=False,
                             id='return-duration-selection'
                         ),
                         html.Label('Return Type'),
@@ -253,6 +264,7 @@ app.layout = html.Div(
                                 'annualized': 'Annualized'
                             },
                             value='cumulative',
+                            clearable=False,
                             id='return-type-selection'
                         )
                     ],
