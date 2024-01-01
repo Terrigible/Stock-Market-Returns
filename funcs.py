@@ -288,7 +288,12 @@ def load_sgd_interest_rates():
 
 def download_sg_cpi():
     try:
-        sg_cpi_response = requests.get('https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882')
+        sg_cpi_response = requests.get(
+            'https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882',
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            }
+        )
         sg_cpi = pd.DataFrame(sg_cpi_response.json()['Data']['row'][0]['columns'])
         sg_cpi = sg_cpi.set_axis(['date', 'sg_cpi'], axis=1)
         sg_cpi['date'] = pd.to_datetime(sg_cpi['date'], format='%Y %b')
