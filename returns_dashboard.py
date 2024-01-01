@@ -485,7 +485,7 @@ def update_graph(
         for selected_security in selected_securities
     ]
     layout = go.Layout(
-        title=y_var_options[y_var] if y_var == 'price' else f'{return_duration_options[return_duration]} {return_type_options[return_type]} Return',
+        title=f'{return_duration_options[return_duration]} {return_type_options[return_type]} Return' if y_var == 'return' else y_var_options[y_var],
         hovermode='x unified',
         yaxis=dict(
             tickformat='.2f' if y_var == 'price' else '.2%',
