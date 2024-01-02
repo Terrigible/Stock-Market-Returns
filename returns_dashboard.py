@@ -7,12 +7,16 @@ import yahooquery as yq
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 
-from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi
+from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns
 
 
 def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
     if security.split('-')[0] == 'MSCI':
         df = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval))
+    elif security.split('-')[0] == 'US Treasury':
+        df = load_us_treasury_returns(security.split('-')[1]).to_frame()
+        if interval == 'Monthly':
+            df = df.resample('BM').last()
     elif security.split('-')[0] == 'Others':
         if security.split('-')[1] == 'STI':
             df = read_sti_data()
@@ -103,6 +107,7 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             {
                                 'MSCI': 'MSCI',
+                                'US Treasury': 'US Treasury',
                                 'Others': 'Others'
                             },
                             value='MSCI',
@@ -161,6 +166,30 @@ app.layout = html.Div(
                                 ),
                             ],
                             id='msci-index-selection-container'
+                        ),
+                        html.Div(
+                            [
+                                html.P('Warning: US Treasury returns are a little sus'),
+                                html.Label('Duration'),
+                                dcc.Dropdown(
+                                    {
+                                        '1MO': '1 Month',
+                                        '3MO': '3 Months',
+                                        '6MO': '6 Months',
+                                        '1': '1 Year',
+                                        '2': '2 Years',
+                                        '3': '3 Years',
+                                        '5': '5 Years',
+                                        '7': '7 Years',
+                                        '10': '10 Years',
+                                        '20': '20 Years',
+                                        '30': '30 Years',
+                                    },
+                                    value='1MO',
+                                    id='us-treasury-duration-selection',
+                                ),
+                            ],
+                            id='us-treasury-index-selection-container'
                         ),
                         html.Div(
                             [
@@ -323,14 +352,17 @@ def update_index_selection_visibility(security_type: str):
 
 @app.callback(
     Output('msci-index-selection-container', 'style'),
+    Output('us-treasury-index-selection-container', 'style'),
     Output('others-index-selection-container', 'style'),
     Input('index-provider-selection', 'value'),
 )
 def update_msci_index_selection_visibility(index_provider: str):
     if index_provider == 'MSCI':
-        return {'display': 'block'}, {'display': 'none'}
+        return {'display': 'block'}, {'display': 'none'}, {'display': 'none'}
+    elif index_provider == 'US Treasury':
+        return {'display': 'none'}, {'display': 'block'}, {'display': 'none'}
     else:
-        return {'display': 'none'}, {'display': 'block'}
+        return {'display': 'none'}, {'display': 'none'}, {'display': 'block'}
 
 
 @app.callback(
@@ -348,6 +380,8 @@ def update_msci_index_selection_visibility(index_provider: str):
     State('msci-style-selection', 'value'),
     State('msci-style-selection', 'options'),
     State('msci-tax-treatment-selection', 'value'),
+    State('us-treasury-duration-selection', 'value'),
+    State('us-treasury-duration-selection', 'options'),
     State('others-index-selection', 'value'),
     State('others-index-selection', 'options'),
 )
@@ -364,6 +398,8 @@ def add_index(
     msci_style: str,
     msci_style_options: dict[str, str],
     msci_tax_treatment: str,
+    us_treasury_duration: str,
+    us_treasury_duration_options: dict[str, str],
     others_index: str,
     others_index_options: dict[str, str]
 ):
@@ -388,6 +424,15 @@ def add_index(
             return selected_securities, selected_securities_options
         else:
             selected_securities.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}')
+            return selected_securities, selected_securities_options
+    elif index_provider == 'US Treasury':
+        if selected_securities is None:
+            return [f'{index_provider}-{us_treasury_duration}'], selected_securities_options
+        elif f'{index_provider}-{us_treasury_duration}' in selected_securities:
+            return selected_securities, selected_securities_options
+        else:
+            selected_securities.append(f'{index_provider}-{us_treasury_duration}')
+            selected_securities_options[f'{index_provider}-{us_treasury_duration}'] = f'{us_treasury_duration_options[us_treasury_duration]} US Treasuries'
             return selected_securities, selected_securities_options
     else:
         if selected_securities is None:
