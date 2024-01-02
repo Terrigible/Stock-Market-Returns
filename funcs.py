@@ -86,11 +86,24 @@ def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', 
 
 
 def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
-    treasury = load_us_treasury_rate(duration)
-    old_issue_start_price = treasury.div(100).add(1).pow(-eval(duration.replace('MO', '/12'))).shift()
-    old_issue_end_price = treasury.div(100).add(1).pow(1 / 365 - eval(duration.replace('MO', '/12')))
-    change = old_issue_end_price.div(old_issue_start_price)
-    price = np.exp(np.log(change).cumsum()).fillna(1)
+    rates = load_us_treasury_rate(duration)
+    # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
+    rates = rates.div(100)
+    prev_rates = rates.shift(1)
+    price = (
+        prev_rates.div(365.25)
+        .add(
+            prev_rates.div(rates)
+            .mul(
+                rates.div(2).add(1).pow(-2*(eval(duration.replace('MO', '/12')) - 1 / 365.25))
+                .rsub(1)
+            )
+        )
+        .add(
+            rates.div(2).add(1).pow(-2*(eval(duration.replace('MO', '/12')) - 1 / 365.25))
+        )
+        .cumprod()
+    )
 
     return price
 
