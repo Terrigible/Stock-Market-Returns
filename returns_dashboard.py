@@ -87,6 +87,8 @@ def transform_df(series: pd.Series, interval: str, y_var: str, return_duration: 
 
 app = Dash()
 
+server = app.server
+
 app.layout = html.Div(
     [
         html.Div(
