@@ -47,7 +47,7 @@ def download_fed_funds_rate():
 def load_fed_funds_rate():
     try:
         fed_funds_rate = pd.read_csv('data/fed_funds_rate.csv', parse_dates=['date'], index_col='date')
-        if fed_funds_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        if fed_funds_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None):
             raise FileNotFoundError
         fed_funds_rate = fed_funds_rate['ffr']
 
@@ -69,7 +69,7 @@ def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '
 def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
     try:
         treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'], index_col='date')
-        if treasury_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        if treasury_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None):
             raise FileNotFoundError
         treasury_rate = treasury_rate['rate']
 
@@ -164,7 +164,7 @@ def load_worldbank_usdsgd():
 def load_usdsgd():
     try:
         usdsgd = pd.read_csv('data/usdsgd.csv', parse_dates=['date'], index_col='date')
-        if usdsgd.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D'):
+        if usdsgd.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None) and os.environ.get('MAS_EXCHANGE_RATE_API_KEY', None):
             raise FileNotFoundError
         usdsgd = usdsgd['usdsgd']
     except FileNotFoundError:
@@ -275,7 +275,7 @@ def download_sgd_interest_rates():
 def load_sgd_interest_rates():
     try:
         sgd_interest_rates = pd.read_csv('data/sgd_interest_rates.csv', parse_dates=['date'], index_col='date')
-        if sgd_interest_rates.index[-1] < pd.to_datetime('today') + BMonthEnd(-1):
+        if sgd_interest_rates.index[-1] < pd.to_datetime('today') + BMonthEnd(-1) and os.environ.get('MAS_INTEREST_RATE_API_KEY', None):
             raise FileNotFoundError
 
     except FileNotFoundError:
@@ -347,7 +347,7 @@ def download_us_cpi():
 def load_us_cpi():
     try:
         us_cpi = pd.read_csv('data/us_cpi.csv', parse_dates=['date'], index_col='date')
-        if us_cpi.index[-1] + pd.DateOffset(days=45) < pd.to_datetime('today'):
+        if us_cpi.index[-1] + pd.DateOffset(days=45) < pd.to_datetime('today') and os.environ.get('BLS_API_KEY', None):
             raise FileNotFoundError
         return us_cpi
     except FileNotFoundError:
