@@ -7,7 +7,7 @@ import yahooquery as yq
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 
-from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data
+from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi
 
 
 def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
@@ -31,6 +31,10 @@ def load_df(security: str, interval: str, currency: str, yf_securities: dict[str
     series = df.iloc[:, 0]
     if currency == 'SGD':
         series = series.mul(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
+    if currency == 'SG CPI':
+        series = series.div(load_sg_cpi().iloc[:, 0].resample('D').ffill().ffill().reindex(series.index))
+    if currency == 'US CPI':
+        series = series.div(load_us_cpi().iloc[:, 0].resample('D').ffill().ffill().reindex(series.index))
     return series
 
 
@@ -219,6 +223,8 @@ app.layout = html.Div(
                     [
                         'SGD',
                         'USD',
+                        'SG CPI',
+                        'US CPI',
                     ],
                     value='USD',
                     clearable=False,
