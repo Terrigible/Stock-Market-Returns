@@ -511,17 +511,24 @@ def update_return_selection_visibility(y_var: str):
 
 @app.callback(
     Output('baseline-security-selection', 'options'),
+    Output('baseline-security-selection', 'value'),
     Input('selected-securities', 'value'),
     Input('selected-securities', 'options'),
+    Input('baseline-security-selection', 'value'),
 )
-def update_baseline_security_selection_options(selected_securities: list[str], selected_securities_options: dict[str, str]):
+def update_baseline_security_selection_options(
+    selected_securities: list[str],
+    selected_securities_options: dict[str, str],
+    baseline_security: str,
+):
     return {
         'None': 'None',
         **{
-            selected_security: selected_securities_options[selected_security]
-            for selected_security in selected_securities
+            k: v
+            for k, v in selected_securities_options.items()
+            if k in selected_securities
         }
-    }
+    }, baseline_security if baseline_security in selected_securities else 'None'
 
 
 @app.callback(
