@@ -302,7 +302,16 @@ app.layout = html.Div(
                             value='cumulative',
                             clearable=False,
                             id='return-type-selection'
-                        )
+                        ),
+                        html.Label('Baseline'),
+                        dcc.Dropdown(
+                            {
+                                'None': 'None',
+                            },
+                            value='None',
+                            clearable=False,
+                            id='baseline-security-selection'
+                        ),
                     ],
                     id='return-selection',
                     style={
@@ -501,6 +510,21 @@ def update_return_selection_visibility(y_var: str):
 
 
 @app.callback(
+    Output('baseline-security-selection', 'options'),
+    Input('selected-securities', 'value'),
+    Input('selected-securities', 'options'),
+)
+def update_baseline_security_selection_options(selected_securities: list[str], selected_securities_options: dict[str, str]):
+    return {
+        'None': 'None',
+        **{
+            selected_security: selected_securities_options[selected_security]
+            for selected_security in selected_securities
+        }
+    }
+
+
+@app.callback(
     Output('graph', 'figure'),
     Input('selected-securities', 'value'),
     Input('selected-securities', 'options'),
@@ -513,6 +537,8 @@ def update_return_selection_visibility(y_var: str):
     Input('return-type-selection', 'value'),
     Input('return-type-selection', 'options'),
     Input('interval-selection', 'value'),
+    Input('baseline-security-selection', 'value'),
+    Input('baseline-security-selection', 'options'),
 )
 def update_graph(
     selected_securities: list[str],
@@ -526,15 +552,25 @@ def update_graph(
     return_type: str,
     return_type_options: dict[str, str],
     interval: str,
+    baseline_security: str,
+    baseline_security_options: dict[str, str],
 ):
+    df = pd.DataFrame(
+        {
+            selected_securities_options[selected_security]: transform_df(load_df(selected_security, interval, currency, yf_securities), interval, y_var, return_duration, return_type)
+            for selected_security in selected_securities
+        }
+    )
+    if y_var == 'return' and baseline_security != 'None':
+        df = df.sub(df[baseline_security_options[baseline_security]], axis=0, level=0)
     data = [
         go.Scatter(
-            x=transform_df(load_df(selected_security, interval, currency, yf_securities), interval, y_var, return_duration, return_type).index,
-            y=transform_df(load_df(selected_security, interval, currency, yf_securities), interval, y_var, return_duration, return_type),
+            x=df.index,
+            y=df[column],
             mode='lines',
-            name=selected_securities_options[selected_security]
+            name=column
         )
-        for selected_security in selected_securities
+        for column in df.columns
     ]
     layout = go.Layout(
         title=f'{return_duration_options[return_duration]} {return_type_options[return_type]} Return' if y_var == 'return' else y_var_options[y_var],
