@@ -171,7 +171,6 @@ app.layout = html.Div(
                         ),
                         html.Div(
                             [
-                                html.P('Warning: US Treasury returns are a little sus'),
                                 html.Label('Duration'),
                                 dcc.Dropdown(
                                     {
