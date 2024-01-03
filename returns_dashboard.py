@@ -36,6 +36,7 @@ def load_df(security: str, interval: str, currency: str, yf_securities: dict[str
     if currency == 'SGD':
         series = series.mul(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
     if currency == 'SG CPI':
+        series = series.mul(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
         series = series.div(load_sg_cpi().iloc[:, 0].resample('D').ffill().ffill().reindex(series.index))
     if currency == 'US CPI':
         series = series.div(load_us_cpi().iloc[:, 0].resample('D').ffill().ffill().reindex(series.index))
