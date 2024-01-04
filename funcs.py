@@ -137,6 +137,92 @@ def download_mas_usdsgd():
     return usdsgd
 
 
+def download_mas_sgd_fx():
+    sgd_fx_response = requests.get(
+        'https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily',
+        headers={
+            'keyid': os.environ['MAS_EXCHANGE_RATE_API_KEY']
+        }
+    )
+    sgd_fx = (
+        pd.DataFrame(sgd_fx_response.json()['elements'])
+        .drop(columns=['preliminary'])
+        .assign(
+            end_of_day=lambda df: pd.to_datetime(df['end_of_day']),
+        )
+        .set_index('end_of_day')
+        .apply(pd.to_numeric)
+        .rename_axis('date')
+    )
+    sgd_fx.update(sgd_fx.filter(like='100').div(100))
+    sgd_fx.columns = (
+        sgd_fx.columns
+        .str.replace('_100', '')
+        .str.replace('_sgd', '')
+        .str.upper()
+    )
+    return sgd_fx
+
+
+def load_mas_sgd_fx():
+    try:
+        sgd_fx = pd.read_csv('data/sgd_fx.csv', parse_dates=['date'], index_col='date')
+        if sgd_fx.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('MAS_EXCHANGE_RATE_API_KEY', None):
+            raise FileNotFoundError
+    except FileNotFoundError:
+        sgd_fx = download_mas_sgd_fx()
+        sgd_fx.to_csv('data/sgd_fx.csv')
+    return sgd_fx
+
+
+def download_fred_usd_fx():
+    fred = Fred()
+    usd_fx = pd.DataFrame(
+        {
+            '1_MXN': fred.get_series('DEXMXUS'),
+            '1_INR': fred.get_series('DEXINUS'),
+            '1_BRL': fred.get_series('DEXBZUS'),
+            'AUD': fred.get_series('DEXUSAL'),
+            '1_THB': fred.get_series('DEXTHUS'),
+            '1_CHF': fred.get_series('DEXSZUS'),
+            '1_MYR': fred.get_series('DEXMAUS'),
+            '1_LKR': fred.get_series('DEXSLUS'),
+            '1_TWD': fred.get_series('DEXTAUS'),
+            '1_ZAR': fred.get_series('DEXSFUS'),
+            '1_HKD': fred.get_series('DEXHKUS'),
+            '1_SGD': fred.get_series('DEXSIUS'),
+            'EUR': fred.get_series('DEXUSEU'),
+            '1_NOK': fred.get_series('DEXNOUS'),
+            '1_NZD': fred.get_series('DEXUSNZ'),
+            '1_SEK': fred.get_series('DEXSDUS'),
+            '1_DKK': fred.get_series('DEXDNUS'),
+            '1_JPY': fred.get_series('DEXJPUS'),
+            '1_CNY': fred.get_series('DEXCHUS'),
+            '1_KRW': fred.get_series('DEXKOUS'),
+            'GBP': fred.get_series('DEXUSUK'),
+            '1_CAD': fred.get_series('DEXCAUS'),
+        }
+    )
+    usd_fx = usd_fx.rename_axis('date')
+    usd_fx.update(usd_fx.filter(like='1_').rdiv(1))
+    usd_fx.columns = (
+        usd_fx.columns
+        .str.replace('1_', '')
+    )
+    return usd_fx
+
+
+def load_fred_usd_fx():
+    try:
+        usd_fx = pd.read_csv('data/usd_fx.csv', parse_dates=['date'], index_col='date')
+        if usd_fx.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None):
+            raise FileNotFoundError
+    except FileNotFoundError:
+        usd_fx = download_fred_usd_fx()
+        usd_fx.to_csv('data/usd_fx.csv')
+    return usd_fx
+
+
 def load_fred_usdsgd():
     fred = Fred()
     usdsgd = fred.get_series('DEXSIUS').rename('usdsgd').rename_axis('date')
@@ -475,6 +561,8 @@ __all__ = [
     'load_us_treasury_returns',
     'read_shiller_sp500_data',
     'load_usdsgd',
+    'load_mas_sgd_fx',
+    'load_fred_usd_fx',
     'load_mas_swap_points',
     'load_sgd_neer',
     'load_sgd_interest_rates',
