@@ -7,32 +7,37 @@ import yahooquery as yq
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 
-from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns
+from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns, load_fred_usd_fx, load_mas_sgd_fx
 
 
 def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
     if security.split('-')[0] == 'MSCI':
-        df = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval))
+        series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval)).iloc[:, 0]
     elif security.split('-')[0] == 'US Treasury':
-        df = load_us_treasury_returns(security.split('-')[1]).to_frame()
+        series = load_us_treasury_returns(security.split('-')[1])
         if interval == 'Monthly':
-            df = df.resample('BM').last()
+            series = series.resample('BM').last()
     elif security.split('-')[0] == 'Others':
         if security.split('-')[1] == 'STI':
-            df = read_sti_data()
+            series = read_sti_data().iloc[:, 0]
         elif security.split('-')[1] == 'SPX':
-            df = read_spx_data()
+            series = read_spx_data().iloc[:, 0]
         else:
             raise ValueError('Invalid index')
         if interval == 'Monthly':
-            df = df.resample('BM').last()
+            series = series.resample('BM').last()
     elif security.split('-')[0] == 'YF':
-        df = pd.read_json(StringIO(yf_securities[security.split('-')[1]]), orient='index')
+        series = pd.read_json(StringIO(yf_securities[security.split('-')[1]]), orient='index').iloc[:, 0]
+        if security.split('-')[2] != 'USD':
+            try:
+                series = series.mul(load_fred_usd_fx()[security.split('-')[2]].resample('D').ffill().ffill().reindex(series.index))
+            except KeyError:
+                series = series.mul(load_mas_sgd_fx()[security.split('-')[2]].resample('D').ffill().ffill().reindex(series.index))
+                series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
         if interval == 'Monthly':
-            df = df.resample('BM').last()
+            series = series.resample('BM').last()
     else:
         raise ValueError('Invalid index')
-    series = df.iloc[:, 0]
     if currency == 'SGD':
         series = series.mul(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
     if currency == 'SG CPI':
@@ -475,11 +480,12 @@ def add_stock_etf(
     ticker.validation
     if ticker.invalid_symbols:
         return selected_securities, selected_securities_options
-    if f'YF-{stock_etf}' in selected_securities:
+    currency = ticker.summary_detail[stock_etf]['currency']
+    if f'YF-{stock_etf}-{currency}' in selected_securities:
         return selected_securities, selected_securities_options
     else:
-        selected_securities.append(f'YF-{stock_etf}')
-        selected_securities_options[f'YF-{stock_etf}'] = stock_etf
+        selected_securities.append(f'YF-{stock_etf}-{currency}')
+        selected_securities_options[f'YF-{stock_etf}-{currency}'] = stock_etf
         return selected_securities, selected_securities_options
 
 
