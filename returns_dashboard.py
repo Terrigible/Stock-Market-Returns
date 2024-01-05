@@ -430,43 +430,35 @@ def add_index(
     if index_provider == 'MSCI':
         if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls') == []:
             return selected_securities, selected_securities_options
-        selected_securities_options[f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'] = " ".join(
-            filter(
-                None,
-                [
-                    index_provider_options[index_provider],
-                    msci_index_options[msci_index],
-                    (None if msci_size == 'STANDARD' else msci_size_options[msci_size]),
-                    (None if msci_style == 'BLEND' else msci_style_options[msci_style]),
-                    msci_tax_treatment,
-                ]
+        index = (
+            f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}', " ".join(
+                filter(
+                    None,
+                    [
+                        index_provider_options[index_provider],
+                        msci_index_options[msci_index],
+                        (None if msci_size == 'STANDARD' else msci_size_options[msci_size]),
+                        (None if msci_style == 'BLEND' else msci_style_options[msci_style]),
+                        msci_tax_treatment,
+                    ]
+                )
             )
         )
-        if selected_securities is None:
-            return [f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}'], selected_securities_options
-        elif f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}' in selected_securities:
-            return selected_securities, selected_securities_options
-        else:
-            selected_securities.append(f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}')
-            return selected_securities, selected_securities_options
     elif index_provider == 'US Treasury':
-        if selected_securities is None:
-            return [f'{index_provider}-{us_treasury_duration}'], selected_securities_options
-        elif f'{index_provider}-{us_treasury_duration}' in selected_securities:
-            return selected_securities, selected_securities_options
-        else:
-            selected_securities.append(f'{index_provider}-{us_treasury_duration}')
-            selected_securities_options[f'{index_provider}-{us_treasury_duration}'] = f'{us_treasury_duration_options[us_treasury_duration]} US Treasuries'
-            return selected_securities, selected_securities_options
+        index = (
+            f'{index_provider}-{us_treasury_duration}', f'{us_treasury_duration_options[us_treasury_duration]} US Treasuries'
+        )
     else:
-        if selected_securities is None:
-            return [f'Others-{others_index}'], selected_securities_options
-        elif f'Others-{others_index}' in selected_securities:
-            return selected_securities, selected_securities_options
-        else:
-            selected_securities.append(f'Others-{others_index}')
-            selected_securities_options[f'Others-{others_index}'] = others_index_options[others_index]
-            return selected_securities, selected_securities_options
+        index = (
+            f'Others-{others_index}', others_index_options[others_index]
+        )
+    if selected_securities is None:
+        return [index[0]], {index[0]: index[1]}
+    if index in selected_securities:
+        return selected_securities, selected_securities_options
+    selected_securities.append(index[0])
+    selected_securities_options.update({index[0]: index[1]})
+    return selected_securities, selected_securities_options
 
 
 @app.callback(
