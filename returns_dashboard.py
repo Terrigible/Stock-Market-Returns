@@ -11,13 +11,14 @@ from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, loa
 
 
 def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
-    if security.split('-')[0] == 'MSCI':
+    source = security.split('-')[0]
+    if source == 'MSCI':
         series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval)).iloc[:, 0]
-    elif security.split('-')[0] == 'US Treasury':
+    elif source == 'US Treasury':
         series = load_us_treasury_returns(security.split('-')[1])
         if interval == 'Monthly':
             series = series.resample('BM').last()
-    elif security.split('-')[0] == 'Others':
+    elif source == 'Others':
         if security.split('-')[1] == 'STI':
             series = read_sti_data().iloc[:, 0]
         elif security.split('-')[1] == 'SPX':
@@ -26,14 +27,21 @@ def load_df(security: str, interval: str, currency: str, yf_securities: dict[str
             raise ValueError('Invalid index')
         if interval == 'Monthly':
             series = series.resample('BM').last()
-    elif security.split('-')[0] == 'YF':
+    elif source == 'YF':
+        ticker_currency = security.split('-')[2]
         series = pd.read_json(StringIO(yf_securities[security.split('-')[1]]), orient='index').iloc[:, 0]
-        if security.split('-')[2] != 'USD':
-            try:
-                series = series.mul(load_fred_usd_fx()[security.split('-')[2]].resample('D').ffill().ffill().reindex(series.index))
-            except KeyError:
-                series = series.mul(load_mas_sgd_fx()[security.split('-')[2]].resample('D').ffill().ffill().reindex(series.index))
+        if ticker_currency != 'USD':
+            if ticker_currency == 'SGD':
                 series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
+            else:
+                if ticker_currency == 'GBp':
+                    series = series.div(100)
+                    ticker_currency = 'GBP'
+                if ticker_currency in load_fred_usd_fx().columns:
+                    series = series.mul(load_fred_usd_fx()[ticker_currency].resample('D').ffill().ffill().reindex(series.index))
+                elif ticker_currency in load_mas_sgd_fx().columns:
+                    series = series.mul(load_mas_sgd_fx()[ticker_currency].resample('D').ffill().ffill().reindex(series.index))
+                    series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
         if interval == 'Monthly':
             series = series.resample('BM').last()
     else:
