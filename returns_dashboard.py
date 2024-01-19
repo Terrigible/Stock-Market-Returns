@@ -334,26 +334,23 @@ app.layout = html.Div(
                 )
             ],
             style={
-                "overflow": "scroll",
-                "position": "fixed",
-                "top": 0,
-                "left": 0,
-                "bottom": 0,
-                "width": "18rem",
-                "padding": "2rem 1rem"
+                'width': '18%'
             }
         ),
         dcc.Graph(
             id='graph',
             style={
+                'width': '82%',
                 'height': '90vh',
-                "margin-left": "20rem",
-                "margin-right": "2rem",
-                "padding": "2rem 1rem",
             }
         ),
 
-    ]
+    ],
+    style={
+        'display': 'flex',
+        'justify-content': 'space-between',
+        'padding': '1rem 1rem'
+    }
 )
 
 
