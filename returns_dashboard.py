@@ -343,21 +343,16 @@ app.layout = html.Div(
                 "padding": "2rem 1rem"
             }
         ),
-        html.Div(
-            [
-                dcc.Graph(
-                    id='graph',
-                    style={
-                        'height': '90vh'
-                    }
-                ),
-            ],
+        dcc.Graph(
+            id='graph',
             style={
+                'height': '90vh',
                 "margin-left": "20rem",
                 "margin-right": "2rem",
-                "padding": "2rem 1rem"
+                "padding": "2rem 1rem",
             }
-        )
+        ),
+
     ]
 )
 
