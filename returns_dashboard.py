@@ -11,25 +11,25 @@ from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, loa
 
 
 def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
-    source = security.split('-')[0]
+    source = security.split('|')[0]
     if source == 'MSCI':
-        series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('-'), interval)).iloc[:, 0]
+        series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('|'), interval)).iloc[:, 0]
     elif source == 'US Treasury':
-        series = load_us_treasury_returns(security.split('-')[1])
+        series = load_us_treasury_returns(security.split('|')[1])
         if interval == 'Monthly':
             series = series.resample('BM').last()
     elif source == 'Others':
-        if security.split('-')[1] == 'STI':
+        if security.split('|')[1] == 'STI':
             series = read_sti_data().iloc[:, 0]
-        elif security.split('-')[1] == 'SPX':
+        elif security.split('|')[1] == 'SPX':
             series = read_spx_data().iloc[:, 0]
         else:
             raise ValueError('Invalid index')
         if interval == 'Monthly':
             series = series.resample('BM').last()
     elif source == 'YF':
-        ticker_currency = security.split('-')[2]
-        series = pd.read_json(StringIO(yf_securities[security.split('-')[1]]), orient='index').iloc[:, 0]
+        ticker_currency = security.split('|')[2]
+        series = pd.read_json(StringIO(yf_securities[security.split('|')[1]]), orient='index').iloc[:, 0]
         if ticker_currency != 'USD':
             if ticker_currency == 'SGD':
                 series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
@@ -431,7 +431,7 @@ def add_index(
         if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls') == []:
             return selected_securities, selected_securities_options
         index = (
-            f'{index_provider}-{msci_index}-{msci_size}-{msci_style}-{msci_tax_treatment}', " ".join(
+            f'{index_provider}|{msci_index}|{msci_size}|{msci_style}|{msci_tax_treatment}', " ".join(
                 filter(
                     None,
                     [
@@ -446,11 +446,11 @@ def add_index(
         )
     elif index_provider == 'US Treasury':
         index = (
-            f'{index_provider}-{us_treasury_duration}', f'{us_treasury_duration_options[us_treasury_duration]} US Treasuries'
+            f'{index_provider}|{us_treasury_duration}', f'{us_treasury_duration_options[us_treasury_duration]} US Treasuries'
         )
     else:
         index = (
-            f'Others-{others_index}', others_index_options[others_index]
+            f'Others|{others_index}', others_index_options[others_index]
         )
     if selected_securities is None:
         return [index[0]], {index[0]: index[1]}
@@ -481,11 +481,11 @@ def add_stock_etf(
     if ticker.invalid_symbols:
         return selected_securities, selected_securities_options
     currency = ticker.summary_detail[stock_etf]['currency']
-    if f'YF-{stock_etf}-{currency}' in selected_securities:
+    if f'YF|{stock_etf}|{currency}' in selected_securities:
         return selected_securities, selected_securities_options
     else:
-        selected_securities.append(f'YF-{stock_etf}-{currency}')
-        selected_securities_options[f'YF-{stock_etf}-{currency}'] = stock_etf
+        selected_securities.append(f'YF|{stock_etf}|{currency}')
+        selected_securities_options[f'YF|{stock_etf}|{currency}'] = stock_etf
         return selected_securities, selected_securities_options
 
 
@@ -497,8 +497,8 @@ def add_stock_etf(
 def update_yf_securities_store(yf_securities: dict[str, str], selected_securities: list[str]):
     yf_securities = yf_securities or {}
     for selected_security in selected_securities:
-        if selected_security.split('-')[0] == 'YF':
-            ticker = selected_security.split('-')[1]
+        if selected_security.split('|')[0] == 'YF':
+            ticker = selected_security.split('|')[1]
             if ticker not in yf_securities:
                 df = yq.Ticker(ticker).history(period='max').droplevel(0)
                 yf_securities[ticker] = df['adjclose'].to_json(orient='index')
