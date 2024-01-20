@@ -7,7 +7,7 @@ import yahooquery as yq
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 
-from funcs import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns, load_fred_usd_fx, load_mas_sgd_fx
+from funcs.loaders import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns, load_fred_usd_fx, load_mas_sgd_fx
 
 
 def load_df(security: str, interval: str, currency: str, yf_securities: dict[str, str]):
