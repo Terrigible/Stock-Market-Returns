@@ -115,6 +115,7 @@ app.layout = html.Div(
                     ],
                     value='Index',
                     clearable=False,
+                    searchable=False,
                     id='security-type-selection'
                 ),
                 html.Div(
@@ -128,6 +129,7 @@ app.layout = html.Div(
                             },
                             value='MSCI',
                             clearable=False,
+                            searchable=False,
                             id='index-provider-selection'
                         ),
                         html.Div(
@@ -143,6 +145,7 @@ app.layout = html.Div(
                                     },
                                     value='WORLD',
                                     clearable=False,
+                                    searchable=False,
                                     id='msci-index-selection'
                                 ),
                                 html.Label('Size'),
@@ -157,6 +160,7 @@ app.layout = html.Div(
                                     },
                                     value='STANDARD',
                                     clearable=False,
+                                    searchable=False,
                                     id='msci-size-selection'
                                 ),
                                 html.Label('Style'),
@@ -168,6 +172,7 @@ app.layout = html.Div(
                                     },
                                     value='BLEND',
                                     clearable=False,
+                                    searchable=False,
                                     id='msci-style-selection'
                                 ),
                                 html.Label('Tax Treatment'),
@@ -178,6 +183,7 @@ app.layout = html.Div(
                                     ],
                                     value='Gross',
                                     clearable=False,
+                                    searchable=False,
                                     id='msci-tax-treatment-selection'
                                 ),
                             ],
@@ -201,6 +207,7 @@ app.layout = html.Div(
                                         '30': '30 Years',
                                     },
                                     value='1MO',
+                                    searchable=False,
                                     id='us-treasury-duration-selection',
                                 ),
                             ],
@@ -216,6 +223,7 @@ app.layout = html.Div(
                                     },
                                     value='STI',
                                     clearable=False,
+                                    searchable=False,
                                     id='others-index-selection'
                                 ),
                             ],
@@ -260,6 +268,7 @@ app.layout = html.Div(
                     ],
                     value='Monthly',
                     clearable=False,
+                    searchable=False,
                     id='interval-selection'
                 ),
                 html.Label('Currency'),
@@ -272,6 +281,7 @@ app.layout = html.Div(
                     ],
                     value='USD',
                     clearable=False,
+                    searchable=False,
                     id='currency-selection'
                 ),
                 html.Label('Value'),
@@ -283,6 +293,7 @@ app.layout = html.Div(
                     },
                     value='price',
                     clearable=False,
+                    searchable=False,
                     id='y-var-selection'
                 ),
                 html.Div(
@@ -305,6 +316,7 @@ app.layout = html.Div(
                             },
                             value='1m',
                             clearable=False,
+                            searchable=False,
                             id='return-duration-selection'
                         ),
                         html.Label('Return Type'),
@@ -315,6 +327,7 @@ app.layout = html.Div(
                             },
                             value='cumulative',
                             clearable=False,
+                            searchable=False,
                             id='return-type-selection'
                         ),
                         html.Label('Baseline'),
@@ -324,6 +337,7 @@ app.layout = html.Div(
                             },
                             value='None',
                             clearable=False,
+                            searchable=False,
                             id='baseline-security-selection'
                         ),
                     ],
