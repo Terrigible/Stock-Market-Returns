@@ -30,9 +30,10 @@ def read_sti_data():
     return df
 
 
-def read_spx_data():
-    df = pd.read_csv('data/S&P 500 USD Gross.csv', parse_dates=['Date'], index_col='Date').rename_axis('date')[['Close']].set_axis(['price'], axis=1)
-    df.update(df.loc[:'1987-12-31'].div(df.loc['1987-12-31']).mul(df.loc['1988-01-04']))
+def read_spx_data(tax_treatment: str):
+    df = pd.read_csv(f'data/S&P 500 USD {tax_treatment}.csv', parse_dates=['Date'], index_col='Date').rename_axis('date')[['Close']].set_axis(['price'], axis=1)
+    if tax_treatment == 'Gross':
+        df.update(df.loc[:'1987-12-31'].div(df.loc['1987-12-31']).mul(df.loc['1988-01-04']))
     return df
 
 

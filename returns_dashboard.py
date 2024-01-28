@@ -22,7 +22,7 @@ def load_df(security: str, interval: str, currency: str, yf_securities: dict[str
         if security.split('|')[1] == 'STI':
             series = read_sti_data().iloc[:, 0]
         elif security.split('|')[1] == 'SPX':
-            series = read_spx_data().iloc[:, 0]
+            series = read_spx_data(security.split('|')[2]).iloc[:, 0]
         else:
             raise ValueError('Invalid index')
         if interval == 'Monthly':
@@ -226,6 +226,22 @@ app.layout = html.Div(
                                     searchable=False,
                                     id='others-index-selection'
                                 ),
+                                html.Div(
+                                    [
+                                        html.Label('Tax Treatment'),
+                                        dcc.Dropdown(
+                                            [
+                                                'Gross',
+                                                'Net'
+                                            ],
+                                            value='Gross',
+                                            clearable=False,
+                                            searchable=False,
+                                            id='others-tax-treatment-selection'
+                                        ),
+                                    ],
+                                    id='others-tax-treatment-selection-container'
+                                ),
                             ],
                             id='others-index-selection-container'
                         ),
@@ -402,6 +418,17 @@ def update_msci_index_selection_visibility(index_provider: str):
 
 
 @app.callback(
+    Output('others-tax-treatment-selection-container', 'style'),
+    Input('others-index-selection', 'value'),
+)
+def update_others_tax_treatment_selection_visibility(others_index: str):
+    if others_index == 'STI':
+        return {'display': 'none'}
+    else:
+        return {'display': 'block'}
+
+
+@app.callback(
     Output('selected-securities', 'value'),
     Output('selected-securities', 'options'),
     Input('add-index-button', 'n_clicks'),
@@ -420,6 +447,7 @@ def update_msci_index_selection_visibility(index_provider: str):
     State('us-treasury-duration-selection', 'options'),
     State('others-index-selection', 'value'),
     State('others-index-selection', 'options'),
+    State('others-tax-treatment-selection', 'value'),
 )
 def add_index(
     _,
@@ -437,7 +465,8 @@ def add_index(
     us_treasury_duration: str,
     us_treasury_duration_options: dict[str, str],
     others_index: str,
-    others_index_options: dict[str, str]
+    others_index_options: dict[str, str],
+    others_tax_treatment: str,
 ):
     if index_provider == 'MSCI':
         if glob(f'data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls') == []:
@@ -462,7 +491,7 @@ def add_index(
         )
     else:
         index = (
-            f'Others|{others_index}', others_index_options[others_index]
+            f'Others|{others_index}|{others_tax_treatment}', f'{others_index_options[others_index]} {others_tax_treatment}'
         )
     if selected_securities is None:
         return [index[0]], {index[0]: index[1]}
