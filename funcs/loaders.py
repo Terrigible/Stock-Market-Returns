@@ -282,7 +282,7 @@ def load_usdsgd():
 
 def download_mas_swap_points():
     swap_points_response = requests.get(
-        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/swap-points/SwapPoint_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
+        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/swap-points/swappoint_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     )
     if swap_points_response.status_code == 200:
@@ -318,7 +318,7 @@ def load_mas_swap_points():
 
 def download_sgd_neer():
     sgd_neer_response = requests.get(
-        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/s$neer/S$NEER_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
+        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/s$neer/s$neer_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     )
     if sgd_neer_response.status_code == 200:
