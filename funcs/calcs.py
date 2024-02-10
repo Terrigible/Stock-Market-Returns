@@ -1,0 +1,153 @@
+from functools import cache
+
+import numpy as np
+import pandas as pd
+
+
+def calculate_return_vector(price: pd.Series, dca_length: int, investment_horizon: int):
+    if investment_horizon < dca_length:
+        raise ValueError('Investment horizon must be greater than or equal to DCA length')
+    return price.shift().shift(investment_horizon-dca_length).rdiv(1/dca_length).rolling(dca_length).sum().mul(price).sub(1)
+
+
+def adjust_dca_amount_with_interest(
+    series: pd.Series,
+    dca_length: int,
+    dca_interval: int,
+    interest_rates: pd.Series
+):
+    return (
+        np.exp(np.log(interest_rates.div(100).add(1).pow(1/12)).rolling(dca_interval).sum())
+        .reindex(series.iloc[::dca_interval].index)
+        .pow(
+            pd.Series([0, *range(dca_length-dca_interval, 0-dca_interval, -dca_interval)[:-1]], index=series.iloc[::dca_interval].index)
+            .div(dca_length)
+        )
+        .mul(series.iloc[::dca_interval])
+        .sum()
+    )
+
+
+def calculate_lumpsum_return_with_fees_and_interest_vector(
+    series: pd.Series, *,
+    dca_length: int,
+    dca_interval: int = 1,
+    investment_horizon: None | int = None,
+    investment_amount: float,
+    variable_transaction_fees: float = 0,
+    fixed_transaction_fees: float = 0,
+    annualised_holding_fees: float = 0,
+    interest_rates: None | pd.Series = None
+):
+    if dca_length < 1:
+        print('DCA length must be greater than 0. For lump sum calculations, use dca_length=1')
+        dca_length = 1
+    if dca_interval < 1:
+        print('DCA interval must be greater than 0.')
+        dca_interval = 1
+    if investment_horizon is None:
+        investment_horizon = dca_length
+    elif investment_horizon < dca_length:
+        raise ValueError('Investment horizon must be greater than or equal to DCA length')
+    if interest_rates is None:
+        interest_rates = pd.Series(0, index=series.index)
+    series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
+    return (
+        series
+        .shift()
+        .shift(investment_horizon-dca_length)
+        .rdiv((investment_amount * (1 - variable_transaction_fees) - fixed_transaction_fees) / np.ceil(dca_length/dca_interval))
+        .rolling(dca_length).apply(adjust_dca_amount_with_interest, args=(dca_length, dca_interval, interest_rates))
+        .mul(series)
+        .div(investment_amount)
+        .sub(1)
+    )
+
+
+def calculate_dca_return_with_fees_and_interest_vector(
+    series: pd.Series, *,
+    dca_length: int,
+    dca_interval: int = 1,
+    investment_horizon: None | int = None,
+    monthly_amount: float,
+    variable_transaction_fees: float = 0,
+    fixed_transaction_fees: float = 0,
+    annualised_holding_fees: float = 0,
+    interest_rates: None | pd.Series = None
+):
+    if dca_length < 1:
+        print('DCA length must be greater than 0. For lump sum calculations, use dca_length=1')
+        dca_length = 1
+    if dca_interval < 1:
+        print('DCA interval must be greater than 0.')
+        dca_interval = 1
+    if investment_horizon is None:
+        investment_horizon = dca_length
+    elif investment_horizon < dca_length:
+        raise ValueError('Investment horizon must be greater than or equal to DCA length')
+    investment_amount = monthly_amount * dca_length
+    if interest_rates is None:
+        interest_rates = pd.Series(0, index=series.index)
+    series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
+    cash_index = interest_rates.div(100).add(1).pow(1/12).cumprod().fillna(1)
+
+    def get_dca_weights(
+        series: pd.Series,
+        dca_length: int,
+        dca_interval: int
+    ):
+        return (
+            pd.Series(
+                [*[*((series.reset_index(drop=True).index % dca_interval == dca_interval-1)*dca_interval)][:-1], dca_length % dca_interval or dca_interval],
+                index=series.index
+            )
+        )
+
+    @cache
+    def get_return_on_cash(
+        dca_length: int,
+    ):
+        if dca_length < 1:
+            dca_length = 1
+        return (
+            cash_index
+            .rdiv(1/dca_length)
+            .rolling(dca_length)
+            .sum()
+            .mul(cash_index)
+        )
+
+    return (
+        series
+        .shift()
+        .shift(investment_horizon-dca_length)
+        .rdiv(monthly_amount)
+        .rolling(dca_length).apply(
+            lambda series:
+                series
+                .mul(
+                    get_dca_weights(series, dca_length, dca_interval)
+                )
+                .mul(
+                    get_dca_weights(series, dca_length, dca_interval)
+                    .reset_index()
+                    .apply(
+                        lambda row: get_return_on_cash(row[0])[row['date']],
+                        axis=1
+                    )
+                    .set_axis(series.index, axis=0)
+                )
+                .mul(
+                    get_dca_weights(series, dca_length, dca_interval)
+                    .replace(0, np.inf)
+                    .rdiv(fixed_transaction_fees / monthly_amount)
+                    .rsub(1)
+                    .to_numpy()
+                )
+                .sum()
+        )
+        .mul(1 - variable_transaction_fees)
+        .mul(series)
+        .div(investment_amount)
+        .sub(1)
+    )
