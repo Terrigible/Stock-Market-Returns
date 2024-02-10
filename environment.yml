@@ -18,6 +18,7 @@ dependencies:
   - requests
   - scikit-learn
   - seaborn
+  - snakeviz
   - xlrd
   - conda-forge::selenium
   - pip:
