@@ -14,10 +14,10 @@ def adjust_dca_amount_with_interest(
     series: pd.Series,
     dca_length: int,
     dca_interval: int,
-    interest_rates: pd.Series
+    cash_return: pd.Series
 ):
     return (
-        np.exp(np.log(interest_rates.div(100).add(1).pow(1/12)).rolling(dca_interval).sum())
+        cash_return
         .reindex(series.iloc[::dca_interval].index)
         .pow(
             pd.Series([0, *range(dca_length-dca_interval, 0-dca_interval, -dca_interval)[:-1]], index=series.iloc[::dca_interval].index)
@@ -52,12 +52,14 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
     if interest_rates is None:
         interest_rates = pd.Series(0, index=series.index)
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
+    cash_return = interest_rates.div(100).add(1).pow(1/12).rolling(dca_interval).apply(np.prod, raw=True)
+
     return (
         series
         .shift()
         .shift(investment_horizon-dca_length)
         .rdiv((investment_amount * (1 - variable_transaction_fees) - fixed_transaction_fees) / np.ceil(dca_length/dca_interval))
-        .rolling(dca_length).apply(adjust_dca_amount_with_interest, args=(dca_length, dca_interval, interest_rates))
+        .rolling(dca_length).apply(adjust_dca_amount_with_interest, args=(dca_length, dca_interval, cash_return))
         .mul(series)
         .div(investment_amount)
         .sub(1)
@@ -91,17 +93,8 @@ def calculate_dca_return_with_fees_and_interest_vector(
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
     cash_index = interest_rates.div(100).add(1).pow(1/12).cumprod().fillna(1)
 
-    def get_dca_weights(
-        series: pd.Series,
-        dca_length: int,
-        dca_interval: int
-    ):
-        return (
-            pd.Series(
-                [*[*((series.reset_index(drop=True).index % dca_interval == dca_interval-1)*dca_interval)][:-1], dca_length % dca_interval or dca_interval],
-                index=series.index
-            )
-        )
+    dca_weights = pd.RangeIndex(dca_length).to_series().mod(dca_interval).eq(dca_interval-1).mul(dca_interval)
+    dca_weights[dca_length-1] = dca_length % dca_interval or dca_interval
 
     @cache
     def get_return_on_cash(
@@ -126,10 +119,12 @@ def calculate_dca_return_with_fees_and_interest_vector(
             lambda series:
                 series
                 .mul(
-                    get_dca_weights(series, dca_length, dca_interval)
+                    dca_weights
+                    .set_axis(series.index, axis=0)
                 )
                 .mul(
-                    get_dca_weights(series, dca_length, dca_interval)
+                    dca_weights
+                    .set_axis(series.index, axis=0)
                     .reset_index()
                     .apply(
                         lambda row: get_return_on_cash(row[0])[row['date']],
@@ -138,11 +133,11 @@ def calculate_dca_return_with_fees_and_interest_vector(
                     .set_axis(series.index, axis=0)
                 )
                 .mul(
-                    get_dca_weights(series, dca_length, dca_interval)
+                    dca_weights
+                    .set_axis(series.index, axis=0)
                     .replace(0, np.inf)
                     .rdiv(fixed_transaction_fees / monthly_amount)
                     .rsub(1)
-                    .to_numpy()
                 )
                 .sum()
         )
