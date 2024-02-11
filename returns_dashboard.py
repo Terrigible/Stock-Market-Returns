@@ -142,6 +142,8 @@ app.layout = html.Div(
                                         'SINGAPORE': 'Singapore',
                                         'EM (EMERGING MARKETS)': 'Emerging Markets',
                                         'USA': 'USA',
+                                        'KOKUSAI INDEX (WORLD ex JP)': 'World ex Japan',
+                                        'JAPAN': 'Japan',
                                     },
                                     value='WORLD',
                                     clearable=False,
