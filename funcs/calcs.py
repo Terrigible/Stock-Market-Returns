@@ -51,6 +51,8 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
         raise ValueError('Investment horizon must be greater than or equal to DCA length')
     if interest_rates is None:
         interest_rates = pd.Series(0, index=series.index)
+    else:
+        interest_rates = interest_rates.reindex(series.index, fill_value=0)
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
     cash_return = interest_rates.div(100).add(1).pow(1/12).rolling(dca_interval).apply(np.prod, raw=True)
 
@@ -90,6 +92,8 @@ def calculate_dca_return_with_fees_and_interest_vector(
     investment_amount = monthly_amount * dca_length
     if interest_rates is None:
         interest_rates = pd.Series(0, index=series.index)
+    else:
+        interest_rates = interest_rates.reindex(series.index, fill_value=0)
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
     cash_index = interest_rates.div(100).add(1).pow(1/12).cumprod().fillna(1)
 
