@@ -100,19 +100,25 @@ def calculate_dca_return_with_fees_and_interest_vector(
     dca_weights = pd.RangeIndex(dca_length).to_series().mod(dca_interval).eq(dca_interval-1).mul(dca_interval)
     dca_weights[dca_length-1] = dca_length % dca_interval or dca_interval
 
-    @cache
-    def get_return_on_cash(
-        dca_length: int,
-    ):
-        if dca_length < 1:
-            dca_length = 1
-        return (
-            cash_index
-            .rdiv(1/dca_length)
-            .rolling(dca_length)
-            .sum()
-            .mul(cash_index)
-        )
+    return_on_cash = pd.DataFrame(
+        {
+            dca_length:
+                cash_index
+                .rdiv(1/dca_length)
+                .rolling(dca_length)
+                .sum()
+                .mul(cash_index)
+            for dca_length in dca_weights.unique()
+        }
+    )
+
+    return_on_cash_selection_mask = pd.DataFrame(
+        {
+            dca_weight:
+                dca_weights.eq(dca_weight)
+            for dca_weight in dca_weights.unique()
+        }
+    )
 
     return (
         series
@@ -127,14 +133,13 @@ def calculate_dca_return_with_fees_and_interest_vector(
                     .set_axis(series.index, axis=0)
                 )
                 .mul(
-                    dca_weights
+                    return_on_cash_selection_mask
                     .set_axis(series.index, axis=0)
-                    .reset_index()
-                    .apply(
-                        lambda row: get_return_on_cash(row[0])[row['date']],
-                        axis=1
+                    .mul(
+                        return_on_cash
+                        .reindex(series.index)
                     )
-                    .set_axis(series.index, axis=0)
+                    .sum(axis=1)
                 )
                 .mul(
                     dca_weights
