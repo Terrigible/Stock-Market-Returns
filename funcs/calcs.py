@@ -120,6 +120,8 @@ def calculate_dca_return_with_fees_and_interest_vector(
         }
     )
 
+    fixed_transaction_fee_adjustment = dca_weights.replace(0, np.inf).rdiv(fixed_transaction_fees / monthly_amount).rsub(1)
+
     return (
         series
         .shift()
@@ -142,11 +144,8 @@ def calculate_dca_return_with_fees_and_interest_vector(
                     .sum(axis=1)
                 )
                 .mul(
-                    dca_weights
+                    fixed_transaction_fee_adjustment
                     .set_axis(series.index, axis=0)
-                    .replace(0, np.inf)
-                    .rdiv(fixed_transaction_fees / monthly_amount)
-                    .rsub(1)
                 )
                 .sum()
         )
