@@ -120,7 +120,7 @@ def calculate_dca_return_with_fees_and_interest_vector(
         }
     )
 
-    fixed_transaction_fee_adjustment = dca_weights.replace(0, np.inf).rdiv(fixed_transaction_fees / monthly_amount).rsub(1)
+    dca_share_count_multiplier = dca_weights.mul(1-fixed_transaction_fees/monthly_amount/dca_weights)
 
     return (
         series
@@ -131,21 +131,17 @@ def calculate_dca_return_with_fees_and_interest_vector(
             lambda series:
                 series
                 .mul(
-                    dca_weights
+                    dca_share_count_multiplier
                     .set_axis(series.index, axis=0)
                 )
                 .mul(
-                    return_on_cash_selection_mask
-                    .set_axis(series.index, axis=0)
+                    return_on_cash
+                    .reindex(series.index)
                     .mul(
-                        return_on_cash
-                        .reindex(series.index)
+                        return_on_cash_selection_mask
+                        .set_axis(series.index, axis=0)
                     )
                     .sum(axis=1)
-                )
-                .mul(
-                    fixed_transaction_fee_adjustment
-                    .set_axis(series.index, axis=0)
                 )
                 .sum()
         )
