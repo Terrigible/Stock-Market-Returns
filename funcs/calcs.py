@@ -38,17 +38,33 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
     cash_return = interest_rates.div(100).add(1).pow(1/12).rolling(dca_interval).apply(np.prod, raw=True)
 
+    dca_weights = (
+        pd.RangeIndex(dca_length).to_series().mod(dca_interval).eq(0).mul(1)
+    )
+
+    remaining_capital_multiplier = pd.RangeIndex(dca_length).to_series().floordiv(dca_interval).rsub(np.ceil(dca_length/dca_interval))
+    remaining_capital_multiplier.iloc[0] = 0
+
     def adjust_dca_amount_with_interest(
         series: pd.Series,
     ):
+
         return (
-            cash_return
-            .reindex(series.iloc[::dca_interval].index)
-            .pow(
-                pd.Series([0, *range(dca_length-dca_interval, 0-dca_interval, -dca_interval)[:-1]], index=series.iloc[::dca_interval].index)
-                .div(dca_length)
+            series
+            .mul(
+                dca_weights
+                .to_numpy()
             )
-            .mul(series.iloc[::dca_interval])
+            .mul(
+                cash_return
+                .reindex(series.index)
+                .sub(1)
+                .mul(
+                    remaining_capital_multiplier
+                    .to_numpy()
+                )
+                .add(1)
+            )
             .sum()
         )
 
