@@ -1,7 +1,7 @@
-from functools import cache
-
 import numpy as np
 import pandas as pd
+
+from scipy.signal import correlate2d
 
 
 def calculate_return_vector(price: pd.Series, dca_length: int, investment_horizon: int):
@@ -122,29 +122,36 @@ def calculate_dca_return_with_fees_and_interest_vector(
 
     dca_share_count_multiplier = dca_weights.mul(1-fixed_transaction_fees/monthly_amount/dca_weights)
 
-    return (
+    dca_share_multiplier_plus_interest = return_on_cash_selection_mask.mul(dca_share_count_multiplier, axis=0).fillna(0)
+
+    shares_per_investment = (
         series
         .shift()
         .shift(investment_horizon-dca_length)
         .rdiv(monthly_amount)
-        .rolling(dca_length).apply(
-            lambda series:
-                series
-                .mul(
-                    dca_share_count_multiplier
-                    .set_axis(series.index, axis=0)
-                )
-                .mul(
-                    return_on_cash
-                    .reindex(series.index)
-                    .mul(
-                        return_on_cash_selection_mask
-                        .set_axis(series.index, axis=0)
-                    )
-                    .sum(axis=1)
-                )
-                .sum()
+    )
+
+    shares_obtained = np.pad(
+        correlate2d(
+            return_on_cash
+            .mul(
+                shares_per_investment, axis=0
+            )
+            .to_numpy(),
+            dca_share_multiplier_plus_interest
+            .to_numpy(),
+            mode='valid'
         )
+        .flatten(),
+        (
+            dca_length-1,
+            0
+        ),
+        constant_values=np.nan
+    )
+
+    return (
+        pd.Series(shares_obtained, index=series.index)
         .mul(1 - variable_transaction_fees)
         .mul(series)
         .div(investment_amount)
