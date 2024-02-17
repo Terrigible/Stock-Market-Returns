@@ -10,24 +10,6 @@ def calculate_return_vector(price: pd.Series, dca_length: int, investment_horizo
     return price.shift().shift(investment_horizon-dca_length).rdiv(1/dca_length).rolling(dca_length).sum().mul(price).sub(1)
 
 
-def adjust_dca_amount_with_interest(
-    series: pd.Series,
-    dca_length: int,
-    dca_interval: int,
-    cash_return: pd.Series
-):
-    return (
-        cash_return
-        .reindex(series.iloc[::dca_interval].index)
-        .pow(
-            pd.Series([0, *range(dca_length-dca_interval, 0-dca_interval, -dca_interval)[:-1]], index=series.iloc[::dca_interval].index)
-            .div(dca_length)
-        )
-        .mul(series.iloc[::dca_interval])
-        .sum()
-    )
-
-
 def calculate_lumpsum_return_with_fees_and_interest_vector(
     series: pd.Series, *,
     dca_length: int,
@@ -56,12 +38,26 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
     cash_return = interest_rates.div(100).add(1).pow(1/12).rolling(dca_interval).apply(np.prod, raw=True)
 
+    def adjust_dca_amount_with_interest(
+        series: pd.Series,
+    ):
+        return (
+            cash_return
+            .reindex(series.iloc[::dca_interval].index)
+            .pow(
+                pd.Series([0, *range(dca_length-dca_interval, 0-dca_interval, -dca_interval)[:-1]], index=series.iloc[::dca_interval].index)
+                .div(dca_length)
+            )
+            .mul(series.iloc[::dca_interval])
+            .sum()
+        )
+
     return (
         series
         .shift()
         .shift(investment_horizon-dca_length)
         .rdiv((investment_amount * (1 - variable_transaction_fees) / np.ceil(dca_length/dca_interval)) - fixed_transaction_fees)
-        .rolling(dca_length).apply(adjust_dca_amount_with_interest, args=(dca_length, dca_interval, cash_return))
+        .rolling(dca_length).apply(adjust_dca_amount_with_interest)
         .mul(series)
         .div(investment_amount)
         .sub(1)
