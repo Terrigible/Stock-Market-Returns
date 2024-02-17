@@ -60,7 +60,7 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
         series
         .shift()
         .shift(investment_horizon-dca_length)
-        .rdiv((investment_amount * (1 - variable_transaction_fees) - fixed_transaction_fees) / np.ceil(dca_length/dca_interval))
+        .rdiv((investment_amount * (1 - variable_transaction_fees) / np.ceil(dca_length/dca_interval)) - fixed_transaction_fees)
         .rolling(dca_length).apply(adjust_dca_amount_with_interest, args=(dca_length, dca_interval, cash_return))
         .mul(series)
         .div(investment_amount)
