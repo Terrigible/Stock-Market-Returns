@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+from numpy.lib.stride_tricks import sliding_window_view
 from scipy.signal import correlate2d
 
 
@@ -45,34 +45,33 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
     remaining_capital_multiplier = pd.RangeIndex(dca_length).to_series().floordiv(dca_interval).rsub(np.ceil(dca_length/dca_interval))
     remaining_capital_multiplier.iloc[0] = 0
 
-    def adjust_dca_amount_with_interest(
-        series: pd.Series,
-    ):
-
-        return (
-            series
-            .mul(
-                dca_weights
-                .to_numpy()
-            )
-            .mul(
-                cash_return
-                .reindex(series.index)
-                .mul(
-                    remaining_capital_multiplier
-                    .to_numpy()
-                )
-                .add(1)
-            )
-            .sum()
-        )
-
-    return (
+    shares_per_dca = (
         series
         .shift()
         .shift(investment_horizon-dca_length)
         .rdiv((investment_amount * (1 - variable_transaction_fees) / np.ceil(dca_length/dca_interval)) - fixed_transaction_fees)
-        .rolling(dca_length).apply(adjust_dca_amount_with_interest)
+    )
+
+    shares_obtained = np.pad(
+        (
+            (
+                sliding_window_view(cash_return.to_numpy(), dca_length, axis=0)
+                * remaining_capital_multiplier.to_numpy()[None, :]
+                + 1
+            )
+            * dca_weights.to_numpy()[None, :]
+            * sliding_window_view(shares_per_dca.to_numpy(), dca_length, axis=0)
+        )
+        .sum(axis=1),
+        (
+            dca_length-1,
+            0
+        ),
+        constant_values=np.nan
+    )
+
+    return (
+        pd.Series(shares_obtained, index=series.index)
         .mul(series)
         .div(investment_amount)
         .sub(1)
