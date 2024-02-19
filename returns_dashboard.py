@@ -29,7 +29,7 @@ def load_df(security: str, interval: str, currency: str, nominal_real: str, yf_s
             series = series.resample('BM').last()
     elif source == 'YF':
         ticker_currency = security.split('|')[2]
-        series = pd.read_json(StringIO(yf_securities[security.split('|')[1]]), orient='index').iloc[:, 0]
+        series = pd.read_json(StringIO(yf_securities[security]), orient='index').iloc[:, 0]
         if ticker_currency != 'USD':
             if ticker_currency == 'SGD':
                 series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
@@ -262,6 +262,17 @@ app.layout = html.Div(
                         html.Br(),
                         dcc.Input(id='stock-etf-input', type='text'),
                         html.P('Warning: Loading Yahoo Finance data may take a while'),
+                        html.Label('Tax Treatment'),
+                        dcc.Dropdown(
+                            [
+                                'Gross',
+                                'Net'
+                            ],
+                            value='Gross',
+                            clearable=False,
+                            searchable=False,
+                            id='stock-etf-tax-treatment-selection'
+                        ),
                         html.P(),
                         html.Button(
                             'Add Stock/ETF',
@@ -520,6 +531,7 @@ def add_index(
     State('selected-securities', 'value'),
     State('selected-securities', 'options'),
     State('stock-etf-input', 'value'),
+    State('stock-etf-tax-treatment-selection', 'value'),
     prevent_initial_call=True
 )
 def add_stock_etf(
@@ -527,17 +539,18 @@ def add_stock_etf(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     stock_etf: str,
+    tax_treatment: str,
 ):
     ticker = yq.Ticker(stock_etf)
     ticker.validation
     if ticker.invalid_symbols:
         return selected_securities, selected_securities_options
     currency = ticker.summary_detail[stock_etf]['currency']
-    if f'YF|{stock_etf}|{currency}' in selected_securities:
+    if f'YF|{stock_etf}|{currency}|{tax_treatment}' in selected_securities:
         return selected_securities, selected_securities_options
     else:
-        selected_securities.append(f'YF|{stock_etf}|{currency}')
-        selected_securities_options[f'YF|{stock_etf}|{currency}'] = stock_etf
+        selected_securities.append(f'YF|{stock_etf}|{currency}|{tax_treatment}')
+        selected_securities_options[f'YF|{stock_etf}|{currency}|{tax_treatment}'] = f'{stock_etf} {tax_treatment}'
         return selected_securities, selected_securities_options
 
 
@@ -551,9 +564,14 @@ def update_yf_securities_store(yf_securities: dict[str, str], selected_securitie
     for selected_security in selected_securities:
         if selected_security.split('|')[0] == 'YF':
             ticker = selected_security.split('|')[1]
-            if ticker not in yf_securities:
+            tax_treatment = selected_security.split('|')[3]
+            if selected_security not in yf_securities:
                 df = yq.Ticker(ticker).history(period='max').droplevel(0)
-                yf_securities[ticker] = df['adjclose'].to_json(orient='index')
+                if tax_treatment == 'Net':
+                    manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
+                    manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
+                    df['adjclose'] = manually_adjusted
+                yf_securities[selected_security] = df['adjclose'].to_json(orient='index')
     return yf_securities
 
 
