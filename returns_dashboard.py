@@ -562,16 +562,18 @@ def add_stock_etf(
 def update_yf_securities_store(yf_securities: dict[str, str], selected_securities: list[str]):
     yf_securities = yf_securities or {}
     for selected_security in selected_securities:
-        if selected_security.split('|')[0] == 'YF':
-            ticker = selected_security.split('|')[1]
-            tax_treatment = selected_security.split('|')[3]
-            if selected_security not in yf_securities:
-                df = yq.Ticker(ticker).history(period='max').droplevel(0)
-                if tax_treatment == 'Net':
-                    manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
-                    manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
-                    df['adjclose'] = manually_adjusted
-                yf_securities[selected_security] = df['adjclose'].to_json(orient='index')
+        if selected_security.split('|')[0] != 'YF':
+            continue
+        if selected_security in yf_securities:
+            continue
+        ticker = selected_security.split('|')[1]
+        tax_treatment = selected_security.split('|')[3]
+        df = yq.Ticker(ticker).history(period='max').droplevel(0)
+        if tax_treatment == 'Net':
+            manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
+            manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
+            df['adjclose'] = manually_adjusted
+        yf_securities[selected_security] = df['adjclose'].to_json(orient='index')
     return yf_securities
 
 
