@@ -10,7 +10,7 @@ from dash.dependencies import Input, Output, State
 from funcs.loaders import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns, load_fred_usd_fx, load_mas_sgd_fx
 
 
-def load_df(security: str, interval: str, currency: str, nominal_real: str, yf_securities: dict[str, str]):
+def load_df(security: str, interval: str, currency: str, adjust_for_inflation: str, yf_securities: dict[str, str]):
     source = security.split('|')[0]
     if source == 'MSCI':
         series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('|'), interval)).iloc[:, 0]
@@ -47,11 +47,11 @@ def load_df(security: str, interval: str, currency: str, nominal_real: str, yf_s
     else:
         raise ValueError('Invalid index')
     if currency == 'USD':
-        if nominal_real == 'Real':
+        if adjust_for_inflation == 'Yes':
             series = series.div(load_us_cpi().iloc[:, 0].resample('D').ffill().ffill().reindex(series.index))
     elif currency == 'SGD':
         series = series.mul(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
-        if nominal_real == 'Real':
+        if adjust_for_inflation == 'Yes':
             series = series.div(load_sg_cpi().iloc[:, 0].resample('D').ffill().ffill().reindex(series.index))
     return series
 
@@ -311,16 +311,16 @@ app.layout = html.Div(
                     searchable=False,
                     id='currency-selection'
                 ),
-                html.Label('Nominal/Real'),
+                html.Label('Adjust for Inflation'),
                 dcc.Dropdown(
                     [
-                        'Nominal',
-                        'Real',
+                        'No',
+                        'Yes',
                     ],
-                    value='Nominal',
+                    value='No',
                     clearable=False,
                     searchable=False,
-                    id='nominal-real-selection'
+                    id='inflation-adjustment-selection'
                 ),
                 html.Label('Value'),
                 dcc.Dropdown(
@@ -616,7 +616,7 @@ def update_baseline_security_selection_options(
     Input('selected-securities', 'options'),
     Input('yf-securities-store', 'data'),
     Input('currency-selection', 'value'),
-    Input('nominal-real-selection', 'value'),
+    Input('inflation-adjustment-selection', 'value'),
     Input('y-var-selection', 'value'),
     Input('y-var-selection', 'options'),
     Input('return-duration-selection', 'value'),
@@ -632,7 +632,7 @@ def update_graph(
     selected_securities_options: dict[str, str],
     yf_securities: dict[str, str],
     currency: str,
-    nominal_real: str,
+    adjust_for_inflation: str,
     y_var: str,
     y_var_options: dict[str, str],
     return_duration: str,
@@ -645,7 +645,8 @@ def update_graph(
 ):
     df = pd.DataFrame(
         {
-            selected_securities_options[selected_security]: transform_df(load_df(selected_security, interval, currency, nominal_real, yf_securities), interval, y_var, return_duration, return_type)
+            selected_securities_options[selected_security]: transform_df(load_df(selected_security, interval, currency, adjust_for_inflation,
+                                                                         yf_securities), interval, y_var, return_duration, return_type)
             for selected_security in selected_securities
         }
     )
