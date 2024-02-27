@@ -55,16 +55,16 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(variable_transaction_
         if i < investment_horizon:
             res[i] = np.nan
         share_value = 0
+        dca_amount = total_investment / np.ceil(dca_length/dca_interval)
         cash = total_investment
-        monthly_amount = total_investment / dca_length
+        capital = total_investment
         for index, j in enumerate(range(i - investment_horizon, i - investment_horizon + dca_length)):
             if index % dca_interval == 0:
-                dca_amount = cash - (dca_length - index - 1) * monthly_amount
-                share_value += dca_amount * (1 - variable_transaction_fees) - fixed_transaction_fees
-                cash = (dca_length - index - 1) * monthly_amount
+                share_value += (dca_amount + cash - capital) * (1 - variable_transaction_fees) - fixed_transaction_fees
+                capital -= dca_amount
+                cash = capital
             share_value *= ((1 + monthly_returns[j+1]) ** 12 - annualised_holding_fees) ** (1/12)
             cash *= (1 + interest_rates[j+1] / 100) ** (1/12)
-        share_value += cash
         cash = 0
         for j in range(i - investment_horizon + dca_length, i):
             share_value *= 1 + monthly_returns[j+1]
