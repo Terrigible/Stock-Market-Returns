@@ -36,7 +36,7 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
     else:
         interest_rates = interest_rates.reindex(series.index, fill_value=0)
     series = series.pct_change().add(1).pow(12).sub(annualised_holding_fees).pow(1/12).cumprod().fillna(1)
-    cash_return = interest_rates.div(100).add(1).pow(1/12).rolling(dca_interval).apply(np.prod, raw=True).sub(1)
+    cash_return = interest_rates.shift().div(100).add(1).pow(1/12).rolling(dca_interval).apply(np.prod, raw=True).sub(1)
 
     dca_weights = (
         pd.RangeIndex(dca_length).to_series().mod(dca_interval).eq(0).mul(1)
