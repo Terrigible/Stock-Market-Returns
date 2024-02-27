@@ -86,7 +86,7 @@ def calculate_dca_return_with_fees_and_interest_vector(variable_transaction_fees
         funds_to_invest = 0
         for index, j in enumerate(range(i - dca_length, i)):
             funds_to_invest += monthly_amount
-            if (index + 1) % dca_interval == 0:
+            if ((index + 1) % dca_interval == 0) or (index == dca_length - 1):
                 share_value += funds_to_invest * (1 - variable_transaction_fees) - fixed_transaction_fees
                 funds_to_invest = 0
             share_value *= ((1 + monthly_returns[j+1]) ** 12 - annualised_holding_fees) ** (1/12)
