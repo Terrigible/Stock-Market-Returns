@@ -143,7 +143,7 @@ def calculate_dca_return_with_fees_and_interest_vector(
 
     shares_obtained = np.pad(
         correlate2d(
-            return_on_cash
+            return_on_cash.shift()
             .mul(
                 shares_per_investment, axis=0
             )
