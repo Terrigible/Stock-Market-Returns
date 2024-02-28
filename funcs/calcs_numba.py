@@ -30,6 +30,7 @@ def calculate_return_vector(dca_length: int, monthly_returns: pd.Series | np.nda
     for i in range(len(monthly_returns)):
         if i < investment_horizon:
             res[i] = np.nan
+            continue
         share_value = 0
         cash = 1
         for j in range(i - investment_horizon, i - investment_horizon + dca_length):
@@ -54,6 +55,7 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(variable_transaction_
     for i in range(len(monthly_returns)):
         if i < investment_horizon:
             res[i] = np.nan
+            continue
         share_value = 0
         dca_amount = total_investment / np.ceil(dca_length/dca_interval)
         cash = total_investment
@@ -82,6 +84,7 @@ def calculate_dca_return_with_fees_and_interest_vector(variable_transaction_fees
     for i in range(len(monthly_returns)):
         if i < dca_length:
             res[i] = np.nan
+            continue
         share_value = 0
         funds_to_invest = 0
         for index, j in enumerate(range(i - dca_length, i)):
