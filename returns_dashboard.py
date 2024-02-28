@@ -334,6 +334,13 @@ app.layout = html.Div(
                     searchable=False,
                     id='y-var-selection'
                 ),
+                dcc.Checklist(
+                    {
+                        'log': 'Logarithmic Scale'
+                    },
+                    value=[],
+                    id='log-scale-selection'
+                ),
                 html.Div(
                     [
                         html.Label('Return Duration'),
@@ -578,6 +585,19 @@ def update_yf_securities_store(yf_securities: dict[str, str], selected_securitie
 
 
 @app.callback(
+    Output('log-scale-selection', 'style'),
+    Output('log-scale-selection', 'value'),
+    Input('y-var-selection', 'value'),
+    Input('log-scale-selection', 'value')
+)
+def update_log_scale(y_var: str, log_scale: list[str]):
+    if y_var == 'price':
+        return {'display': 'block'}, log_scale
+    else:
+        return {'display': 'none'}, []
+
+
+@app.callback(
     Output('return-selection', 'style'),
     Input('y-var-selection', 'value')
 )
@@ -626,6 +646,7 @@ def update_baseline_security_selection_options(
     Input('interval-selection', 'value'),
     Input('baseline-security-selection', 'value'),
     Input('baseline-security-selection', 'options'),
+    Input('log-scale-selection', 'value'),
 )
 def update_graph(
     selected_securities: list[str],
@@ -642,6 +663,7 @@ def update_graph(
     interval: str,
     baseline_security: str,
     baseline_security_options: dict[str, str],
+    log_scale: list[str],
 ):
     df = pd.DataFrame(
         {
@@ -666,6 +688,7 @@ def update_graph(
         hovermode='x unified',
         yaxis=dict(
             tickformat='.2f' if y_var == 'price' else '.2%',
+            type='log' if 'log' in log_scale else 'linear'
         )
     )
     return dict(data=data, layout=layout)
