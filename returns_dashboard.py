@@ -517,7 +517,7 @@ def add_index(
         )
     if selected_securities is None:
         return [index[0]], {index[0]: index[1]}
-    if index in selected_securities:
+    if index[0] in selected_securities:
         return selected_securities, selected_securities_options
     selected_securities.append(index[0])
     selected_securities_options.update({index[0]: index[1]})
