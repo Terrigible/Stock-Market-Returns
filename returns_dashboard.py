@@ -1,6 +1,7 @@
 from glob import glob
 from io import StringIO
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import yahooquery as yq
@@ -83,10 +84,14 @@ def transform_df(series: pd.Series, interval: str, y_var: str, return_duration: 
             .div(
                 series
                 .reindex(
-                    (series.index - pd.offsets.DateOffset(months=return_durations[return_duration]))
-                    .to_series()
-                    .apply(pd.offsets.BusinessDay().rollback)
-                    .set_axis(series.index)
+                    np.busday_offset(
+                        (series.index - pd.offsets.DateOffset(months=return_durations[return_duration]))
+                        .to_numpy()
+                        .astype('datetime64[D]'),
+                        0,
+                        roll='backward'
+                    )
+                    .astype('datetime64[ns]')
                 )
                 .set_axis(series.index, axis=0)
             )
