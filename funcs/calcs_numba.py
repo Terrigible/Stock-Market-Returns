@@ -23,8 +23,8 @@ def calculate_return(ending_index: int, dca_length: int, monthly_returns: pd.Ser
     return share_value - 1
 
 
-@guvectorize([(int64, float64[:], int64, float64[:])], '(),(n),()->(n)', target='cpu', nopython=True)
-def calculate_return_vector(dca_length: int, monthly_returns: pd.Series | np.ndarray, investment_horizon: int, res=np.array([])):
+@guvectorize([(float64[:], int64, int64, float64[:])], '(n),(),()->(n)', target='cpu', nopython=True)
+def calculate_return_vector(monthly_returns: pd.Series | np.ndarray, dca_length: int, investment_horizon: int, res=np.array([])):
     if investment_horizon < dca_length:
         raise ValueError('Investment horizon must be greater than or equal to DCA length')
     for i in range(len(monthly_returns)):
@@ -42,8 +42,8 @@ def calculate_return_vector(dca_length: int, monthly_returns: pd.Series | np.nda
         res[i] = share_value - 1
 
 
-@guvectorize([(float64, float64, float64, float64, int64, int64, int64, float64[:], float64[:], float64[:])], '(),(),(),(),(),(),(),(n),(n)->(n)', target='cpu', nopython=True)
-def calculate_lumpsum_return_with_fees_and_interest_vector(variable_transaction_fees: float, fixed_transaction_fees: float, annualised_holding_fees: float, total_investment: float, dca_length: int, dca_interval: int, investment_horizon: int, monthly_returns: pd.Series | np.ndarray, interest_rates: pd.Series | np.ndarray, res=np.array([])):
+@guvectorize([(float64[:], int64, int64, int64, float64, float64, float64, float64, float64[:], float64[:])], '(n),(),(),(),(),(),(),(),(n)->(n)', target='cpu', nopython=True)
+def calculate_lumpsum_return_with_fees_and_interest_vector(monthly_returns: pd.Series | np.ndarray, dca_length: int, dca_interval: int, investment_horizon: int, total_investment: float, variable_transaction_fees: float, fixed_transaction_fees: float, annualised_holding_fees: float, interest_rates: pd.Series | np.ndarray, res=np.array([])):
     if investment_horizon < dca_length:
         raise ValueError(f'Investment horizon ({investment_horizon}) must be greater than or equal to DCA length ({dca_length})')
     if fixed_transaction_fees >= total_investment / dca_length * dca_interval:
@@ -73,8 +73,8 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(variable_transaction_
         res[i] = (share_value - total_investment) / total_investment
 
 
-@guvectorize([(float64, float64, float64, float64, int64, int64, float64[:], float64[:], float64[:])], '(),(),(),(),(),(),(n),(n)->(n)', target='cpu', nopython=True)
-def calculate_dca_return_with_fees_and_interest_vector(variable_transaction_fees: float, fixed_transaction_fees: float, annualised_holding_fees: float, monthly_amount: float, dca_length: int, dca_interval: int, monthly_returns: pd.Series | np.ndarray, interest_rates: pd.Series | np.ndarray, res=np.array([])):
+@guvectorize([(float64[:], int64, int64, float64, float64, float64, float64, float64[:], float64[:])], '(n),(),(),(),(),(),(),(n)->(n)', target='cpu', nopython=True)
+def calculate_dca_return_with_fees_and_interest_vector(monthly_returns: pd.Series | np.ndarray, dca_length: int, dca_interval: int, monthly_amount: float, variable_transaction_fees: float, fixed_transaction_fees: float, annualised_holding_fees: float, interest_rates: pd.Series | np.ndarray, res=np.array([])):
     total_investment = monthly_amount * dca_length
     dca_amount = monthly_amount * dca_interval
     if fixed_transaction_fees >= dca_amount:
