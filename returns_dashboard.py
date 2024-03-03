@@ -539,11 +539,13 @@ def add_index(
 @app.callback(
     Output('selected-securities', 'value', allow_duplicate=True),
     Output('selected-securities', 'options', allow_duplicate=True),
+    Output('yf-securities-store', 'data'),
     Input('add-stock-etf-button', 'n_clicks'),
     State('selected-securities', 'value'),
     State('selected-securities', 'options'),
     State('stock-etf-input', 'value'),
     State('stock-etf-tax-treatment-selection', 'value'),
+    State('yf-securities-store', 'data'),
     prevent_initial_call=True
 )
 def add_stock_etf(
@@ -552,41 +554,27 @@ def add_stock_etf(
     selected_securities_options: dict[str, str],
     stock_etf: str,
     tax_treatment: str,
+    yf_securities: dict[str, str],
 ):
     ticker = yq.Ticker(stock_etf)
     ticker.validation
     if ticker.invalid_symbols:
-        return selected_securities, selected_securities_options
+        return selected_securities, selected_securities_options, yf_securities
     currency = ticker.summary_detail[stock_etf]['currency']
-    if f'YF|{stock_etf}|{currency}|{tax_treatment}' in selected_securities:
-        return selected_securities, selected_securities_options
-    else:
-        selected_securities.append(f'YF|{stock_etf}|{currency}|{tax_treatment}')
-        selected_securities_options[f'YF|{stock_etf}|{currency}|{tax_treatment}'] = f'{stock_etf} {tax_treatment}'
-        return selected_securities, selected_securities_options
+    new_yf_security = f'YF|{stock_etf}|{currency}|{tax_treatment}'
+    if new_yf_security in selected_securities:
+        return selected_securities, selected_securities_options, yf_securities
+    selected_securities.append(new_yf_security)
+    selected_securities_options[new_yf_security] = f'{stock_etf} {tax_treatment}'
 
+    df = ticker.history(period='max').droplevel(0)
+    if tax_treatment == 'Net':
+        manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
+        manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
+        df['adjclose'] = manually_adjusted
+    yf_securities[new_yf_security] = df['adjclose'].to_json(orient='index')
 
-@app.callback(
-    Output('yf-securities-store', 'data'),
-    Input('yf-securities-store', 'data'),
-    Input('selected-securities', 'value'),
-)
-def update_yf_securities_store(yf_securities: dict[str, str], selected_securities: list[str]):
-    yf_securities = yf_securities or {}
-    for selected_security in selected_securities:
-        if selected_security.split('|')[0] != 'YF':
-            continue
-        if selected_security in yf_securities:
-            continue
-        ticker = selected_security.split('|')[1]
-        tax_treatment = selected_security.split('|')[3]
-        df = yq.Ticker(ticker).history(period='max').droplevel(0)
-        if tax_treatment == 'Net':
-            manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
-            manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
-            df['adjclose'] = manually_adjusted
-        yf_securities[selected_security] = df['adjclose'].to_json(orient='index')
-    return yf_securities
+    return selected_securities, selected_securities_options, yf_securities
 
 
 @app.callback(
