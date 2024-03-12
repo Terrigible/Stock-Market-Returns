@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import yahooquery as yq
 from dash import Dash, dcc, html
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 
 from funcs.loaders import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns, load_fred_usd_fx, load_mas_sgd_fx
@@ -104,7 +105,7 @@ def transform_df(series: pd.Series, interval: str, y_var: str, return_duration: 
     return series.dropna()
 
 
-app = Dash()
+app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = app.server
 
@@ -113,34 +114,30 @@ app.layout = html.Div(
         html.Div(
             [
                 html.Label('Security Type'),
-                dcc.Dropdown(
+                dbc.Select(
                     [
                         'Index',
                         'Stock/ETF'
                     ],
                     value='Index',
-                    clearable=False,
-                    searchable=False,
                     id='security-type-selection'
                 ),
                 html.Div(
                     [
                         html.Label('Index Provider'),
-                        dcc.Dropdown(
+                        dbc.Select(
                             {
                                 'MSCI': 'MSCI',
                                 'US Treasury': 'US Treasury',
                                 'Others': 'Others'
                             },
                             value='MSCI',
-                            clearable=False,
-                            searchable=False,
                             id='index-provider-selection'
                         ),
                         html.Div(
                             [
                                 html.Label('Index'),
-                                dcc.Dropdown(
+                                dbc.Select(
                                     {
                                         'WORLD': 'World',
                                         'ACWI': 'ACWI',
@@ -151,12 +148,10 @@ app.layout = html.Div(
                                         'JAPAN': 'Japan',
                                     },
                                     value='WORLD',
-                                    clearable=False,
-                                    searchable=False,
                                     id='msci-index-selection'
                                 ),
                                 html.Label('Size'),
-                                dcc.Dropdown(
+                                dbc.Select(
                                     {
                                         'STANDARD': 'Standard',
                                         'SMALL': 'Small',
@@ -166,31 +161,25 @@ app.layout = html.Div(
                                         'IMI': 'IMI',
                                     },
                                     value='STANDARD',
-                                    clearable=False,
-                                    searchable=False,
                                     id='msci-size-selection'
                                 ),
                                 html.Label('Style'),
-                                dcc.Dropdown(
+                                dbc.Select(
                                     {
                                         'BLEND': 'None',
                                         'GROWTH': 'Growth',
                                         'VALUE': 'Value'
                                     },
                                     value='BLEND',
-                                    clearable=False,
-                                    searchable=False,
                                     id='msci-style-selection'
                                 ),
                                 html.Label('Tax Treatment'),
-                                dcc.Dropdown(
+                                dbc.Select(
                                     [
                                         'Gross',
                                         'Net'
                                     ],
                                     value='Gross',
-                                    clearable=False,
-                                    searchable=False,
                                     id='msci-tax-treatment-selection'
                                 ),
                             ],
@@ -199,7 +188,7 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.Label('Duration'),
-                                dcc.Dropdown(
+                                dbc.Select(
                                     {
                                         '1MO': '1 Month',
                                         '3MO': '3 Months',
@@ -214,7 +203,6 @@ app.layout = html.Div(
                                         '30': '30 Years',
                                     },
                                     value='1MO',
-                                    searchable=False,
                                     id='us-treasury-duration-selection',
                                 ),
                             ],
@@ -223,27 +211,23 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.Label('Index'),
-                                dcc.Dropdown(
+                                dbc.Select(
                                     {
                                         'STI': 'STI',
                                         'SPX': 'S&P 500',
                                     },
                                     value='STI',
-                                    clearable=False,
-                                    searchable=False,
                                     id='others-index-selection'
                                 ),
                                 html.Div(
                                     [
                                         html.Label('Tax Treatment'),
-                                        dcc.Dropdown(
+                                        dbc.Select(
                                             [
                                                 'Gross',
                                                 'Net'
                                             ],
                                             value='Gross',
-                                            clearable=False,
-                                            searchable=False,
                                             id='others-tax-treatment-selection'
                                         ),
                                     ],
@@ -268,14 +252,12 @@ app.layout = html.Div(
                         dcc.Input(id='stock-etf-input', type='text'),
                         html.P('Warning: Loading Yahoo Finance data may take a while'),
                         html.Label('Tax Treatment'),
-                        dcc.Dropdown(
+                        dbc.Select(
                             [
                                 'Gross',
                                 'Net'
                             ],
                             value='Gross',
-                            clearable=False,
-                            searchable=False,
                             id='stock-etf-tax-treatment-selection'
                         ),
                         html.P(),
@@ -292,51 +274,44 @@ app.layout = html.Div(
                 dcc.Dropdown(
                     {},
                     multi=True,
+                    searchable=False,
                     id='selected-securities',
                 ),
                 html.Label('Interval'),
-                dcc.Dropdown(
+                dbc.Select(
                     [
                         'Monthly',
                         'Daily'
                     ],
                     value='Monthly',
-                    clearable=False,
-                    searchable=False,
                     id='interval-selection'
                 ),
                 html.Label('Currency'),
-                dcc.Dropdown(
+                dbc.Select(
                     [
                         'SGD',
                         'USD',
                     ],
                     value='USD',
-                    clearable=False,
-                    searchable=False,
                     id='currency-selection'
                 ),
                 html.Label('Adjust for Inflation'),
-                dcc.Dropdown(
+                dbc.Select(
                     [
                         'No',
                         'Yes',
                     ],
                     value='No',
-                    clearable=False,
-                    searchable=False,
                     id='inflation-adjustment-selection'
                 ),
                 html.Label('Value'),
-                dcc.Dropdown(
+                dbc.Select(
                     {
                         'price': 'Price',
                         'drawdown': 'Drawdown',
                         'return': 'Return'
                     },
                     value='price',
-                    clearable=False,
-                    searchable=False,
                     id='y-var-selection'
                 ),
                 dcc.Checklist(
@@ -349,7 +324,7 @@ app.layout = html.Div(
                 html.Div(
                     [
                         html.Label('Return Duration'),
-                        dcc.Dropdown(
+                        dbc.Select(
                             {
                                 '1m': '1 Month',
                                 '3m': '3 Months',
@@ -365,29 +340,23 @@ app.layout = html.Div(
                                 '30y': '30 Years',
                             },
                             value='1m',
-                            clearable=False,
-                            searchable=False,
                             id='return-duration-selection'
                         ),
                         html.Label('Return Type'),
-                        dcc.Dropdown(
+                        dbc.Select(
                             {
                                 'cumulative': 'Cumulative',
                                 'annualized': 'Annualized'
                             },
                             value='cumulative',
-                            clearable=False,
-                            searchable=False,
                             id='return-type-selection'
                         ),
                         html.Label('Baseline'),
-                        dcc.Dropdown(
+                        dbc.Select(
                             {
                                 'None': 'None',
                             },
                             value='None',
-                            clearable=False,
-                            searchable=False,
                             id='baseline-security-selection'
                         ),
                     ],
@@ -399,7 +368,7 @@ app.layout = html.Div(
             ],
             style={
                 'width': '15%',
-                'box-sizing': 'border-box',
+                'padding': '1rem',
                 'flex': '1',
                 'overflow': 'auto',
             }
@@ -409,7 +378,7 @@ app.layout = html.Div(
             style={
                 'width': '85%',
                 'height': '100%',
-                'box-sizing': 'border-box',
+                'padding': '1rem',
             }
         ),
 
@@ -688,4 +657,4 @@ def update_graph(
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
