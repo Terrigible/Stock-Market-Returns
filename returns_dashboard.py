@@ -1,18 +1,22 @@
+from functools import cache
 from glob import glob
 from io import StringIO
 
+import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import yahooquery as yq
 from dash import Dash, dcc, html
-import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 
-from funcs.loaders import load_usdsgd, read_msci_data, read_spx_data, read_sti_data, load_sg_cpi, load_us_cpi, load_us_treasury_returns, load_fred_usd_fx, load_mas_sgd_fx
+from funcs.loaders import (load_fred_usd_fx, load_mas_sgd_fx, load_sg_cpi,
+                           load_us_cpi, load_us_treasury_returns, load_usdsgd,
+                           read_msci_data, read_spx_data, read_sti_data)
 
 
-def load_df(security: str, interval: str, currency: str, adjust_for_inflation: str, yf_securities: dict[str, str]):
+@cache
+def load_df(security: str, interval: str, currency: str, adjust_for_inflation: str, yf_security: str | None):
     source = security.split('|')[0]
     if source == 'MSCI':
         series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('|'), interval)).iloc[:, 0]
@@ -31,7 +35,7 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
             series = series.resample('BM').last()
     elif source == 'YF':
         ticker_currency = security.split('|')[2]
-        series = pd.read_json(StringIO(yf_securities[security]), orient='index').iloc[:, 0]
+        series = pd.read_json(StringIO(yf_security), orient='index').iloc[:, 0]
         if ticker_currency != 'USD':
             if ticker_currency == 'SGD':
                 series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
@@ -630,7 +634,7 @@ def update_graph(
     df = pd.DataFrame(
         {
             selected_securities_options[selected_security]: transform_df(load_df(selected_security, interval, currency, adjust_for_inflation,
-                                                                         yf_securities), interval, y_var, return_duration, return_type)
+                                                                         yf_securities.get(selected_security)), interval, y_var, return_duration, return_type)
             for selected_security in selected_securities
         }
     )
