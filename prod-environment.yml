@@ -4,6 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - conda-forge::dash
+  - conda-forge::dash-bootstrap-components
   - gunicorn
   - lxml
   - numba
