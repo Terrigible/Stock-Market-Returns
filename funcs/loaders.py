@@ -1,9 +1,12 @@
+import asyncio
 import os
 from glob import glob
 from io import BytesIO
+from itertools import chain
 from typing import Literal
 from zipfile import ZipFile
 
+import httpx
 import numpy as np
 import pandas as pd
 import requests
@@ -416,24 +419,24 @@ def load_sg_cpi():
         return sg_cpi
 
 
-def download_us_cpi():
-    with requests.Session() as session:
-        dfs = [
-            pd.DataFrame(
-                session.post(
-                    'https://api.bls.gov/publicAPI/v2/timeseries/data/',
-                    json={'seriesid': ['CUSR0000SA0'],
-                          'startyear': f'{year}',
-                          'endyear': f'{year+9}',
-                          'catalog': 'true',
-                          'registrationkey': os.environ['BLS_API_KEY']
-                          },
-                    headers={'Content-Type': 'application/json'}
-                ).json()['Results']['series'][0]['data']
-            ).iloc[::-1]
-            for year in range(1947, 2023, 10)
-        ]
-    us_cpi = pd.concat(dfs).reset_index(drop=True)
+async def download_us_cpi_async():
+    async with httpx.AsyncClient() as client:
+        tasks = (
+            client.post(
+                'https://api.bls.gov/publicAPI/v2/timeseries/data/',
+                json={'seriesid': ['CUSR0000SA0'],
+                      'startyear': f'{year}',
+                      'endyear': f'{year+9}',
+                      'catalog': 'true',
+                      'registrationkey': os.environ['BLS_API_KEY']
+                      },
+                headers={'Content-Type': 'application/json'}
+            )
+            for year in range(1947, pd.to_datetime('today').year, 10)
+        )
+        responses = await asyncio.gather(*tasks)
+    responses = responses[::-1]
+    us_cpi = pd.DataFrame(chain.from_iterable([response.json()['Results']['series'][0]['data'] for response in responses])).iloc[::-1]
     us_cpi['month'] = us_cpi['period'].str[-2:]
     us_cpi['date'] = pd.to_datetime(us_cpi['year'] + '-' + us_cpi['month']) + BMonthEnd()
     us_cpi['value'] = us_cpi['value'].astype(float)
@@ -443,16 +446,20 @@ def download_us_cpi():
     return us_cpi
 
 
-def load_us_cpi():
+async def load_us_cpi_async():
     try:
         us_cpi = pd.read_csv('data/us_cpi.csv', parse_dates=['date'], index_col='date')
         if us_cpi.index[-1] + pd.DateOffset(days=45) < pd.to_datetime('today') and os.environ.get('BLS_API_KEY', None):
             raise FileNotFoundError
         return us_cpi
     except FileNotFoundError:
-        us_cpi = download_us_cpi()
+        us_cpi = await download_us_cpi_async()
         us_cpi.to_csv('data/us_cpi.csv')
         return us_cpi
+
+
+def load_us_cpi():
+    return asyncio.run(load_us_cpi_async())
 
 
 def add_return_columns(df: pd.DataFrame, periods: list[str], durations: list[int]):
@@ -477,6 +484,7 @@ __all__ = [
     'load_sgd_neer',
     'load_sgd_interest_rates',
     'load_sg_cpi',
+    'load_us_cpi_async',
     'load_us_cpi',
     'add_return_columns'
 ]
