@@ -113,287 +113,331 @@ app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = app.server
 
-app.layout = html.Div(
+app.layout = dbc.Tabs(
     [
-        html.Div(
-            [
-                html.Label('Security Type'),
-                dbc.Select(
-                    [
-                        'Index',
-                        'Stock/ETF'
-                    ],
-                    value='Index',
-                    id='security-type-selection'
-                ),
-                html.Div(
-                    [
-                        html.Label('Index Provider'),
-                        dbc.Select(
-                            {
-                                'MSCI': 'MSCI',
-                                'US Treasury': 'US Treasury',
-                                'Others': 'Others'
-                            },
-                            value='MSCI',
-                            id='index-provider-selection'
-                        ),
-                        html.Div(
-                            [
-                                html.Label('Index'),
-                                dbc.Select(
-                                    {
-                                        'WORLD': 'World',
-                                        'ACWI': 'ACWI',
-                                        'SINGAPORE': 'Singapore',
-                                        'EM (EMERGING MARKETS)': 'Emerging Markets',
-                                        'USA': 'USA',
-                                        'KOKUSAI INDEX (WORLD ex JP)': 'World ex Japan',
-                                        'JAPAN': 'Japan',
-                                    },
-                                    value='WORLD',
-                                    id='msci-index-selection'
-                                ),
-                                html.Label('Size'),
-                                dbc.Select(
-                                    {
-                                        'STANDARD': 'Standard',
-                                        'SMALL': 'Small',
-                                        'SMID': 'SMID',
-                                        'MID': 'Mid',
-                                        'LARGE': 'Large',
-                                        'IMI': 'IMI',
-                                    },
-                                    value='STANDARD',
-                                    id='msci-size-selection'
-                                ),
-                                html.Label('Style'),
-                                dbc.Select(
-                                    {
-                                        'BLEND': 'None',
-                                        'GROWTH': 'Growth',
-                                        'VALUE': 'Value'
-                                    },
-                                    value='BLEND',
-                                    id='msci-style-selection'
-                                ),
-                                html.Label('Tax Treatment'),
-                                dbc.Select(
-                                    [
-                                        'Gross',
-                                        'Net'
-                                    ],
-                                    value='Gross',
-                                    id='msci-tax-treatment-selection'
-                                ),
-                            ],
-                            id='msci-index-selection-container'
-                        ),
-                        html.Div(
-                            [
-                                html.Label('Duration'),
-                                dbc.Select(
-                                    {
-                                        '1MO': '1 Month',
-                                        '3MO': '3 Months',
-                                        '6MO': '6 Months',
-                                        '1': '1 Year',
-                                        '2': '2 Years',
-                                        '3': '3 Years',
-                                        '5': '5 Years',
-                                        '7': '7 Years',
-                                        '10': '10 Years',
-                                        '20': '20 Years',
-                                        '30': '30 Years',
-                                    },
-                                    value='1MO',
-                                    id='us-treasury-duration-selection',
-                                ),
-                            ],
-                            id='us-treasury-index-selection-container'
-                        ),
-                        html.Div(
-                            [
-                                html.Label('Index'),
-                                dbc.Select(
-                                    {
-                                        'STI': 'STI',
-                                        'SPX': 'S&P 500',
-                                    },
-                                    value='STI',
-                                    id='others-index-selection'
-                                ),
-                                html.Div(
-                                    [
-                                        html.Label('Tax Treatment'),
-                                        dbc.Select(
-                                            [
-                                                'Gross',
-                                                'Net'
-                                            ],
-                                            value='Gross',
-                                            id='others-tax-treatment-selection'
-                                        ),
-                                    ],
-                                    id='others-tax-treatment-selection-container'
-                                ),
-                            ],
-                            id='others-index-selection-container'
-                        ),
-                        html.P(),
-                        html.Button(
-                            'Add Index',
-                            id='add-index-button'
-                        ),
-                    ],
-                    id='index-selection-container',
-                ),
-                html.Div(
-                    [
-                        html.P(),
-                        html.Label('Stock/ETF (Yahoo Finance Ticker)'),
-                        html.Br(),
-                        dcc.Input(id='stock-etf-input', type='text'),
-                        html.P('Warning: Loading Yahoo Finance data may take a while'),
-                        html.Label('Tax Treatment'),
-                        dbc.Select(
-                            [
-                                'Gross',
-                                'Net'
-                            ],
-                            value='Gross',
-                            id='stock-etf-tax-treatment-selection'
-                        ),
-                        html.P(),
-                        html.Button(
-                            'Add Stock/ETF',
-                            id='add-stock-etf-button'
-                        ),
-                    ],
-                    id='stock-etf-selection-container',
-                ),
-                dcc.Store(id='yf-securities-store', storage_type='memory', data={}),
-                html.P(),
-                html.Label('Selected Securities'),
-                dcc.Dropdown(
-                    {},
-                    multi=True,
-                    searchable=False,
-                    id='selected-securities',
-                ),
-                html.Label('Interval'),
-                dbc.Select(
-                    [
-                        'Monthly',
-                        'Daily'
-                    ],
-                    value='Monthly',
-                    id='interval-selection'
-                ),
-                html.Label('Currency'),
-                dbc.Select(
-                    [
-                        'SGD',
-                        'USD',
-                    ],
-                    value='USD',
-                    id='currency-selection'
-                ),
-                html.Label('Adjust for Inflation'),
-                dbc.Select(
-                    [
-                        'No',
-                        'Yes',
-                    ],
-                    value='No',
-                    id='inflation-adjustment-selection'
-                ),
-                html.Label('Value'),
-                dbc.Select(
-                    {
-                        'price': 'Price',
-                        'drawdown': 'Drawdown',
-                        'return': 'Return'
-                    },
-                    value='price',
-                    id='y-var-selection'
-                ),
-                dcc.Checklist(
-                    {
-                        'log': 'Logarithmic Scale'
-                    },
-                    value=[],
-                    id='log-scale-selection'
-                ),
-                html.Div(
-                    [
-                        html.Label('Return Duration'),
-                        dbc.Select(
-                            {
-                                '1m': '1 Month',
-                                '3m': '3 Months',
-                                '6m': '6 Months',
-                                '1y': '1 Year',
-                                '2y': '2 Years',
-                                '3y': '3 Years',
-                                '5y': '5 Years',
-                                '10y': '10 Years',
-                                '15y': '15 Years',
-                                '20y': '20 Years',
-                                '25y': '25 Years',
-                                '30y': '30 Years',
-                            },
-                            value='1m',
-                            id='return-duration-selection'
-                        ),
-                        html.Label('Return Type'),
-                        dbc.Select(
-                            {
-                                'cumulative': 'Cumulative',
-                                'annualized': 'Annualized'
-                            },
-                            value='cumulative',
-                            id='return-type-selection'
-                        ),
-                        html.Label('Baseline'),
-                        dbc.Select(
-                            {
-                                'None': 'None',
-                            },
-                            value='None',
-                            id='baseline-security-selection'
-                        ),
-                    ],
-                    id='return-selection',
-                    style={
-                        'display': 'block'
-                    }
-                )
-            ],
-            style={
-                'width': '15%',
-                'padding': '1rem',
-                'flex': '1',
-                'overflow': 'auto',
-            }
+        dbc.Tab(
+            label='Returns Dashboard',
+            children=html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label('Security Type'),
+                            dbc.Select(
+                                [
+                                    'Index',
+                                    'Stock/ETF'
+                                ],
+                                value='Index',
+                                id='security-type-selection'
+                            ),
+                            html.Div(
+                                [
+                                    html.Label('Index Provider'),
+                                    dbc.Select(
+                                        {
+                                            'MSCI': 'MSCI',
+                                            'US Treasury': 'US Treasury',
+                                            'Others': 'Others'
+                                        },
+                                        value='MSCI',
+                                        id='index-provider-selection'
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label('Index'),
+                                            dbc.Select(
+                                                {
+                                                    'WORLD': 'World',
+                                                    'ACWI': 'ACWI',
+                                                    'SINGAPORE': 'Singapore',
+                                                    'EM (EMERGING MARKETS)': 'Emerging Markets',
+                                                    'USA': 'USA',
+                                                    'KOKUSAI INDEX (WORLD ex JP)': 'World ex Japan',
+                                                    'JAPAN': 'Japan',
+                                                },
+                                                value='WORLD',
+                                                id='msci-index-selection'
+                                            ),
+                                            html.Label('Size'),
+                                            dbc.Select(
+                                                {
+                                                    'STANDARD': 'Standard',
+                                                    'SMALL': 'Small',
+                                                    'SMID': 'SMID',
+                                                    'MID': 'Mid',
+                                                    'LARGE': 'Large',
+                                                    'IMI': 'IMI',
+                                                },
+                                                value='STANDARD',
+                                                id='msci-size-selection'
+                                            ),
+                                            html.Label('Style'),
+                                            dbc.Select(
+                                                {
+                                                    'BLEND': 'None',
+                                                    'GROWTH': 'Growth',
+                                                    'VALUE': 'Value'
+                                                },
+                                                value='BLEND',
+                                                id='msci-style-selection'
+                                            ),
+                                            html.Label('Tax Treatment'),
+                                            dbc.Select(
+                                                [
+                                                    'Gross',
+                                                    'Net'
+                                                ],
+                                                value='Gross',
+                                                id='msci-tax-treatment-selection'
+                                            ),
+                                        ],
+                                        id='msci-index-selection-container'
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label('Duration'),
+                                            dbc.Select(
+                                                {
+                                                    '1MO': '1 Month',
+                                                    '3MO': '3 Months',
+                                                    '6MO': '6 Months',
+                                                    '1': '1 Year',
+                                                    '2': '2 Years',
+                                                    '3': '3 Years',
+                                                    '5': '5 Years',
+                                                    '7': '7 Years',
+                                                    '10': '10 Years',
+                                                    '20': '20 Years',
+                                                    '30': '30 Years',
+                                                },
+                                                value='1MO',
+                                                id='us-treasury-duration-selection',
+                                            ),
+                                        ],
+                                        id='us-treasury-index-selection-container'
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label('Index'),
+                                            dbc.Select(
+                                                {
+                                                    'STI': 'STI',
+                                                    'SPX': 'S&P 500',
+                                                },
+                                                value='STI',
+                                                id='others-index-selection'
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Label('Tax Treatment'),
+                                                    dbc.Select(
+                                                        [
+                                                            'Gross',
+                                                            'Net'
+                                                        ],
+                                                        value='Gross',
+                                                        id='others-tax-treatment-selection'
+                                                    ),
+                                                ],
+                                                id='others-tax-treatment-selection-container'
+                                            ),
+                                        ],
+                                        id='others-index-selection-container'
+                                    ),
+                                    html.P(),
+                                    html.Button(
+                                        'Add Index',
+                                        id='add-index-button'
+                                    ),
+                                ],
+                                id='index-selection-container',
+                            ),
+                            html.Div(
+                                [
+                                    html.P(),
+                                    html.Label('Stock/ETF (Yahoo Finance Ticker)'),
+                                    html.Br(),
+                                    dcc.Input(id='stock-etf-input', type='text'),
+                                    html.P('Warning: Loading Yahoo Finance data may take a while'),
+                                    html.Label('Tax Treatment'),
+                                    dbc.Select(
+                                        [
+                                            'Gross',
+                                            'Net'
+                                        ],
+                                        value='Gross',
+                                        id='stock-etf-tax-treatment-selection'
+                                    ),
+                                    html.P(),
+                                    html.Button(
+                                        'Add Stock/ETF',
+                                        id='add-stock-etf-button'
+                                    ),
+                                ],
+                                id='stock-etf-selection-container',
+                            ),
+                            dcc.Store(id='yf-securities-store', storage_type='memory', data={}),
+                            html.P(),
+                            html.Label('Selected Securities'),
+                            dcc.Dropdown(
+                                {},
+                                multi=True,
+                                searchable=False,
+                                id='selected-securities',
+                            ),
+                            html.Label('Interval'),
+                            dbc.Select(
+                                [
+                                    'Monthly',
+                                    'Daily'
+                                ],
+                                value='Monthly',
+                                id='interval-selection'
+                            ),
+                            html.Label('Currency'),
+                            dbc.Select(
+                                [
+                                    'SGD',
+                                    'USD',
+                                ],
+                                value='USD',
+                                id='currency-selection'
+                            ),
+                            html.Label('Adjust for Inflation'),
+                            dbc.Select(
+                                [
+                                    'No',
+                                    'Yes',
+                                ],
+                                value='No',
+                                id='inflation-adjustment-selection'
+                            ),
+                            html.Label('Value'),
+                            dbc.Select(
+                                {
+                                    'price': 'Price',
+                                    'drawdown': 'Drawdown',
+                                    'return': 'Return'
+                                },
+                                value='price',
+                                id='y-var-selection'
+                            ),
+                            dcc.Checklist(
+                                {
+                                    'log': 'Logarithmic Scale'
+                                },
+                                value=[],
+                                id='log-scale-selection'
+                            ),
+                            html.Div(
+                                [
+                                    html.Label('Return Duration'),
+                                    dbc.Select(
+                                        {
+                                            '1m': '1 Month',
+                                            '3m': '3 Months',
+                                            '6m': '6 Months',
+                                            '1y': '1 Year',
+                                            '2y': '2 Years',
+                                            '3y': '3 Years',
+                                            '5y': '5 Years',
+                                            '10y': '10 Years',
+                                            '15y': '15 Years',
+                                            '20y': '20 Years',
+                                            '25y': '25 Years',
+                                            '30y': '30 Years',
+                                        },
+                                        value='1m',
+                                        id='return-duration-selection'
+                                    ),
+                                    html.Label('Return Type'),
+                                    dbc.Select(
+                                        {
+                                            'cumulative': 'Cumulative',
+                                            'annualized': 'Annualized'
+                                        },
+                                        value='cumulative',
+                                        id='return-type-selection'
+                                    ),
+                                    html.Label('Baseline'),
+                                    dbc.Select(
+                                        {
+                                            'None': 'None',
+                                        },
+                                        value='None',
+                                        id='baseline-security-selection'
+                                    ),
+                                ],
+                                id='return-selection',
+                                style={
+                                    'display': 'block'
+                                }
+                            )
+                        ],
+                        style={
+                            'width': '15%',
+                            'padding': '1rem',
+                            'flex': '1',
+                            'overflow': 'auto',
+                        }
+                    ),
+                    dcc.Graph(
+                        id='graph',
+                        style={
+                            'width': '85%',
+                            'height': '100%',
+                            'padding': '1rem',
+                        }
+                    ),
+                ],
+                style={
+                    'display': 'flex',
+                    'height': '95vh',
+                    'box-sizing': 'border-box',
+                    'justify-content': 'space-between',
+                    'padding': '1rem 1rem'
+                }
+            )
         ),
-        dcc.Graph(
-            id='graph',
-            style={
-                'width': '85%',
-                'height': '100%',
-                'padding': '1rem',
-            }
-        ),
-
-    ],
-    style={
-        'display': 'flex',
-        'height': '95vh',
-        'box-sizing': 'border-box',
-        'justify-content': 'space-between',
-        'padding': '1rem 1rem'
-    }
+        dcc.Tab(
+            label='Portfolio Simulator',
+            children=html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label('Securities'),
+                            dcc.Dropdown(
+                                {},
+                                multi=True,
+                                id='portfolio-securities',
+                            ),
+                        ],
+                        style={
+                            'width': '15%',
+                            'padding': '1rem',
+                            'flex': '1',
+                            'overflow': 'auto',
+                        }
+                    ),
+                    dcc.Graph(
+                        id='portfolio-graph',
+                        style={
+                            'width': '85%',
+                            'height': '100%',
+                            'padding': '1rem',
+                        }
+                    ),
+                ],
+                style={
+                    'display': 'flex',
+                    'height': '95vh',
+                    'box-sizing': 'border-box',
+                    'justify-content': 'space-between',
+                    'padding': '1rem 1rem'
+                }
+            )
+        )
+    ]
 )
 
 
