@@ -704,5 +704,13 @@ def update_graph(
     return dict(data=data, layout=layout)
 
 
+@app.callback(
+    Output('portfolio-securities', 'options'),
+    Input('selected-securities', 'options'),
+)
+def update_portfolio_securities(selected_securities_options: dict[str, str]):
+    return selected_securities_options
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
