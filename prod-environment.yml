@@ -6,6 +6,7 @@ dependencies:
   - conda-forge::dash
   - conda-forge::dash-bootstrap-components
   - gunicorn
+  - httpx
   - lxml
   - numba
   - openpyxl
