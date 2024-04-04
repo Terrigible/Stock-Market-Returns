@@ -178,35 +178,46 @@ def load_mas_sgd_fx():
     return sgd_fx
 
 
-def download_fred_usd_fx():
-    fred = Fred()
+async def download_fred_usd_fx_async():
+    series = {
+        '1_MXN': 'DEXMXUS',
+        '1_INR': 'DEXINUS',
+        '1_BRL': 'DEXBZUS',
+        'AUD':   'DEXUSAL',
+        '1_THB': 'DEXTHUS',
+        '1_CHF': 'DEXSZUS',
+        '1_MYR': 'DEXMAUS',
+        '1_LKR': 'DEXSLUS',
+        '1_TWD': 'DEXTAUS',
+        '1_ZAR': 'DEXSFUS',
+        '1_HKD': 'DEXHKUS',
+        '1_SGD': 'DEXSIUS',
+        'EUR':   'DEXUSEU',
+        '1_NOK': 'DEXNOUS',
+        '1_NZD': 'DEXUSNZ',
+        '1_SEK': 'DEXSDUS',
+        '1_DKK': 'DEXDNUS',
+        '1_JPY': 'DEXJPUS',
+        '1_CNY': 'DEXCHUS',
+        '1_KRW': 'DEXKOUS',
+        'GBP':   'DEXUSUK',
+        '1_CAD': 'DEXCAUS',
+    }
+    async with httpx.AsyncClient() as client:
+        tasks = (
+            client.get(
+                f'https://api.stlouisfed.org/fred/series/observations?series_id={series}&api_key={os.environ["FRED_API_KEY"]}&file_type=json'
+            )
+            for series in series.values()
+        )
+        responses = await asyncio.gather(*tasks)
     usd_fx = pd.DataFrame(
         {
-            '1_MXN': fred.get_series('DEXMXUS'),
-            '1_INR': fred.get_series('DEXINUS'),
-            '1_BRL': fred.get_series('DEXBZUS'),
-            'AUD': fred.get_series('DEXUSAL'),
-            '1_THB': fred.get_series('DEXTHUS'),
-            '1_CHF': fred.get_series('DEXSZUS'),
-            '1_MYR': fred.get_series('DEXMAUS'),
-            '1_LKR': fred.get_series('DEXSLUS'),
-            '1_TWD': fred.get_series('DEXTAUS'),
-            '1_ZAR': fred.get_series('DEXSFUS'),
-            '1_HKD': fred.get_series('DEXHKUS'),
-            '1_SGD': fred.get_series('DEXSIUS'),
-            'EUR': fred.get_series('DEXUSEU'),
-            '1_NOK': fred.get_series('DEXNOUS'),
-            '1_NZD': fred.get_series('DEXUSNZ'),
-            '1_SEK': fred.get_series('DEXSDUS'),
-            '1_DKK': fred.get_series('DEXDNUS'),
-            '1_JPY': fred.get_series('DEXJPUS'),
-            '1_CNY': fred.get_series('DEXCHUS'),
-            '1_KRW': fred.get_series('DEXKOUS'),
-            'GBP': fred.get_series('DEXUSUK'),
-            '1_CAD': fred.get_series('DEXCAUS'),
+            currency: pd.DataFrame(response.json()['observations']).set_index('date').loc[:, 'value'].rename(currency)
+            for currency, response in zip(series.keys(), responses)
         }
     )
-    usd_fx = usd_fx.rename_axis('date')
+    usd_fx = usd_fx.replace('.', np.nan).astype(float)
     usd_fx.update(usd_fx.filter(like='1_').rdiv(1))
     usd_fx.columns = (
         usd_fx.columns
@@ -215,15 +226,19 @@ def download_fred_usd_fx():
     return usd_fx
 
 
-def load_fred_usd_fx():
+async def load_fred_usd_fx_async():
     try:
         usd_fx = pd.read_csv('data/usd_fx.csv', parse_dates=['date'], index_col='date')
         if usd_fx.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None):
             raise FileNotFoundError
     except FileNotFoundError:
-        usd_fx = download_fred_usd_fx()
+        usd_fx = await download_fred_usd_fx_async()
         usd_fx.to_csv('data/usd_fx.csv')
     return usd_fx
+
+
+def load_fred_usd_fx():
+    return asyncio.run(load_fred_usd_fx_async())
 
 
 def load_fred_usdsgd():
@@ -479,6 +494,7 @@ __all__ = [
     'read_shiller_sp500_data',
     'load_usdsgd',
     'load_mas_sgd_fx',
+    'load_fred_usd_fx_async',
     'load_fred_usd_fx',
     'load_mas_swap_points',
     'load_sgd_neer',
