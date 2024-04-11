@@ -10,8 +10,13 @@ import yahooquery as yq
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
 
-from funcs.loaders import (load_fred_usd_fx, load_mas_sgd_fx, load_sg_cpi,
-                           load_us_cpi, load_us_treasury_returns, load_usdsgd,
+from funcs.calcs_numba import (
+    calculate_dca_return_with_fees_and_interest_vector,
+    calculate_lumpsum_return_with_fees_and_interest_vector)
+from funcs.loaders import (load_fed_funds_rate, load_fred_usd_fx,
+                           load_mas_sgd_fx, load_sg_cpi,
+                           load_sgd_interest_rates, load_us_cpi,
+                           load_us_treasury_returns, load_usdsgd,
                            read_msci_data, read_spx_data, read_sti_data)
 
 
@@ -405,11 +410,84 @@ app.layout = dbc.Tabs(
                 [
                     html.Div(
                         [
-                            html.Label('Securities'),
+                            html.Label('Security'),
+                            dcc.Dropdown(
+                                {},
+                                id='portfolio-security',
+                            ),
+                            html.Label('Lump Sum / Dollar Cost Averaging'),
+                            dbc.Select(
+                                {
+                                    'LS': 'Lump Sum',
+                                    'DCA': 'Dollar Cost Averaging'
+                                },
+                                value='LS',
+                                id='ls-dca-selection'
+                            ),
+                            html.Div(
+                                [
+                                    html.Label('Total Investment Amount'),
+                                    dcc.Input(
+                                        id='investment-amount-input',
+                                        type='number',
+                                    ),
+                                    html.Label('Investment Horizon'),
+                                    dcc.Input(
+                                        id='investment-horizon-input',
+                                        type='number',
+                                    ),
+                                ],
+                                id='ls-input-container',
+                            ),
+                            html.Label('Currency'),
+                            dbc.Select(
+                                [
+                                    'SGD',
+                                    'USD',
+                                ],
+                                value='SGD',
+                                id='portfolio-currency-selection'
+                            ),
+                            html.Label('Monthly Investment Amount'),
+                            dcc.Input(
+                                id='monthly-investment-input',
+                                type='number',
+                            ),
+                            html.Label('DCA Length'),
+                            dcc.Input(
+                                id='dca-length-input',
+                                type='number',
+                            ),
+                            html.Label('DCA Interval'),
+                            dcc.Input(
+                                id='dca-interval-input',
+                                type='number',
+                            ),
+                            html.Label('Variable Transaction Fees'),
+                            dcc.Input(
+                                id='variable-transaction-fees-input',
+                                type='number',
+                            ),
+                            html.Label('Fixed Transaction Fees'),
+                            dcc.Input(
+                                id='fixed-transaction-fees-input',
+                                type='number',
+                            ),
+                            html.Label('Annualised Holding Fees'),
+                            dcc.Input(
+                                id='annualised-holding-fees-input',
+                                type='number',
+                            ),
+                            html.Button(
+                                'Add Portfolio',
+                                id='add-portfolio-button'
+                            ),
+                            html.P(),
+                            html.Label('Portfolios'),
                             dcc.Dropdown(
                                 {},
                                 multi=True,
-                                id='portfolio-securities',
+                                id='portfolios',
                             ),
                         ],
                         style={
@@ -705,12 +783,171 @@ def update_graph(
 
 
 @app.callback(
-    Output('portfolio-securities', 'options'),
+    Output('portfolio-security', 'options'),
     Input('selected-securities', 'options'),
 )
 def update_portfolio_securities(selected_securities_options: dict[str, str]):
     return selected_securities_options
 
 
+@app.callback(
+    Output('ls-input-container', 'style'),
+    Output('monthly-investment-input', 'style'),
+    Input('ls-dca-selection', 'value'),
+)
+def update_ls_input_visibility(ls_dca: str):
+    if ls_dca == 'LS':
+        return {'display': 'block'}, {'display': 'none'}
+    else:
+        return {'display': 'none'}, {'display': 'block'}
+
+
+@app.callback(
+    Output('portfolios', 'value'),
+    Output('portfolios', 'options'),
+    Input('add-portfolio-button', 'n_clicks'),
+    State('portfolios', 'value'),
+    State('portfolios', 'options'),
+    State('portfolio-security', 'value'),
+    State('portfolio-security', 'options'),
+    State('portfolio-currency-selection', 'value'),
+    State('ls-dca-selection', 'value'),
+    State('investment-amount-input', 'value'),
+    State('investment-horizon-input', 'value'),
+    State('monthly-investment-input', 'value'),
+    State('dca-length-input', 'value'),
+    State('dca-interval-input', 'value'),
+    State('variable-transaction-fees-input', 'value'),
+    State('fixed-transaction-fees-input', 'value'),
+    State('annualised-holding-fees-input', 'value'),
+    prevent_initial_call=True,
+)
+def update_portfolios(
+    _,
+    portfolios: list[str],
+    portfolios_options: dict[str, str],
+    portfolio_security: str,
+    portfolio_security_options: dict[str, str],
+    currency: str,
+    ls_dca: str,
+    investment_amount: float,
+    investment_horizon: int,
+    monthly_investment: float,
+    dca_length: int,
+    dca_interval: int,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
+):
+    if portfolio_security is None:
+        return portfolios, portfolios_options
+    if ls_dca == 'LS' and (investment_amount is None or investment_horizon is None):
+        return portfolios, portfolios_options
+    if ls_dca == 'DCA' and (monthly_investment is None or dca_length is None):
+        return portfolios, portfolios_options
+    if dca_length > investment_horizon:
+        return portfolios, portfolios_options
+    if variable_transaction_fees < 0 or fixed_transaction_fees < 0 or annualised_holding_fees < 0:
+        return portfolios, portfolios_options
+    if ls_dca == 'LS':
+        portfolio = (
+            f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
+            f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {dca_length} months every {dca_interval} months"} {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees} p.a. Holding Fees'
+        )
+
+    else:
+        portfolio = (
+            f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
+            f'{portfolio_security_options[portfolio_security]} {currency}, {"DCA"}, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees} p.a. Holding Fees'
+
+        )
+
+    if portfolios is None:
+        return [portfolio[0]], {portfolio[0]: portfolio[1]}
+    if portfolio[0] in portfolios:
+        return portfolios, portfolios_options
+    portfolios.append(portfolio[0])
+    portfolios_options.update({portfolio[0]: portfolio[1]})
+    return portfolios, portfolios_options
+
+
+@app.callback(
+    Output('portfolio-graph', 'figure'),
+    Input('portfolios', 'value'),
+    State('portfolios', 'options'),
+    State('yf-securities-store', 'data'),
+    prevent_initial_call=True,
+)
+def update_portfolio_graph(
+    portfolios: list[str],
+    portfolio_options: dict[str, str],
+    yf_securities: dict[str, str],
+
+):
+    series = []
+    for portfolio in portfolios:
+        portfolio_security, currency, ls_dca, investment_amount, investment_horizon, monthly_investment, dca_length, dca_interval, variable_transaction_fees, fixed_transaction_fees, annualised_holding_fees = portfolio.split(
+            ';')
+        investment_amount, investment_horizon, monthly_investment, dca_length, dca_interval, variable_transaction_fees, fixed_transaction_fees, annualised_holding_fees = (
+            *[float(x) if x != 'None' else 0 for x in [investment_amount, investment_horizon, monthly_investment,
+                                                       dca_length, dca_interval, variable_transaction_fees, fixed_transaction_fees, annualised_holding_fees]],
+        )
+        portfolio_series = pd.Series(
+            load_df(portfolio_security, 'Monthly', currency, 'No', yf_securities.get(portfolio_security)),
+            name=portfolio_security
+        )
+        interest_rates = load_fed_funds_rate()[1].reindex(portfolio_series.index).fillna(0).to_numpy() if currency == 'USD' else load_sgd_interest_rates()[
+            1]['sgd_ir_1m'].reindex(portfolio_series.index).fillna(0).to_numpy()
+
+        if ls_dca == 'LS':
+            ending_values = pd.Series(
+                calculate_lumpsum_return_with_fees_and_interest_vector(
+                    portfolio_series.pct_change().to_numpy(),
+                    dca_length,
+                    dca_interval,
+                    investment_horizon,
+                    investment_amount,
+                    variable_transaction_fees,
+                    fixed_transaction_fees,
+                    annualised_holding_fees,
+                    interest_rates
+                ),
+                index=portfolio_series.index,
+                name=portfolio
+            ).add(1).mul(investment_amount)
+        else:
+            ending_values = pd.Series(
+                calculate_dca_return_with_fees_and_interest_vector(
+                    portfolio_series.pct_change().to_numpy(),
+                    dca_length,
+                    dca_interval,
+                    monthly_investment,
+                    variable_transaction_fees,
+                    fixed_transaction_fees,
+                    annualised_holding_fees,
+                    interest_rates
+                ),
+                index=portfolio_series.index,
+                name=portfolio
+
+            ).add(1).mul(monthly_investment * dca_length)
+        series.append(ending_values)
+    ending_values = pd.concat(series, axis=1, names=portfolios)
+    return {
+        'data': [
+            go.Scatter(
+                x=ending_values.index,
+                y=ending_values[security],
+                mode='lines',
+                name=portfolio_options[security]
+            )
+            for security in ending_values.columns
+        ],
+        'layout': {
+            'title': 'Portfolio Simulation',
+        }
+    }
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(debug=True)
