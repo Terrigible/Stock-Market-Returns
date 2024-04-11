@@ -415,11 +415,20 @@ app.layout = dbc.Tabs(
                                 {},
                                 id='portfolio-security',
                             ),
-                            html.Label('Lump Sum / Dollar Cost Averaging'),
+                            html.Label('Currency'),
+                            dbc.Select(
+                                [
+                                    'SGD',
+                                    'USD',
+                                ],
+                                value='SGD',
+                                id='portfolio-currency-selection'
+                            ),
+                            html.Label('Lump Sum / DCA'),
                             dbc.Select(
                                 {
                                     'LS': 'Lump Sum',
-                                    'DCA': 'Dollar Cost Averaging'
+                                    'DCA': 'DCA'
                                 },
                                 value='LS',
                                 id='ls-dca-selection'
@@ -439,19 +448,15 @@ app.layout = dbc.Tabs(
                                 ],
                                 id='ls-input-container',
                             ),
-                            html.Label('Currency'),
-                            dbc.Select(
+                            html.Div(
                                 [
-                                    'SGD',
-                                    'USD',
+                                    html.Label('Monthly Investment Amount'),
+                                    dcc.Input(
+                                        id='monthly-investment-input',
+                                        type='number',
+                                    ),
                                 ],
-                                value='SGD',
-                                id='portfolio-currency-selection'
-                            ),
-                            html.Label('Monthly Investment Amount'),
-                            dcc.Input(
-                                id='monthly-investment-input',
-                                type='number',
+                                id='dca-input-container',
                             ),
                             html.Label('DCA Length'),
                             dcc.Input(
@@ -463,17 +468,17 @@ app.layout = dbc.Tabs(
                                 id='dca-interval-input',
                                 type='number',
                             ),
-                            html.Label('Variable Transaction Fees'),
+                            html.Label('Variable Transaction Fees (%)'),
                             dcc.Input(
                                 id='variable-transaction-fees-input',
                                 type='number',
                             ),
-                            html.Label('Fixed Transaction Fees'),
+                            html.Label('Fixed Transaction Fees ($)'),
                             dcc.Input(
                                 id='fixed-transaction-fees-input',
                                 type='number',
                             ),
-                            html.Label('Annualised Holding Fees'),
+                            html.Label('Annualised Holding Fees (% p.a.)'),
                             dcc.Input(
                                 id='annualised-holding-fees-input',
                                 type='number',
@@ -498,6 +503,12 @@ app.layout = dbc.Tabs(
                         }
                     ),
                     dcc.Graph(
+                        figure={
+                            'data': [],
+                            'layout': {
+                                'title': 'Portfolio Simulation',
+                            }
+                        },
                         id='portfolio-graph',
                         style={
                             'width': '85%',
@@ -792,7 +803,7 @@ def update_portfolio_securities(selected_securities_options: dict[str, str]):
 
 @app.callback(
     Output('ls-input-container', 'style'),
-    Output('monthly-investment-input', 'style'),
+    Output('dca-input-container', 'style'),
     Input('ls-dca-selection', 'value'),
 )
 def update_ls_input_visibility(ls_dca: str):
@@ -852,13 +863,13 @@ def update_portfolios(
     if ls_dca == 'LS':
         portfolio = (
             f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
-            f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {dca_length} months every {dca_interval} months"} {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees} p.a. Holding Fees'
+            f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {dca_length} months every {dca_interval} months"} {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees'
         )
 
     else:
         portfolio = (
             f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
-            f'{portfolio_security_options[portfolio_security]} {currency}, {"DCA"}, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees} p.a. Holding Fees'
+            f'{portfolio_security_options[portfolio_security]} {currency}, {"DCA"}, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees'
 
         )
 
@@ -885,6 +896,13 @@ def update_portfolio_graph(
 
 ):
     series = []
+    if not portfolios:
+        return {
+            'data': [],
+            'layout': {
+                'title': 'Portfolio Simulation',
+            }
+        }
     for portfolio in portfolios:
         portfolio_security, currency, ls_dca, investment_amount, investment_horizon, monthly_investment, dca_length, dca_interval, variable_transaction_fees, fixed_transaction_fees, annualised_holding_fees = portfolio.split(
             ';')
@@ -892,6 +910,8 @@ def update_portfolio_graph(
             *[float(x) if x != 'None' else 0 for x in [investment_amount, investment_horizon, monthly_investment,
                                                        dca_length, dca_interval, variable_transaction_fees, fixed_transaction_fees, annualised_holding_fees]],
         )
+        variable_transaction_fees /= 100
+        annualised_holding_fees /= 100
         portfolio_series = pd.Series(
             load_df(portfolio_security, 'Monthly', currency, 'No', yf_securities.get(portfolio_security)),
             name=portfolio_security
