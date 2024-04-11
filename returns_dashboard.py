@@ -660,27 +660,34 @@ def add_stock_etf(
     selected_securities_options: dict[str, str],
     stock_etf: str,
     tax_treatment: str,
-    yf_securities: dict[str, str],
+    yf_securities_store: dict[str, str],
 ):
+    for yf_security in yf_securities_store:
+        yss_ticker, _, yss_tax_treatment = yf_security.split('|')[1:]
+        if stock_etf == yss_ticker and tax_treatment == yss_tax_treatment:
+            if selected_securities is None:
+                return [yf_security], {yf_security: f'{stock_etf} {tax_treatment}'}, yf_securities_store
+            if yf_security in selected_securities:
+                return selected_securities, selected_securities_options, yf_securities_store
     ticker = yq.Ticker(stock_etf)
     ticker.validation
     if ticker.invalid_symbols:
-        return selected_securities, selected_securities_options, yf_securities
+        return selected_securities, selected_securities_options, yf_securities_store
     currency = ticker.summary_detail[stock_etf]['currency']
     new_yf_security = f'YF|{stock_etf}|{currency}|{tax_treatment}'
     if new_yf_security in selected_securities:
-        return selected_securities, selected_securities_options, yf_securities
+        return selected_securities, selected_securities_options, yf_securities_store
     selected_securities.append(new_yf_security)
     selected_securities_options[new_yf_security] = f'{stock_etf} {tax_treatment}'
 
     df = ticker.history(period='max').droplevel(0)
-    if tax_treatment == 'Net':
+    if tax_treatment == 'Net' and 'dividends' in df.columns:
         manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
         manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
         df['adjclose'] = manually_adjusted
-    yf_securities[new_yf_security] = df['adjclose'].to_json(orient='index')
+    yf_securities_store[new_yf_security] = df['adjclose'].to_json(orient='index')
 
-    return selected_securities, selected_securities_options, yf_securities
+    return selected_securities, selected_securities_options, yf_securities_store
 
 
 @app.callback(
