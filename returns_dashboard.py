@@ -440,11 +440,6 @@ app.layout = dbc.Tabs(
                                         id='investment-amount-input',
                                         type='number',
                                     ),
-                                    html.Label('Investment Horizon'),
-                                    dcc.Input(
-                                        id='investment-horizon-input',
-                                        type='number',
-                                    ),
                                 ],
                                 id='ls-input-container',
                             ),
@@ -457,6 +452,11 @@ app.layout = dbc.Tabs(
                                     ),
                                 ],
                                 id='dca-input-container',
+                            ),
+                            html.Label('Investment Horizon'),
+                            dcc.Input(
+                                id='investment-horizon-input',
+                                type='number',
                             ),
                             html.Label('DCA Length'),
                             dcc.Input(
@@ -948,6 +948,7 @@ def update_portfolio_graph(
                     portfolio_series.pct_change().to_numpy(),
                     dca_length,
                     dca_interval,
+                    investment_horizon,
                     monthly_investment,
                     variable_transaction_fees,
                     fixed_transaction_fees,

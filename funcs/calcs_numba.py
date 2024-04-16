@@ -78,8 +78,8 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(monthly_returns: np.n
     return res
 
 
-@njit([float64[:](float64[:], int64, int64, float64, float64, float64, float64, float64[:])])
-def calculate_dca_return_with_fees_and_interest_vector(monthly_returns: np.ndarray, dca_length: int, dca_interval: int, monthly_amount: float, variable_transaction_fees: float, fixed_transaction_fees: float, annualised_holding_fees: float, interest_rates: np.ndarray):
+@njit([float64[:](float64[:], int64, int64, int64, float64, float64, float64, float64, float64[:])])
+def calculate_dca_return_with_fees_and_interest_vector(monthly_returns: np.ndarray, dca_length: int, dca_interval: int, investment_horizon: int, monthly_amount: float, variable_transaction_fees: float, fixed_transaction_fees: float, annualised_holding_fees: float, interest_rates: np.ndarray):
     total_investment = monthly_amount * dca_length
     dca_amount = monthly_amount * dca_interval
     if fixed_transaction_fees >= dca_amount:
@@ -89,17 +89,19 @@ def calculate_dca_return_with_fees_and_interest_vector(monthly_returns: np.ndarr
     res = np.empty_like(monthly_returns)
     res.fill(np.nan)
     for i in range(len(monthly_returns)):
-        if i < dca_length:
+        if i < investment_horizon:
             res[i] = np.nan
             continue
         share_value = 0
         funds_to_invest = 0
-        for index, j in enumerate(range(i - dca_length, i)):
+        for index, j in enumerate(range(i - investment_horizon, i - investment_horizon + dca_length)):
             funds_to_invest += monthly_amount
             if ((index + 1) % dca_interval == 0) or (index == dca_length - 1):
                 share_value += funds_to_invest * (1 - variable_transaction_fees) - fixed_transaction_fees
                 funds_to_invest = 0
             share_value *= ((1 + monthly_returns[j+1]) ** 12 - annualised_holding_fees) ** (1/12)
             funds_to_invest *= (1 + interest_rates[j+1] / 100) ** (1/12)
+        for j in range(i - investment_horizon + dca_length, i):
+            share_value *= 1 + monthly_returns[j+1]
         res[i] = (share_value + funds_to_invest - total_investment) / total_investment
     return res
