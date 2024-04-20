@@ -156,6 +156,7 @@ app.layout = dbc.Tabs(
                                                     'ACWI': 'ACWI',
                                                     'SINGAPORE': 'Singapore',
                                                     'EM (EMERGING MARKETS)': 'Emerging Markets',
+                                                    'WORLD ex USA': 'World ex USA',
                                                     'USA': 'USA',
                                                     'KOKUSAI INDEX (WORLD ex JP)': 'World ex Japan',
                                                     'JAPAN': 'Japan',
@@ -869,14 +870,18 @@ def update_portfolios(
         return portfolios, portfolios_options
     if ls_dca == 'LS':
         portfolio = (
-            f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
-            f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {dca_length} months every {dca_interval} months"} {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees'
+            f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{
+                dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
+            f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {
+                dca_length} months every {dca_interval} months"} {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees'
         )
 
     else:
         portfolio = (
-            f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
-            f'{portfolio_security_options[portfolio_security]} {currency}, {"DCA"}, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees'
+            f'{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{
+                dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}',
+            f'{portfolio_security_options[portfolio_security]} {currency}, {"DCA"}, {monthly_investment} invested monthly for {dca_length} months, {
+                dca_interval} months apart, {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees'
 
         )
 
