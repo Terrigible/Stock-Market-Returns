@@ -323,7 +323,7 @@ app.layout = dbc.Tabs(
                                 {
                                     'price': 'Price',
                                     'drawdown': 'Drawdown',
-                                    'return': 'Return'
+                                    'rolling_returns': 'Rolling Returns'
                                 },
                                 value='price',
                                 id='y-var-selection'
@@ -709,7 +709,7 @@ def update_log_scale(y_var: str, log_scale: list[str]):
     Input('y-var-selection', 'value')
 )
 def update_return_selection_visibility(y_var: str):
-    if y_var == 'return':
+    if y_var == 'rolling_returns':
         return {'display': 'block'}
     else:
         return {'display': 'none'}
@@ -779,7 +779,7 @@ def update_graph(
             for selected_security in selected_securities
         }
     )
-    if y_var == 'return' and baseline_security != 'None':
+    if y_var == 'rolling_returns' and baseline_security != 'None':
         df = df.sub(df[baseline_security_options[baseline_security]], axis=0, level=0)
     data = [
         go.Scatter(
@@ -791,7 +791,7 @@ def update_graph(
         for column in df.columns
     ]
     layout = go.Layout(
-        title=f'{return_duration_options[return_duration]} {return_type_options[return_type]} Return' if y_var == 'return' else y_var_options[y_var],
+        title=f'{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns' if y_var == 'rolling_returns' else y_var_options[y_var],
         hovermode='x unified',
         yaxis=dict(
             tickformat='.2f' if y_var == 'price' else '.2%',
