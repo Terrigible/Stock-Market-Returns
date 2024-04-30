@@ -454,17 +454,17 @@ app.layout = dbc.Tabs(
                                 ],
                                 id='dca-input-container',
                             ),
-                            html.Label('Investment Horizon'),
+                            html.Label('Investment Horizon (Months)'),
                             dcc.Input(
                                 id='investment-horizon-input',
                                 type='number',
                             ),
-                            html.Label('DCA Length'),
+                            html.Label('DCA Length (Months)'),
                             dcc.Input(
                                 id='dca-length-input',
                                 type='number',
                             ),
-                            html.Label('DCA Interval'),
+                            html.Label('DCA Interval (Months)'),
                             dcc.Input(
                                 id='dca-interval-input',
                                 type='number',
