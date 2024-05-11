@@ -832,8 +832,8 @@ def update_ls_input_visibility(ls_dca: str):
     State('portfolio-currency-selection', 'value'),
     State('ls-dca-selection', 'value'),
     State('investment-amount-input', 'value'),
-    State('investment-horizon-input', 'value'),
     State('monthly-investment-input', 'value'),
+    State('investment-horizon-input', 'value'),
     State('dca-length-input', 'value'),
     State('dca-interval-input', 'value'),
     State('variable-transaction-fees-input', 'value'),
@@ -850,8 +850,8 @@ def update_portfolios(
     currency: str,
     ls_dca: str,
     investment_amount: float,
-    investment_horizon: int,
     monthly_investment: float,
+    investment_horizon: int,
     dca_length: int,
     dca_interval: int,
     variable_transaction_fees: float,
@@ -860,12 +860,32 @@ def update_portfolios(
 ):
     if portfolio_security is None:
         return portfolios, portfolios_options
-    if ls_dca == 'LS' and (investment_amount is None or investment_horizon is None):
-        return portfolios, portfolios_options
-    if ls_dca == 'DCA' and (monthly_investment is None or dca_length is None):
-        return portfolios, portfolios_options
+    if ls_dca == 'LS':
+        if investment_amount is None:
+            return portfolios, portfolios_options
+        if investment_horizon is None:
+            return portfolios, portfolios_options
+        if dca_length is None:
+            dca_length = 1
+        if dca_interval is None:
+            dca_interval = 1
+    if ls_dca == 'DCA':
+        if monthly_investment is None:
+            return portfolios, portfolios_options
+        if dca_length is None:
+            return portfolios, portfolios_options
+        if investment_horizon is None:
+            investment_horizon = dca_length
+        if dca_interval is None:
+            dca_interval = 1
     if dca_length > investment_horizon:
         return portfolios, portfolios_options
+    if variable_transaction_fees is None:
+        variable_transaction_fees = 0
+    if fixed_transaction_fees is None:
+        fixed_transaction_fees = 0
+    if annualised_holding_fees is None:
+        annualised_holding_fees = 0
     if variable_transaction_fees < 0 or fixed_transaction_fees < 0 or annualised_holding_fees < 0:
         return portfolios, portfolios_options
     if ls_dca == 'LS':
