@@ -484,6 +484,37 @@ def add_return_columns(df: pd.DataFrame, periods: list[str], durations: list[int
         df[f'{period}_annualized'] = (1 + df[f'{period}_cumulative'])**(12/duration) - 1
 
 
+def read_greatlink_data(fund_name):
+    df = (
+        pd.read_excel(
+            f'data/GreatLink/{fund_name}.xlsx',
+            index_col='Price Date',
+            usecols=['Price Date', 'Price'],
+            parse_dates=['Price Date'],
+            date_format='%d/%m/%Y',
+        )
+        .sort_index()
+        .rename_axis('date')
+        .rename(columns={'Price': 'price'})
+    )
+    if glob(f'data/GreatLink/{fund_name}_Dividends.xlsx'):
+        dividends = (
+            pd.read_excel(
+                f'data/GreatLink/{fund_name}_Dividends.xlsx',
+                index_col='XD Date',
+                usecols=['XD Date', 'Gross Dividend'],
+                parse_dates=['XD Date'],
+                date_format='%d/%m/%Y',
+            )
+            .sort_index()
+            .rename_axis('date')
+            .rename(columns={'Gross Dividend': 'dividend'})
+        )
+        df = df.join(dividends)
+        df = df['price'].add(df['dividend'].fillna(0)).div(df['price'].shift(1)).fillna(1).cumprod()
+    return df
+
+
 __all__ = [
     'read_msci_data',
     'read_sti_data',
@@ -502,5 +533,6 @@ __all__ = [
     'load_sg_cpi',
     'load_us_cpi_async',
     'load_us_cpi',
-    'add_return_columns'
+    'add_return_columns',
+    'read_greatlink_data',
 ]

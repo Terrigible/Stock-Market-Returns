@@ -17,7 +17,7 @@ from funcs.loaders import (load_fed_funds_rate, load_fred_usd_fx,
                            load_mas_sgd_fx, load_sg_cpi,
                            load_sgd_interest_rates, load_us_cpi,
                            load_us_treasury_returns, load_usdsgd,
-                           read_msci_data, read_spx_data, read_sti_data)
+                           read_msci_data, read_spx_data, read_sti_data, read_greatlink_data)
 
 
 @cache
@@ -53,6 +53,12 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
                 elif ticker_currency in load_mas_sgd_fx().columns:
                     series = series.mul(load_mas_sgd_fx()[ticker_currency].resample('D').ffill().ffill().reindex(series.index))
                     series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
+        if interval == 'Monthly':
+            series = series.resample('BM').last()
+    elif source == 'Fund':
+        fund_company, fund, currency = security.split('|')[1:]
+        if fund_company == 'Great Eastern':
+            series = read_greatlink_data(fund).iloc[:, 0]
         if interval == 'Monthly':
             series = series.resample('BM').last()
     else:
@@ -130,7 +136,8 @@ app.layout = dbc.Tabs(
                             dbc.Select(
                                 [
                                     'Index',
-                                    'Stock/ETF'
+                                    'Stock/ETF',
+                                    'Fund',
                                 ],
                                 value='Index',
                                 id='security-type-selection'
@@ -283,6 +290,66 @@ app.layout = dbc.Tabs(
                                 id='stock-etf-selection-container',
                             ),
                             dcc.Store(id='yf-securities-store', storage_type='memory', data={}),
+                            html.Div(
+                                [
+                                    html.Label('Fund Company'),
+                                    dcc.Dropdown(
+                                        [
+                                            'Great Eastern',
+                                        ],
+                                        id='fund-company-selection',
+                                    ),
+                                    html.Label('Fund'),
+                                    dcc.Dropdown(
+                                        [
+                                            'Great Eastern-Lion Dynamic Balanced',
+                                            'Great Eastern-Lion Dynamic Growth',
+                                            'GreatLink ASEAN Growth',
+                                            'GreatLink Asia Pacific Equity',
+                                            'GreatLink Cash',
+                                            'GreatLink China Growth',
+                                            'GreatLink Diversified Growth Portfolio',
+                                            'GreatLink European Sustainable Equity Fund',
+                                            'GreatLink Far East Ex Japan Equities',
+                                            'GreatLink Global Bond',
+                                            'GreatLink Global Disruptive Innovation Fund',
+                                            'GreatLink Global Emerging Markets Equity',
+                                            'GreatLink Global Equity Alpha',
+                                            'GreatLink Global Equity',
+                                            'GreatLink Global Optimum',
+                                            'GreatLink Global Perspective',
+                                            'GreatLink Global Real Estate Securities',
+                                            'GreatLink Global Supreme',
+                                            'GreatLink Global Technology',
+                                            'GreatLink Income Bond',
+                                            'GreatLink Income Focus',
+                                            'GreatLink International Health Care Fund',
+                                            'GreatLink LifeStyle Balanced Portfolio',
+                                            'GreatLink LifeStyle Dynamic Portfolio',
+                                            'GreatLink LifeStyle Progressive Portfolio',
+                                            'GreatLink LifeStyle Secure Portfolio',
+                                            'GreatLink LifeStyle Steady Portfolio',
+                                            'GreatLink Lion Asian Balanced',
+                                            'GreatLink Lion India',
+                                            'GreatLink Lion Japan Growth',
+                                            'GreatLink Lion Vietnam',
+                                            'GreatLink Multi-Sector Income',
+                                            'GreatLink Multi-Theme Equity',
+                                            'GreatLink Short Duration Bond',
+                                            'GreatLink Singapore Equities',
+                                            'GreatLink Sustainable Global Thematic Fund',
+                                            'GreatLink US Income and Growth Fund Dis'
+                                        ],
+                                        id='ge-fund-selection',
+                                    ),
+                                    html.P(),
+                                    html.Button(
+                                        'Add Fund',
+                                        id='add-fund-button'
+                                    )
+                                ],
+                                id='fund-selection-container',
+                            ),
                             html.P(),
                             html.Label('Selected Securities'),
                             dcc.Dropdown(
@@ -534,13 +601,16 @@ app.layout = dbc.Tabs(
 @app.callback(
     Output('index-selection-container', 'style'),
     Output('stock-etf-selection-container', 'style'),
+    Output('fund-selection-container', 'style'),
     Input('security-type-selection', 'value'),
+    Input('security-type-selection', 'options'),
 )
-def update_index_selection_visibility(security_type: str):
-    if security_type == 'Index':
-        return {'display': 'block'}, {'display': 'none'}
-    else:
-        return {'display': 'none'}, {'display': 'block'}
+def update_index_selection_visibility(security_type: str, security_type_options: list[str]):
+    return tuple(
+        {'display': 'block'} if security_type == security_type_option
+        else {'display': 'none'}
+        for security_type_option in security_type_options
+    )
 
 
 @app.callback(
@@ -689,6 +759,35 @@ def add_stock_etf(
     yf_securities_store[new_yf_security] = df['adjclose'].to_json(orient='index')
 
     return selected_securities, selected_securities_options, yf_securities_store
+
+
+@app.callback(
+    Output('selected-securities', 'value', allow_duplicate=True),
+    Output('selected-securities', 'options', allow_duplicate=True),
+    Input('add-fund-button', 'n_clicks'),
+    State('selected-securities', 'value'),
+    State('selected-securities', 'options'),
+    State('fund-company-selection', 'value'),
+    State('ge-fund-selection', 'value'),
+    prevent_initial_call=True
+)
+def add_fund(
+    _,
+    selected_securities: list[str],
+    selected_securities_options: dict[str, str],
+    fund_company: str,
+    fund: str,
+):
+    if fund_company == 'Great Eastern':
+        currency = 'SGD'
+    else:
+        currency = 'USD'
+    fund = (f'Fund|{fund_company}|{fund}|{currency}', f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}')
+    if fund in selected_securities:
+        return selected_securities, selected_securities_options
+    selected_securities.append(fund[0])
+    selected_securities_options.update({fund[0]: fund[1]})
+    return selected_securities, selected_securities_options
 
 
 @app.callback(
