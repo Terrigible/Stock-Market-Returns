@@ -345,7 +345,7 @@ app.layout = dbc.Tabs(
                                             'GreatLink Short Duration Bond',
                                             'GreatLink Singapore Equities',
                                             'GreatLink Sustainable Global Thematic Fund',
-                                            'GreatLink US Income and Growth Fund Dis'
+                                            'GreatLink US Income and Growth Fund (Dis)'
                                         ],
                                         id='ge-fund-selection',
                                     ),
