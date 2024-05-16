@@ -17,7 +17,7 @@ from funcs.loaders import (load_fed_funds_rate, load_fred_usd_fx,
                            load_mas_sgd_fx, load_sg_cpi,
                            load_sgd_interest_rates, load_us_cpi,
                            load_us_treasury_returns, load_usdsgd,
-                           read_msci_data, read_spx_data, read_sti_data, read_greatlink_data)
+                           read_msci_data, read_spx_data, read_sti_data, read_greatlink_data, read_shiller_sp500_data)
 
 
 @cache
@@ -34,6 +34,12 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
             series = read_sti_data().iloc[:, 0]
         elif security.split('|')[1] == 'SPX':
             series = read_spx_data(security.split('|')[2]).iloc[:, 0]
+            if interval == 'Daily':
+                series = series.resample('B').interpolate('linear')
+        elif security.split('|')[1] == 'SHILLER_SPX':
+            series = read_shiller_sp500_data(security.split('|')[2]).iloc[:, 0]
+            if interval == 'Daily':
+                series = series.resample('B').interpolate('linear')
         else:
             raise ValueError('Invalid index')
         if interval == 'Monthly':
@@ -236,6 +242,7 @@ app.layout = dbc.Tabs(
                                                 {
                                                     'STI': 'STI',
                                                     'SPX': 'S&P 500',
+                                                    'SHILLER_SPX': 'Shiller S&P 500',
                                                 },
                                                 value='STI',
                                                 id='others-index-selection'
