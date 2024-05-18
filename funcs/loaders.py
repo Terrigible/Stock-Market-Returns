@@ -57,7 +57,7 @@ def load_fed_funds_rate():
     except FileNotFoundError:
         fed_funds_rate = download_fed_funds_rate()
 
-    fed_funds_rate_1m = fed_funds_rate.div(36000).add(1).resample('BM').prod().pow(12).sub(1).mul(100)
+    fed_funds_rate_1m = fed_funds_rate.div(36000).add(1).resample('BME').prod().pow(12).sub(1).mul(100)
 
     return fed_funds_rate, fed_funds_rate_1m
 
@@ -399,7 +399,7 @@ def load_sgd_interest_rates():
         sgd_interest_rates = download_sgd_interest_rates()
         sgd_interest_rates.to_csv('data/sgd_interest_rates.csv')
 
-    sgd_interest_rates_1m = sgd_interest_rates.resample('D').ffill().div(36500).add(1).resample('BM').prod().pow(12).sub(1).mul(100).replace(0, np.nan)
+    sgd_interest_rates_1m = sgd_interest_rates.resample('D').ffill().div(36500).add(1).resample('BME').prod().pow(12).sub(1).mul(100).replace(0, np.nan)
     sgd_interest_rates_1m.loc['2014-01-31', 'interbank_overnight'] = np.nan
     sgd_interest_rates_1m['sgd_ir_1m'] = sgd_interest_rates_1m['interbank_overnight'].fillna(sgd_interest_rates['sora'])
     return sgd_interest_rates, sgd_interest_rates_1m
@@ -416,7 +416,7 @@ def download_sg_cpi():
         sg_cpi = pd.DataFrame(sg_cpi_response.json()['Data']['row'][0]['columns'])
         sg_cpi = sg_cpi.set_axis(['date', 'sg_cpi'], axis=1)
         sg_cpi['date'] = pd.to_datetime(sg_cpi['date'], format='%Y %b')
-        sg_cpi = sg_cpi.set_index('date').resample('BM').last()
+        sg_cpi = sg_cpi.set_index('date').resample('BME').last()
     except JSONDecodeError:
         sg_cpi = pd.read_csv('data/sg_cpi.csv', index_col='date')
     return sg_cpi

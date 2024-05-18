@@ -28,7 +28,7 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
     elif source == 'US Treasury':
         series = load_us_treasury_returns(security.split('|')[1])
         if interval == 'Monthly':
-            series = series.resample('BM').last()
+            series = series.resample('BME').last()
     elif source == 'Others':
         if security.split('|')[1] == 'STI':
             series = read_sti_data().iloc[:, 0]
@@ -43,7 +43,7 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
         else:
             raise ValueError('Invalid index')
         if interval == 'Monthly':
-            series = series.resample('BM').last()
+            series = series.resample('BME').last()
     elif source == 'YF':
         ticker_currency = security.split('|')[2]
         series = pd.read_json(StringIO(yf_security), orient='index').iloc[:, 0]
@@ -60,13 +60,13 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
                     series = series.mul(load_mas_sgd_fx()[ticker_currency].resample('D').ffill().ffill().reindex(series.index))
                     series = series.div(load_usdsgd().resample('D').ffill().ffill().reindex(series.index))
         if interval == 'Monthly':
-            series = series.resample('BM').last()
+            series = series.resample('BME').last()
     elif source == 'Fund':
         fund_company, fund, currency = security.split('|')[1:]
         if fund_company == 'Great Eastern':
             series = read_greatlink_data(fund).iloc[:, 0]
         if interval == 'Monthly':
-            series = series.resample('BM').last()
+            series = series.resample('BME').last()
     else:
         raise ValueError('Invalid index')
     if currency == 'USD':
