@@ -112,8 +112,8 @@ def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3
 
 
 def read_shiller_sp500_data(tax_treatment: str):
-    df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1).drop(['Unnamed: 13', 'Unnamed: 15'], axis=1)
-    df['Date'] = df['Date'].apply(lambda x: pd.to_datetime(f'{x:.2f}', format='%Y.%m')).add(BMonthEnd(0))
+    df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1, dtype={'Date': str}).drop(['Unnamed: 13', 'Unnamed: 15'], axis=1)
+    df['Date'] = pd.to_datetime(df['Date'].str.pad(7, 'right', '0'), format='%Y.%m').add(BMonthEnd(0))
     df = df.set_index('Date')
     shiller_sp500 = df['P'].add(df['D'].ffill().div(12).mul(0.7 if tax_treatment == 'Net' else 1)).div(df['P'].shift(1)).fillna(1).cumprod()
     shiller_sp500 = pd.DataFrame(shiller_sp500.rename_axis('date').rename('price'))
