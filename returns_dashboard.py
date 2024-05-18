@@ -790,7 +790,7 @@ def add_fund(
     else:
         currency = 'USD'
     fund = (f'Fund|{fund_company}|{fund}|{currency}', f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}')
-    if fund in selected_securities:
+    if fund[0] in selected_securities:
         return selected_securities, selected_securities_options
     selected_securities.append(fund[0])
     selected_securities_options.update({fund[0]: fund[1]})
