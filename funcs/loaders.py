@@ -159,7 +159,7 @@ def download_mas_sgd_fx():
             end_of_day=lambda df: pd.to_datetime(df['end_of_day']),
         )
         .set_index('end_of_day')
-        .apply(pd.to_numeric)
+        .astype(float)
         .rename_axis('date')
     )
     sgd_fx.update(sgd_fx.filter(like='100').div(100))
