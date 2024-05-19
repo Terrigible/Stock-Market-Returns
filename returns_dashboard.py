@@ -17,7 +17,9 @@ from funcs.loaders import (load_fed_funds_rate, load_fred_usd_fx,
                            load_mas_sgd_fx, load_sg_cpi,
                            load_sgd_interest_rates, load_us_cpi,
                            load_us_treasury_returns, load_usdsgd,
-                           read_msci_data, read_spx_data, read_sti_data, read_greatlink_data, read_shiller_sp500_data)
+                           read_gmo_data, read_greatlink_data, read_msci_data,
+                           read_shiller_sp500_data, read_spx_data,
+                           read_sti_data)
 
 
 @cache
@@ -65,6 +67,8 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
         fund_company, fund, currency = security.split('|')[1:]
         if fund_company == 'Great Eastern':
             series = read_greatlink_data(fund).iloc[:, 0]
+        elif fund_company == 'GMO':
+            series = read_gmo_data().iloc[:, 0]
         if interval == 'Monthly':
             series = series.resample('BME').last()
     else:
@@ -303,51 +307,14 @@ app.layout = dbc.Tabs(
                                     dcc.Dropdown(
                                         [
                                             'Great Eastern',
+                                            'GMO',
                                         ],
                                         id='fund-company-selection',
                                     ),
                                     html.Label('Fund'),
                                     dcc.Dropdown(
-                                        [
-                                            'Great Eastern-Lion Dynamic Balanced',
-                                            'Great Eastern-Lion Dynamic Growth',
-                                            'GreatLink ASEAN Growth',
-                                            'GreatLink Asia Pacific Equity',
-                                            'GreatLink Cash',
-                                            'GreatLink China Growth',
-                                            'GreatLink Diversified Growth Portfolio',
-                                            'GreatLink European Sustainable Equity Fund',
-                                            'GreatLink Far East Ex Japan Equities',
-                                            'GreatLink Global Bond',
-                                            'GreatLink Global Disruptive Innovation Fund',
-                                            'GreatLink Global Emerging Markets Equity',
-                                            'GreatLink Global Equity Alpha',
-                                            'GreatLink Global Equity',
-                                            'GreatLink Global Optimum',
-                                            'GreatLink Global Perspective',
-                                            'GreatLink Global Real Estate Securities',
-                                            'GreatLink Global Supreme',
-                                            'GreatLink Global Technology',
-                                            'GreatLink Income Bond',
-                                            'GreatLink Income Focus',
-                                            'GreatLink International Health Care Fund',
-                                            'GreatLink LifeStyle Balanced Portfolio',
-                                            'GreatLink LifeStyle Dynamic Portfolio',
-                                            'GreatLink LifeStyle Progressive Portfolio',
-                                            'GreatLink LifeStyle Secure Portfolio',
-                                            'GreatLink LifeStyle Steady Portfolio',
-                                            'GreatLink Lion Asian Balanced',
-                                            'GreatLink Lion India',
-                                            'GreatLink Lion Japan Growth',
-                                            'GreatLink Lion Vietnam',
-                                            'GreatLink Multi-Sector Income',
-                                            'GreatLink Multi-Theme Equity',
-                                            'GreatLink Short Duration Bond',
-                                            'GreatLink Singapore Equities',
-                                            'GreatLink Sustainable Global Thematic Fund',
-                                            'GreatLink US Income and Growth Fund (Dis)'
-                                        ],
-                                        id='ge-fund-selection',
+                                        [],
+                                        id='fund-selection',
                                     ),
                                     html.P(),
                                     html.Button(
@@ -769,13 +736,66 @@ def add_stock_etf(
 
 
 @app.callback(
+    Output('fund-selection', 'options'),
+    Input('fund-company-selection', 'value')
+)
+def update_fund_selection_options(fund_company: str):
+    if fund_company == 'Great Eastern':
+        return [
+            'Great Eastern-Lion Dynamic Balanced',
+            'Great Eastern-Lion Dynamic Growth',
+            'GreatLink ASEAN Growth',
+            'GreatLink Asia Pacific Equity',
+            'GreatLink Cash',
+            'GreatLink China Growth',
+            'GreatLink Diversified Growth Portfolio',
+            'GreatLink European Sustainable Equity Fund',
+            'GreatLink Far East Ex Japan Equities',
+            'GreatLink Global Bond',
+            'GreatLink Global Disruptive Innovation Fund',
+            'GreatLink Global Emerging Markets Equity',
+            'GreatLink Global Equity Alpha',
+            'GreatLink Global Equity',
+            'GreatLink Global Optimum',
+            'GreatLink Global Perspective',
+            'GreatLink Global Real Estate Securities',
+            'GreatLink Global Supreme',
+            'GreatLink Global Technology',
+            'GreatLink Income Bond',
+            'GreatLink Income Focus',
+            'GreatLink International Health Care Fund',
+            'GreatLink LifeStyle Balanced Portfolio',
+            'GreatLink LifeStyle Dynamic Portfolio',
+            'GreatLink LifeStyle Progressive Portfolio',
+            'GreatLink LifeStyle Secure Portfolio',
+            'GreatLink LifeStyle Steady Portfolio',
+            'GreatLink Lion Asian Balanced',
+            'GreatLink Lion India',
+            'GreatLink Lion Japan Growth',
+            'GreatLink Lion Vietnam',
+            'GreatLink Multi-Sector Income',
+            'GreatLink Multi-Theme Equity',
+            'GreatLink Short Duration Bond',
+            'GreatLink Singapore Equities',
+            'GreatLink Sustainable Global Thematic Fund',
+            'GreatLink US Income and Growth Fund (Dis)'
+        ]
+    elif fund_company == 'GMO':
+        return [
+            'Quality Investment Fund',
+        ]
+    else:
+        return []
+
+
+@app.callback(
     Output('selected-securities', 'value', allow_duplicate=True),
     Output('selected-securities', 'options', allow_duplicate=True),
     Input('add-fund-button', 'n_clicks'),
     State('selected-securities', 'value'),
     State('selected-securities', 'options'),
     State('fund-company-selection', 'value'),
-    State('ge-fund-selection', 'value'),
+    State('fund-selection', 'value'),
     prevent_initial_call=True
 )
 def add_fund(

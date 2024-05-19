@@ -40,6 +40,11 @@ def read_spx_data(tax_treatment: str):
     return df
 
 
+def read_gmo_data():
+    df = pd.read_csv('data/GMO Quality Investment Fund.csv', parse_dates=['Date'], index_col='Date').rename_axis('date')[['Close']].set_axis(['price'], axis=1)
+    return df
+
+
 def download_fed_funds_rate():
     fred = Fred()
     fed_funds_rate = fred.get_series('DFF').rename('ffr').rename_axis('date')
