@@ -16,7 +16,7 @@ from requests.exceptions import JSONDecodeError
 
 
 def read_msci_source(filename):
-    df = pd.read_excel(filename, skiprows=6, skipfooter=19, parse_dates=['Date'], date_format='%b %d, %Y', thousands=',')
+    df = pd.read_excel(filename, engine='calamine', skiprows=6, skipfooter=19, parse_dates=['Date'], date_format='%b %d, %Y', thousands=',')
     df = df.set_axis(['date', 'price'], axis=1)
     df['date'] = pd.to_datetime(df['date'])
     df = df.set_index('date')
@@ -117,7 +117,7 @@ def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3
 
 
 def read_shiller_sp500_data(tax_treatment: str):
-    df = pd.read_excel('data/ie_data.xls', 'Data', skiprows=range(7), skipfooter=1, dtype={'Date': str}).drop(['Unnamed: 13', 'Unnamed: 15'], axis=1)
+    df = pd.read_excel('data/ie_data.xls', 'Data', engine='calamine', skiprows=range(7), skipfooter=1, dtype={'Date': str}).drop(['Unnamed: 13', 'Unnamed: 15'], axis=1)
     df['Date'] = pd.to_datetime(df['Date'].str.pad(7, 'right', '0'), format='%Y.%m').add(BMonthEnd(0))
     df = df.set_index('Date')
     shiller_sp500 = df['P'].add(df['D'].ffill().div(12).mul(0.7 if tax_treatment == 'Net' else 1)).div(df['P'].shift(1)).fillna(1).cumprod()
@@ -316,7 +316,7 @@ def download_mas_swap_points():
 
 
 def read_mas_swap_points():
-    df = pd.concat(pd.read_excel('data/SwapPoint.xlsx', None, skiprows=3, skipfooter=6, index_col=0,
+    df = pd.concat(pd.read_excel('data/SwapPoint.xlsx', None, engine='calamine', skiprows=3, skipfooter=6, index_col=0,
                    header=[0, 1]).values(), axis=1).unstack().dropna().reset_index().rename({'level_0': 'month', 'level_1': 'tenor', 'level_2': 'day', 0: 'swap_points'}, axis=1)
     df['date'] = df['month'] - MonthEnd() + pd.to_timedelta(df['day'], unit='D')
     swap_points = df.set_index('date').drop(columns=['month', 'day'])
@@ -352,7 +352,7 @@ def download_sgd_neer():
 
 
 def read_sgd_neer():
-    sgd_neer = pd.concat(pd.read_excel('data/S$NEER.xlsx', None, names=['date', 'neer'], dtype={'date': str, 'neer': float}, skiprows=6).values()).dropna().reset_index(drop=True)
+    sgd_neer = pd.concat(pd.read_excel('data/S$NEER.xlsx', None, engine='calamine', names=['date', 'neer'], dtype={'date': str, 'neer': float}, skiprows=6).values()).dropna().reset_index(drop=True)
     sgd_neer['date'] = pd.to_datetime(pd.DataFrame(sgd_neer['date'].str.split().apply(lambda x: ([np.nan] * (3-len(x)) + x)).to_list()).ffill().sum(axis=1), format='%Y%b%d')
     return sgd_neer.set_index('date')
 
@@ -493,6 +493,7 @@ def read_greatlink_data(fund_name):
     df = (
         pd.read_excel(
             f'data/GreatLink/{fund_name}.xlsx',
+            engine='calamine',
             index_col='Price Date',
             usecols=['Price Date', 'Price'],
             parse_dates=['Price Date'],
@@ -506,6 +507,7 @@ def read_greatlink_data(fund_name):
         dividends = (
             pd.read_excel(
                 f'data/GreatLink/{fund_name}_Dividends.xlsx',
+                engine='calamine',
                 index_col='XD Date',
                 usecols=['XD Date', 'Gross Dividend'],
                 parse_dates=['XD Date'],

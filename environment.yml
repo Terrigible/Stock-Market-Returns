@@ -12,7 +12,6 @@ dependencies:
   - matplotlib
   - nbformat
   - numba
-  - openpyxl
   - pandas
   - pip
   - plotly
@@ -21,8 +20,8 @@ dependencies:
   - scikit-learn
   - seaborn
   - snakeviz
-  - xlrd
   - conda-forge::selenium
+  - python-calamine
   - pip:
       - fredapi
       - yahooquery

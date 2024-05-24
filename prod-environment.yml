@@ -9,13 +9,12 @@ dependencies:
   - httpx
   - lxml
   - numba
-  - openpyxl
   - pandas
   - pip
   - plotly
   - python=3.12
   - requests
-  - xlrd
+  - python-calamine
   - pip:
       - fredapi
       - yahooquery
