@@ -67,53 +67,75 @@ def load_fed_funds_rate():
     return fed_funds_rate, fed_funds_rate_1m
 
 
-def download_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
-    fred = Fred()
-    treasury = fred.get_series(f'DGS{duration}').rename_axis('date').rename('rate')
+async def download_us_treasury_rates_async():
+    durations = ['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']
+    async with httpx.AsyncClient() as client:
+        tasks = (
+            client.get(
+                f'https://api.stlouisfed.org/fred/series/observations?series_id=DGS{duration}&api_key={os.environ["FRED_API_KEY"]}&file_type=json'
+            )
+            for duration in durations
+        )
+        responses = await asyncio.gather(*tasks)
+    treasury_rates = pd.DataFrame(
+        {
+            duration: pd.DataFrame(response.json()['observations']).assign(date=lambda df: pd.to_datetime(df['date'])).set_index('date').loc[:, 'value'].rename(duration)
+            for duration, response in zip(durations, responses)
+        }
+    )
+    treasury_rates = treasury_rates.replace('.', np.nan).astype(float)
+    return treasury_rates
 
-    return treasury
 
-
-def load_us_treasury_rate(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
+async def load_us_treasury_rates_async():
     try:
-        treasury_rate = pd.read_csv(f'data/us_treasury_{duration.lower()}.csv', parse_dates=['date'], index_col='date')
-        if treasury_rate.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None):
+        treasury_rates = pd.read_csv(f'data/us_treasury.csv', parse_dates=['date'], index_col='date')
+        if treasury_rates.index[-1] < pd.to_datetime('today') + BMonthEnd(-1, 'D') and os.environ.get('FRED_API_KEY', None):
             raise FileNotFoundError
-        treasury_rate = treasury_rate['rate']
 
     except FileNotFoundError:
-        treasury_rate = download_us_treasury_rate(duration)
-        treasury_rate.to_csv(f'data/us_treasury_{duration.lower()}.csv')
+        treasury_rates = await download_us_treasury_rates_async()
+        treasury_rates.to_csv(f'data/us_treasury.csv')
 
-    if duration == '20':
-        treasury_rate = treasury_rate.fillna(load_us_treasury_rate('10').add(load_us_treasury_rate('30')).div(2))
+    treasury_rates['20'] = treasury_rates['20'].fillna(treasury_rates['10'].add(treasury_rates['30']).div(2))
 
-    treasury_rate = treasury_rate.resample('D').last().interpolate()
-
-    return treasury_rate
+    treasury_rates = treasury_rates.resample('D').last().interpolate()
+    return treasury_rates
 
 
-def load_us_treasury_returns(duration: Literal['1MO', '3MO', '6MO', '1', '2', '3', '5', '7', '10', '20', '30']):
-    rates = load_us_treasury_rate(duration)
+def load_us_treasury_rates():
+    return asyncio.run(load_us_treasury_rates_async())
+
+
+async def load_us_treasury_returns_async():
+    treasury_rates = await load_us_treasury_rates_async()
+    treasury_returns = pd.DataFrame()
     # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
-    rates = rates.div(100)
-    prev_rates = rates.shift(1)
-    price = (
-        prev_rates.div(365.25)
-        .add(
-            prev_rates.div(rates)
-            .mul(
-                rates.div(2).add(1).pow(-2*(eval(duration.replace('MO', '/12')) - 1 / 365.25))
-                .rsub(1)
+    for duration in treasury_rates.columns:
+        rates = treasury_rates[duration]
+        rates = rates.div(100)
+        prev_rates = rates.shift(1)
+        price = (
+            prev_rates.div(365.25)
+            .add(
+                prev_rates.div(rates)
+                .mul(
+                    rates.div(2).add(1).pow(-2*(eval(duration.replace('MO', '/12')) - 1 / 365.25))
+                    .rsub(1)
+                )
             )
+            .add(
+                rates.div(2).add(1).pow(-2*(eval(duration.replace('MO', '/12')) - 1 / 365.25))
+            )
+            .cumprod()
         )
-        .add(
-            rates.div(2).add(1).pow(-2*(eval(duration.replace('MO', '/12')) - 1 / 365.25))
-        )
-        .cumprod()
-    )
+        treasury_returns[duration] = price
 
-    return price
+    return treasury_returns
+
+
+def load_us_treasury_returns():
+    return asyncio.run(load_us_treasury_returns_async())
 
 
 def read_shiller_sp500_data(tax_treatment: str):
@@ -527,7 +549,9 @@ __all__ = [
     'read_sti_data',
     'read_spx_data',
     'load_fed_funds_rate',
-    'load_us_treasury_rate',
+    'load_us_treasury_rates_async',
+    'load_us_treasury_rates',
+    'load_us_treasury_returns_async',
     'load_us_treasury_returns',
     'read_shiller_sp500_data',
     'load_usdsgd',

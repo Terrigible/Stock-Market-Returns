@@ -28,7 +28,7 @@ def load_df(security: str, interval: str, currency: str, adjust_for_inflation: s
     if source == 'MSCI':
         series = read_msci_data('data/{}/{}/{}/{}/*{} {}*.xls'.format(*security.split('|'), interval)).iloc[:, 0]
     elif source == 'US Treasury':
-        series = load_us_treasury_returns(security.split('|')[1])
+        series = load_us_treasury_returns()[security.split('|')[1]]
         if interval == 'Monthly':
             series = series.resample('BME').last()
     elif source == 'Others':
