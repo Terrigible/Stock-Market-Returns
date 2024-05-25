@@ -218,7 +218,7 @@ async def download_fred_usd_fx_async():
         responses = await asyncio.gather(*tasks)
     usd_fx = pd.DataFrame(
         {
-            currency: pd.DataFrame(response.json()['observations']).set_index('date').loc[:, 'value'].rename(currency)
+            currency: pd.DataFrame(response.json()['observations']).assign(date=lambda df: pd.to_datetime(df['date'])).set_index('date').loc[:, 'value'].rename(currency)
             for currency, response in zip(series.keys(), responses)
         }
     )
