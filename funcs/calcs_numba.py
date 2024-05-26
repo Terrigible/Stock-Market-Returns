@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from numba import float64, int64, njit
+from numba import float64, int64, njit, optional
 
 
-@njit
+@njit(float64(int64, int64, float64[:], optional(int64)))
 def calculate_return(ending_index: int, dca_length: int, monthly_returns: pd.Series | np.ndarray, investment_horizon=None):
     if investment_horizon is None:
         investment_horizon = dca_length
