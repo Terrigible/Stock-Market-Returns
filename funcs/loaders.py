@@ -540,7 +540,7 @@ def read_greatlink_data(fund_name):
             .rename(columns={'Gross Dividend': 'dividend'})
         )
         df = df.join(dividends)
-        df = df['price'].add(df['dividend'].fillna(0)).div(df['price'].shift(1)).fillna(1).cumprod()
+        df = df['price'].add(df['dividend'].fillna(0)).div(df['price'].shift(1)).fillna(1).cumprod().to_frame()
     return df
 
 
