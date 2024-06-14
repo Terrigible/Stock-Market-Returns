@@ -22,7 +22,7 @@ dependencies:
   - snakeviz
   - conda-forge::selenium
   - python-calamine
+  - yfinance
   - pip:
       - fredapi
-      - yahooquery
 prefix: C:\Users\leowy\anaconda3\envs\market-returns

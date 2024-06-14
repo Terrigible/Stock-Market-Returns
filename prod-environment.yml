@@ -15,6 +15,6 @@ dependencies:
   - python=3.12
   - requests
   - python-calamine
+  - yfinance
   - pip:
       - fredapi
-      - yahooquery

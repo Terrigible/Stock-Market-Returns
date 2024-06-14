@@ -6,9 +6,10 @@ import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import yahooquery as yq
+import yfinance as yf
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
+from contextlib import redirect_stderr
 
 from funcs.calcs_numba import (
     calculate_dca_return_with_fees_and_interest_vector,
@@ -707,6 +708,8 @@ def add_stock_etf(
     tax_treatment: str,
     yf_securities_store: dict[str, str],
 ):
+    if ';' in stock_etf:
+        return selected_securities, selected_securities_options, yf_securities_store
     for yf_security in yf_securities_store:
         yss_ticker, _, yss_tax_treatment = yf_security.split('|')[1:]
         if stock_etf == yss_ticker and tax_treatment == yss_tax_treatment:
@@ -714,23 +717,31 @@ def add_stock_etf(
                 return [yf_security], {yf_security: f'{stock_etf} {tax_treatment}'}, yf_securities_store
             if yf_security in selected_securities:
                 return selected_securities, selected_securities_options, yf_securities_store
-    ticker = yq.Ticker(stock_etf)
-    ticker.validation
-    if ticker.invalid_symbols:
+    ticker = yf.Ticker(stock_etf)
+    with StringIO() as ticker_info_output_buffer, redirect_stderr(ticker_info_output_buffer):
+        ticker_info = ticker.info
+        ticker_info_output = ticker_info_output_buffer.getvalue()
+    if "404 Client Error: Not Found for url" in ticker_info_output:
         return selected_securities, selected_securities_options, yf_securities_store
-    currency = ticker.summary_detail[stock_etf]['currency']
-    new_yf_security = f'YF|{stock_etf}|{currency}|{tax_treatment}'
+    if ticker_info_output:
+        print(ticker_info_output)
+    if "currency" not in ticker_info:
+        return selected_securities, selected_securities_options, yf_securities_store
+    ticker_symbol = ticker.ticker
+    currency = ticker_info['currency']
+    new_yf_security = f'YF|{ticker_symbol}|{currency}|{tax_treatment}'
     if new_yf_security in selected_securities:
         return selected_securities, selected_securities_options, yf_securities_store
     selected_securities.append(new_yf_security)
-    selected_securities_options[new_yf_security] = f'{stock_etf} {tax_treatment}'
+    selected_securities_options[new_yf_security] = f'{ticker_symbol} {tax_treatment}'
 
-    df = ticker.history(period='max').droplevel(0)
+    df = ticker.history(period='max', auto_adjust=False)
+    df.set_index(df.index.tz_localize(None))
     if tax_treatment == 'Net' and 'dividends' in df.columns:
-        manually_adjusted = df['close'].add(df['dividends'].mul(0.7)).div(df['close'].shift(1)).fillna(1).cumprod()
-        manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['adjclose'].iloc[-1])
-        df['adjclose'] = manually_adjusted
-    yf_securities_store[new_yf_security] = df['adjclose'].to_json(orient='index')
+        manually_adjusted = df['Close'].add(df['dividends'].mul(0.7)).div(df['Close'].shift(1)).fillna(1).cumprod()
+        manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(df['Adj Close'].iloc[-1])
+        df['Adj Close'] = manually_adjusted
+    yf_securities_store[new_yf_security] = df['Adj Close'].to_json(orient='index')
 
     return selected_securities, selected_securities_options, yf_securities_store
 
