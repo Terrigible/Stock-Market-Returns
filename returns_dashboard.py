@@ -758,6 +758,8 @@ def update_fund_selection_options(fund_company: str):
                 'Great Eastern-Lion Dynamic Balanced',
                 'Great Eastern-Lion Dynamic Growth',
                 'GreatLink ASEAN Growth',
+                'GreatLink Asia Dividend Advantage',
+                'GreatLink Asia High Dividend Equity',
                 'GreatLink Asia Pacific Equity',
                 'GreatLink Cash',
                 'GreatLink China Growth',
@@ -791,7 +793,7 @@ def update_fund_selection_options(fund_company: str):
                 'GreatLink Short Duration Bond',
                 'GreatLink Singapore Equities',
                 'GreatLink Sustainable Global Thematic Fund',
-                'GreatLink US Income and Growth Fund (Dis)'
+                'GreatLink US Income and Growth Fund (Dis)',
             ],
             'Great Eastern-Lion Dynamic Balanced',
         )
