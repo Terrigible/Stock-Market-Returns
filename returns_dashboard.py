@@ -282,7 +282,6 @@ app.layout = dbc.Tabs(
                                     html.Label('Stock/ETF (Yahoo Finance Ticker)'),
                                     html.Br(),
                                     dcc.Input(id='stock-etf-input', type='text'),
-                                    html.P('Warning: Loading Yahoo Finance data may take a while'),
                                     html.Label('Tax Treatment'),
                                     dbc.Select(
                                         [
