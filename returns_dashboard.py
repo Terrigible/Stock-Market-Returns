@@ -792,7 +792,7 @@ def add_stock_etf(
     selected_securities_options[new_yf_security] = f"{ticker_symbol} {tax_treatment}"
 
     df = ticker.history(period="max", auto_adjust=False)
-    df.set_index(df.index.tz_localize(None))
+    df = df.set_index(df.index.tz_localize(None))
     if tax_treatment == "Net" and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
