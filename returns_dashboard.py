@@ -793,10 +793,10 @@ def add_stock_etf(
 
     df = ticker.history(period="max", auto_adjust=False)
     df.set_index(df.index.tz_localize(None))
-    if tax_treatment == "Net" and "dividends" in df.columns:
+    if tax_treatment == "Net" and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
-            .add(df["dividends"].mul(0.7))
+            .add(df["Dividends"].mul(0.7))
             .div(df["Close"].shift(1))
             .fillna(1)
             .cumprod()
