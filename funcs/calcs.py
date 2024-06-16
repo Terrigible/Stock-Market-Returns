@@ -64,8 +64,10 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
         .div(100)
         .add(1)
         .pow(1 / 12)
+        .apply(np.log)
         .rolling(dca_interval)
-        .apply(np.prod, raw=True)
+        .sum()
+        .apply(np.exp)
         .sub(1)
     )
 
