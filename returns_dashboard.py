@@ -1006,7 +1006,15 @@ def update_graph(
     if y_var == "rolling_returns" and baseline_security != "None":
         df = df.sub(df[baseline_security_options[baseline_security]], axis=0, level=0)
     data = [
-        go.Scatter(x=df.index, y=df[column], mode="lines", name=column)
+        go.Scatter(
+            x=df.index,
+            y=df[column],
+            name=column,
+            line=dict(dash="dash")
+            if y_var == "rolling_returns"
+            and column == baseline_security_options[baseline_security]
+            else dict(),
+        )
         for column in df.columns
     ]
     layout = go.Layout(
