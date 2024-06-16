@@ -958,7 +958,6 @@ def update_baseline_security_selection_options(
     Input("currency-selection", "value"),
     Input("inflation-adjustment-selection", "value"),
     Input("y-var-selection", "value"),
-    Input("y-var-selection", "options"),
     Input("return-duration-selection", "value"),
     Input("return-duration-selection", "options"),
     Input("return-type-selection", "value"),
@@ -975,7 +974,6 @@ def update_graph(
     currency: str,
     adjust_for_inflation: str,
     y_var: str,
-    y_var_options: dict[str, str],
     return_duration: str,
     return_duration_options: dict[str, str],
     return_type: str,
@@ -1017,13 +1015,24 @@ def update_graph(
         )
         for column in df.columns
     ]
+    match y_var:
+        case "price":
+            title = "Price"
+            tickformat = ".2f"
+        case "drawdown":
+            title = "Drawdown"
+            tickformat = ".2%"
+        case "rolling_returns":
+            title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
+            tickformat = ".2%"
+        case _:
+            raise ValueError("Invalid y_var")
+
     layout = go.Layout(
-        title=f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
-        if y_var == "rolling_returns"
-        else y_var_options[y_var],
+        title=title,
         hovermode="x unified",
         yaxis=dict(
-            tickformat=".2f" if y_var == "price" else ".2%",
+            tickformat=tickformat,
             type="log" if "log" in log_scale else "linear",
         ),
     )
