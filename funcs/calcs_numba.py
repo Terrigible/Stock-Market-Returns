@@ -125,7 +125,9 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
             cash *= (1 + interest_rates[j + 1] / 100) ** (1 / 12)
         cash = 0
         for j in range(i - investment_horizon + dca_length, i):
-            share_value *= 1 + monthly_returns[j + 1]
+            share_value *= (
+                (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
+            ) ** (1 / 12)
         res[i] = (share_value - total_investment) / total_investment
     return res
 
@@ -187,6 +189,8 @@ def calculate_dca_return_with_fees_and_interest_vector(
             ) ** (1 / 12)
             funds_to_invest *= (1 + interest_rates[j + 1] / 100) ** (1 / 12)
         for j in range(i - investment_horizon + dca_length, i):
-            share_value *= 1 + monthly_returns[j + 1]
+            share_value *= (
+                (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
+            ) ** (1 / 12)
         res[i] = (share_value + funds_to_invest - total_investment) / total_investment
     return res
