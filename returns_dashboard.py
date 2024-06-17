@@ -450,6 +450,15 @@ app.layout = dbc.Tabs(
                                         value="None",
                                         id="baseline-security-selection",
                                     ),
+                                    html.Label("Chart Type"),
+                                    dbc.Select(
+                                        {
+                                            "line": "Line",
+                                            "hist": "Histogram",
+                                        },
+                                        value="line",
+                                        id="chart-type-selection",
+                                    ),
                                 ],
                                 id="return-selection",
                                 style={"display": "block"},
@@ -966,6 +975,7 @@ def update_baseline_security_selection_options(
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
     Input("log-scale-selection", "value"),
+    Input("chart-type-selection", "value"),
 )
 def update_graph(
     selected_securities: list[str],
@@ -982,6 +992,7 @@ def update_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     log_scale: list[str],
+    chart_type: str,
 ):
     df = pd.DataFrame(
         {
@@ -1003,18 +1014,29 @@ def update_graph(
     )
     if y_var == "rolling_returns" and baseline_security != "None":
         df = df.sub(df[baseline_security_options[baseline_security]], axis=0, level=0)
-    data = [
-        go.Scatter(
-            x=df.index,
-            y=df[column],
-            name=column,
-            line=dict(dash="dash")
-            if y_var == "rolling_returns"
-            and column == baseline_security_options[baseline_security]
-            else dict(),
-        )
-        for column in df.columns
-    ]
+    if y_var == "rolling_returns" and chart_type == "hist":
+        data = [
+            go.Histogram(
+                x=df[column],
+                name=column,
+                histnorm="probability",
+                opacity=0.7,
+            )
+            for column in df.columns
+        ]
+    else:
+        data = [
+            go.Scatter(
+                x=df.index,
+                y=df[column],
+                name=column,
+                line=dict(dash="dash")
+                if y_var == "rolling_returns"
+                and column == baseline_security_options[baseline_security]
+                else dict(),
+            )
+            for column in df.columns
+        ]
     match y_var:
         case "price":
             title = "Price"
@@ -1035,6 +1057,9 @@ def update_graph(
             tickformat=tickformat,
             type="log" if "log" in log_scale else "linear",
         ),
+        barmode="overlay"
+        if y_var == "rolling_returns" and chart_type == "hist"
+        else None,
     )
     return dict(data=data, layout=layout)
 
