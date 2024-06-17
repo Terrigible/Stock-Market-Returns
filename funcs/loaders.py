@@ -684,6 +684,7 @@ def read_greatlink_data(fund_name):
             engine="calamine",
             index_col="Price Date",
             usecols=["Price Date", "Price"],
+            na_values=["."],
             parse_dates=["Price Date"],
             date_format="%d/%m/%Y",
         )
@@ -698,12 +699,14 @@ def read_greatlink_data(fund_name):
                 engine="calamine",
                 index_col="XD Date",
                 usecols=["XD Date", "Gross Dividend"],
+                na_values=["."],
                 parse_dates=["XD Date"],
                 date_format="%d/%m/%Y",
             )
             .sort_index()
             .rename_axis("date")
             .rename(columns={"Gross Dividend": "dividend"})
+            .ffill()
         )
         df = df.join(dividends)
         df = (
