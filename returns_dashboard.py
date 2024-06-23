@@ -1240,15 +1240,12 @@ def update_portfolio_graph(
         )
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        portfolio_series = pd.Series(
-            load_df(
-                portfolio_security,
-                "Monthly",
-                currency,
-                "No",
-                yf_securities.get(portfolio_security),
-            ),
-            name=portfolio_security,
+        portfolio_series = load_df(
+            portfolio_security,
+            "Monthly",
+            currency,
+            "No",
+            yf_securities.get(portfolio_security),
         )
         interest_rates = (
             load_fed_funds_rate()[1]
