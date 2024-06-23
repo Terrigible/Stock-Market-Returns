@@ -2,6 +2,7 @@ from contextlib import redirect_stderr
 from functools import cache
 from glob import glob
 from io import StringIO
+from itertools import cycle
 
 import dash_bootstrap_components as dbc
 import numpy as np
@@ -10,6 +11,7 @@ import plotly.graph_objects as go
 import yfinance as yf
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output, State
+from plotly.colors import DEFAULT_PLOTLY_COLORS
 
 from funcs.calcs_numba import (
     calculate_dca_return_with_fees_and_interest_vector,
@@ -373,6 +375,11 @@ app.layout = dbc.Tabs(
                                 searchable=False,
                                 id="selected-securities",
                             ),
+                            dcc.Store(
+                                id="securities-colourmap-store",
+                                storage_type="memory",
+                                data={},
+                            ),
                             html.Label("Interval"),
                             dbc.Select(
                                 ["Monthly", "Daily"],
@@ -442,14 +449,6 @@ app.layout = dbc.Tabs(
                                         value="cumulative",
                                         id="return-type-selection",
                                     ),
-                                    html.Label("Baseline"),
-                                    dbc.Select(
-                                        {
-                                            "None": "None",
-                                        },
-                                        value="None",
-                                        id="baseline-security-selection",
-                                    ),
                                     html.Label("Chart Type"),
                                     dbc.Select(
                                         {
@@ -458,6 +457,14 @@ app.layout = dbc.Tabs(
                                         },
                                         value="line",
                                         id="chart-type-selection",
+                                    ),
+                                    html.Label("Baseline"),
+                                    dbc.Select(
+                                        {
+                                            "None": "None",
+                                        },
+                                        value="None",
+                                        id="baseline-security-selection",
                                     ),
                                 ],
                                 id="return-selection",
@@ -917,6 +924,19 @@ def add_fund(
 
 
 @app.callback(
+    Output("securities-colourmap-store", "data"),
+    Input("selected-securities", "options"),
+)
+def update_securities_colourmap(selected_securities_options: dict[str, str]):
+    return dict(
+        zip(
+            selected_securities_options.keys(),
+            cycle(DEFAULT_PLOTLY_COLORS),
+        )
+    )
+
+
+@app.callback(
     Output("log-scale-selection", "style"),
     Output("log-scale-selection", "value"),
     Input("y-var-selection", "value"),
@@ -964,6 +984,7 @@ def update_baseline_security_selection_options(
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
     Input("yf-securities-store", "data"),
+    State("securities-colourmap-store", "data"),
     Input("currency-selection", "value"),
     Input("inflation-adjustment-selection", "value"),
     Input("y-var-selection", "value"),
@@ -981,6 +1002,7 @@ def update_graph(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     yf_securities: dict[str, str],
+    securities_colourmap: dict[str, str],
     currency: str,
     adjust_for_inflation: str,
     y_var: str,
@@ -996,7 +1018,7 @@ def update_graph(
 ):
     df = pd.DataFrame(
         {
-            selected_securities_options[selected_security]: transform_df(
+            selected_security: transform_df(
                 load_df(
                     selected_security,
                     interval,
@@ -1013,27 +1035,41 @@ def update_graph(
         }
     )
     if y_var == "rolling_returns" and baseline_security != "None":
-        df = df.sub(df[baseline_security_options[baseline_security]], axis=0, level=0)
+        df = df.sub(df[baseline_security], axis=0, level=0)
     if y_var == "rolling_returns" and chart_type == "hist":
         data = [
             go.Histogram(
-                x=df[column],
-                name=column,
+                x=[None],
+                name=selected_securities_options[baseline_security],
+                marker=dict(color=securities_colourmap[baseline_security]),
                 histnorm="probability",
                 opacity=0.7,
+                showlegend=True,
             )
-            for column in df.columns
+            if baseline_security != "None"
+            else dict(),
+            *[
+                go.Histogram(
+                    x=df[column],
+                    name=selected_securities_options[column],
+                    marker=dict(color=securities_colourmap[column]),
+                    histnorm="probability",
+                    opacity=0.7,
+                    showlegend=True,
+                )
+                for column in df.columns
+                if column != baseline_security
+            ],
         ]
     else:
         data = [
             go.Scatter(
                 x=df.index,
                 y=df[column],
-                name=column,
-                line=dict(dash="dash")
-                if y_var == "rolling_returns"
-                and column == baseline_security_options[baseline_security]
-                else dict(),
+                name=selected_securities_options[column],
+                line=dict(color=securities_colourmap[column], dash="dash")
+                if y_var == "rolling_returns" and column == baseline_security
+                else dict(color=securities_colourmap[column]),
             )
             for column in df.columns
         ]
@@ -1046,6 +1082,8 @@ def update_graph(
             tickformat = ".2%"
         case "rolling_returns":
             title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
+            if baseline_security != "None":
+                title += f" vs {baseline_security_options[baseline_security]}"
             tickformat = ".2%"
         case _:
             raise ValueError("Invalid y_var")
@@ -1059,6 +1097,26 @@ def update_graph(
         ),
         barmode="overlay"
         if y_var == "rolling_returns" and chart_type == "hist"
+        else None,
+        showlegend=True,
+        shapes=[
+            dict(
+                type="line",
+                x0=0,
+                x1=0,
+                y0=0,
+                y1=0.2,
+                line=dict(
+                    color=securities_colourmap[baseline_security]
+                    if baseline_security != "None"
+                    else "grey",
+                    width=1,
+                    dash="dash",
+                ),
+                opacity=0.7,
+            )
+        ]
+        if chart_type == "hist"
         else None,
     )
     return dict(data=data, layout=layout)
