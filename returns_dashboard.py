@@ -924,19 +924,6 @@ def add_fund(
 
 
 @app.callback(
-    Output("securities-colourmap-store", "data"),
-    Input("selected-securities", "options"),
-)
-def update_securities_colourmap(selected_securities_options: dict[str, str]):
-    return dict(
-        zip(
-            selected_securities_options.keys(),
-            cycle(DEFAULT_PLOTLY_COLORS),
-        )
-    )
-
-
-@app.callback(
     Output("log-scale-selection", "style"),
     Output("log-scale-selection", "value"),
     Input("y-var-selection", "value"),
@@ -984,7 +971,6 @@ def update_baseline_security_selection_options(
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
     Input("yf-securities-store", "data"),
-    State("securities-colourmap-store", "data"),
     Input("currency-selection", "value"),
     Input("inflation-adjustment-selection", "value"),
     Input("y-var-selection", "value"),
@@ -1002,7 +988,6 @@ def update_graph(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     yf_securities: dict[str, str],
-    securities_colourmap: dict[str, str],
     currency: str,
     adjust_for_inflation: str,
     y_var: str,
@@ -1016,6 +1001,12 @@ def update_graph(
     log_scale: list[str],
     chart_type: str,
 ):
+    securities_colourmap = dict(
+        zip(
+            selected_securities_options.keys(),
+            cycle(DEFAULT_PLOTLY_COLORS),
+        )
+    )
     df = pd.DataFrame(
         {
             selected_security: transform_df(
