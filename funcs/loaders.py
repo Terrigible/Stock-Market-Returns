@@ -215,24 +215,6 @@ def read_shiller_sp500_data(tax_treatment: str):
     return shiller_sp500
 
 
-def download_mas_usdsgd():
-    usdsgd_response = requests.get(
-        "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily",
-        headers={"keyid": os.environ["MAS_EXCHANGE_RATE_API_KEY"]},
-    )
-    usdsgd = (
-        pd.DataFrame(usdsgd_response.json()["elements"])
-        .loc[:, ["end_of_day", "usd_sgd"]]
-        .assign(
-            end_of_day=lambda df: pd.to_datetime(df["end_of_day"]),
-            usd_sgd=lambda df: pd.to_numeric(df["usd_sgd"]),
-        )
-        .set_index("end_of_day")
-        .rename_axis("date")
-    )
-    return usdsgd
-
-
 def download_mas_sgd_fx():
     sgd_fx_response = requests.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily",
@@ -388,7 +370,7 @@ def load_usdsgd():
     except FileNotFoundError:
         df = pd.merge(
             pd.merge(
-                download_mas_usdsgd().iloc[:, 0].rename("mas_usdsgd"),
+                load_mas_sgd_fx()["USD"].rename("mas_usdsgd"),
                 load_fred_usdsgd().rename("fred_usdsgd"),
                 how="outer",
                 left_index=True,
