@@ -1155,20 +1155,20 @@ def update_ls_input_visibility(ls_dca: str):
 )
 def update_portfolios(
     _,
-    portfolios: list[str],
+    portfolios: list[str] | None,
     portfolios_options: dict[str, str],
-    portfolio_security: str,
+    portfolio_security: str | None,
     portfolio_security_options: dict[str, str],
     currency: str,
     ls_dca: str,
-    investment_amount: float,
-    monthly_investment: float,
-    investment_horizon: int,
-    dca_length: int,
-    dca_interval: int,
-    variable_transaction_fees: float,
-    fixed_transaction_fees: float,
-    annualised_holding_fees: float,
+    investment_amount: float | None,
+    monthly_investment: float | None,
+    investment_horizon: int | None,
+    dca_length: int | None,
+    dca_interval: int | None,
+    variable_transaction_fees: float | None,
+    fixed_transaction_fees: float | None,
+    annualised_holding_fees: float | None,
 ):
     if portfolio_security is None:
         return portfolios, portfolios_options
