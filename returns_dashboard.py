@@ -496,7 +496,7 @@ app.layout = dbc.Tabs(
                 },
             ),
         ),
-        dcc.Tab(
+        dbc.Tab(
             label="Portfolio Simulator",
             children=html.Div(
                 [
