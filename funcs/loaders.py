@@ -571,6 +571,68 @@ def load_sgd_interest_rates():
     return sgd_interest_rates, sgd_interest_rates_1m
 
 
+def read_sgs_data():
+    with open("data/SGS - Historical Prices and Yields - Benchmark Issues.csv") as f:
+        file = f.readlines()
+        columns = file[4].strip("\n").split(",")
+        data = [
+            line.strip("\n").split(",")
+            for line in file[4:]
+            if ('"' not in line) and ("Average" not in line) and (line != "\n")
+        ]
+    sgs = pd.DataFrame(data, columns=["Year", "Month", "Day", *columns[3:]])
+    sgs["Date"] = pd.to_datetime(
+        sgs[["Year", "Month", "Day"]].replace("", pd.NA).ffill().sum(axis=1),
+        format="%Y%b%d",
+    )
+    sgs = sgs.set_index("Date").drop(columns=["Year", "Month", "Day"])
+    sgs = sgs.set_axis(
+        sgs.columns.str.removeprefix(
+            "Average Buying Rates of Govt Securities Dealers "
+        ),
+        axis=1,
+    )
+    sgs = sgs.replace("", "NaN").astype(float)
+    return sgs
+
+
+def load_sgs_rates():
+    sgs = read_sgs_data()
+    sgs_yields = sgs.filter(like="Yield")
+    sgs_yields = sgs_yields.set_axis(
+        sgs_yields.columns.str.removesuffix(" Yield")
+        .str.removesuffix(" Bond")
+        .str.removesuffix(" T-Bill")
+        .str.removesuffix("-Year"),
+        axis=1,
+    )
+    sgs_yields = sgs_yields.resample("D").ffill().ffill()
+    return sgs_yields
+
+
+def load_sgs_returns():
+    sgs_rates = load_sgs_rates()
+    sgs_returns = pd.DataFrame()
+    # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
+    for duration in sgs_rates.columns:
+        rates = sgs_rates[duration]
+        rates = rates.div(100)
+        prev_rates = rates.shift(1)
+        price = (
+            prev_rates.div(365.25)
+            .add(
+                prev_rates.div(rates).mul(
+                    rates.div(2).add(1).pow(-2 * (int(duration) - 1 / 365.25)).rsub(1)
+                )
+            )
+            .add(rates.div(2).add(1).pow(-2 * (int(duration) - 1 / 365.25)))
+            .cumprod()
+        )
+        sgs_returns[duration] = price
+
+    return sgs_returns
+
+
 def download_sg_cpi():
     try:
         sg_cpi_response = requests.get(
@@ -719,6 +781,8 @@ __all__ = [
     "load_mas_swap_points",
     "load_sgd_neer",
     "load_sgd_interest_rates",
+    "load_sgs_rates",
+    "load_sgs_returns",
     "load_sg_cpi",
     "load_us_cpi_async",
     "load_us_cpi",
