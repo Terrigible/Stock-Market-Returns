@@ -48,10 +48,11 @@ def load_df(
         series = read_msci_data(
             "data/{}/{}/{}/{}/*{} {}*.xls".format(*security.split("|"), interval)
         ).iloc[:, 0]
-    elif source == "US Treasury":
-        series = load_us_treasury_returns()[security.split("|")[1]]
-        if interval == "Monthly":
-            series = series.resample("BME").last()
+    elif source == "FRED":
+        if security.split("|")[1] == "US-T":
+            series = load_us_treasury_returns()[security.split("|")[2]]
+            if interval == "Monthly":
+                series = series.resample("BME").last()
     elif source == "Others":
         if security.split("|")[1] == "STI":
             series = read_sti_data().iloc[:, 0]
@@ -64,7 +65,7 @@ def load_df(
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
         else:
-            raise ValueError("Invalid index")
+            raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
             series = series.resample("BME").last()
     elif source == "YF":
@@ -113,7 +114,7 @@ def load_df(
         if interval == "Monthly":
             series = series.resample("BME").last()
     else:
-        raise ValueError("Invalid index")
+        raise ValueError(f"Invalid index: {security}")
     if currency == "USD":
         if adjust_for_inflation == "Yes":
             series = series.div(
@@ -215,7 +216,7 @@ app.layout = dbc.Tabs(
                                     dbc.Select(
                                         {
                                             "MSCI": "MSCI",
-                                            "US Treasury": "US Treasury",
+                                            "FRED": "FRED",
                                             "Others": "Others",
                                         },
                                         value="MSCI",
@@ -272,26 +273,39 @@ app.layout = dbc.Tabs(
                                     ),
                                     html.Div(
                                         [
-                                            html.Label("Duration"),
+                                            html.Label("Index"),
                                             dbc.Select(
                                                 {
-                                                    "1MO": "1 Month",
-                                                    "3MO": "3 Months",
-                                                    "6MO": "6 Months",
-                                                    "1": "1 Year",
-                                                    "2": "2 Years",
-                                                    "3": "3 Years",
-                                                    "5": "5 Years",
-                                                    "7": "7 Years",
-                                                    "10": "10 Years",
-                                                    "20": "20 Years",
-                                                    "30": "30 Years",
+                                                    "US-T": "US Treasuries",
                                                 },
-                                                value="1MO",
-                                                id="us-treasury-duration-selection",
+                                                value="US-T",
+                                                id="fred-index-selection",
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Label("Duration"),
+                                                    dbc.Select(
+                                                        {
+                                                            "1MO": "1 Month",
+                                                            "3MO": "3 Months",
+                                                            "6MO": "6 Months",
+                                                            "1": "1 Year",
+                                                            "2": "2 Years",
+                                                            "3": "3 Years",
+                                                            "5": "5 Years",
+                                                            "7": "7 Years",
+                                                            "10": "10 Years",
+                                                            "20": "20 Years",
+                                                            "30": "30 Years",
+                                                        },
+                                                        value="1MO",
+                                                        id="us-treasury-duration-selection",
+                                                    ),
+                                                ],
+                                                id="us-treasury-index-selection-container",
                                             ),
                                         ],
-                                        id="us-treasury-index-selection-container",
+                                        id="fred-index-selection-container",
                                     ),
                                     html.Div(
                                         [
@@ -636,14 +650,14 @@ def update_index_selection_visibility(
 
 @app.callback(
     Output("msci-index-selection-container", "style"),
-    Output("us-treasury-index-selection-container", "style"),
+    Output("fred-index-selection-container", "style"),
     Output("others-index-selection-container", "style"),
     Input("index-provider-selection", "value"),
 )
 def update_msci_index_selection_visibility(index_provider: str):
     if index_provider == "MSCI":
         return {"display": "block"}, {"display": "none"}, {"display": "none"}
-    elif index_provider == "US Treasury":
+    elif index_provider == "FRED":
         return {"display": "none"}, {"display": "block"}, {"display": "none"}
     else:
         return {"display": "none"}, {"display": "none"}, {"display": "block"}
@@ -675,6 +689,8 @@ def update_others_tax_treatment_selection_visibility(others_index: str):
     State("msci-style-selection", "value"),
     State("msci-style-selection", "options"),
     State("msci-tax-treatment-selection", "value"),
+    State("fred-index-selection", "value"),
+    State("fred-index-selection", "options"),
     State("us-treasury-duration-selection", "value"),
     State("us-treasury-duration-selection", "options"),
     State("others-index-selection", "value"),
@@ -694,6 +710,8 @@ def add_index(
     msci_style: str,
     msci_style_options: dict[str, str],
     msci_tax_treatment: str,
+    fred_index: str,
+    fred_index_options: dict[str, str],
     us_treasury_duration: str,
     us_treasury_duration_options: dict[str, str],
     others_index: str,
@@ -731,11 +749,12 @@ def add_index(
                 )
             ),
         )
-    elif index_provider == "US Treasury":
-        index = (
-            f"{index_provider}|{us_treasury_duration}",
-            f"{us_treasury_duration_options[us_treasury_duration]} US Treasuries",
-        )
+    elif index_provider == "FRED":
+        if fred_index == "US-T":
+            index = (
+                f"{index_provider}|{fred_index}|{us_treasury_duration}",
+                f"{us_treasury_duration_options[us_treasury_duration]} {fred_index_options[fred_index]}",
+            )
     else:
         index = (
             f"Others|{others_index}|{others_tax_treatment}",
@@ -912,14 +931,14 @@ def add_fund(
         currency = "SGD"
     else:
         currency = "USD"
-    fund = (
+    security = (
         f"Fund|{fund_company}|{fund}|{currency}",
         f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}',
     )
-    if fund[0] in selected_securities:
+    if security[0] in selected_securities:
         return selected_securities, selected_securities_options
-    selected_securities.append(fund[0])
-    selected_securities_options.update({fund[0]: fund[1]})
+    selected_securities.append(security[0])
+    selected_securities_options.update({security[0]: security[1]})
     return selected_securities, selected_securities_options
 
 
