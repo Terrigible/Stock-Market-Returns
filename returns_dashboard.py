@@ -794,13 +794,14 @@ def add_stock_etf(
     for yf_security in yf_securities_store:
         yss_ticker, _, yss_tax_treatment = yf_security.split("|")[1:]
         if stock_etf == yss_ticker and tax_treatment == yss_tax_treatment:
-            if selected_securities is None:
+            if yf_security in selected_securities:
                 return (
-                    [yf_security],
-                    {yf_security: f"{stock_etf} {tax_treatment}"},
+                    selected_securities,
+                    selected_securities_options,
                     yf_securities_store,
                 )
-            if yf_security in selected_securities:
+            if yf_security in selected_securities_options:
+                selected_securities.append(yf_security)
                 return (
                     selected_securities,
                     selected_securities_options,
@@ -821,8 +822,6 @@ def add_stock_etf(
     ticker_symbol = ticker.ticker
     currency = ticker_info["currency"]
     new_yf_security = f"YF|{ticker_symbol}|{currency}|{tax_treatment}"
-    if new_yf_security in selected_securities:
-        return selected_securities, selected_securities_options, yf_securities_store
     selected_securities.append(new_yf_security)
     selected_securities_options[new_yf_security] = f"{ticker_symbol} {tax_treatment}"
 
