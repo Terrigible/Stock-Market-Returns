@@ -23,6 +23,7 @@ from funcs.loaders import (
     load_mas_sgd_fx,
     load_sg_cpi,
     load_sgd_interest_rates,
+    load_sgs_returns,
     load_us_cpi,
     load_us_treasury_returns,
     load_usdsgd,
@@ -51,6 +52,14 @@ def load_df(
     elif source == "FRED":
         if security.split("|")[1] == "US-T":
             series = load_us_treasury_returns()[security.split("|")[2]]
+            if interval == "Monthly":
+                series = series.resample("BME").last()
+    elif source == "MAS":
+        if security.split("|")[1] == "SGS":
+            series = load_sgs_returns()[security.split("|")[2]]
+            series = series.div(
+                load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
+            )
             if interval == "Monthly":
                 series = series.resample("BME").last()
     elif source == "Others":
@@ -217,6 +226,7 @@ app.layout = dbc.Tabs(
                                         {
                                             "MSCI": "MSCI",
                                             "FRED": "FRED",
+                                            "MAS": "MAS",
                                             "Others": "Others",
                                         },
                                         value="MSCI",
@@ -306,6 +316,39 @@ app.layout = dbc.Tabs(
                                             ),
                                         ],
                                         id="fred-index-selection-container",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label("Index"),
+                                            dbc.Select(
+                                                {
+                                                    "SGS": "SGS",
+                                                },
+                                                value="SGS",
+                                                id="mas-index-selection",
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Label("Duration"),
+                                                    dbc.Select(
+                                                        {
+                                                            "1": "1 Year",
+                                                            "2": "2 Years",
+                                                            "5": "5 Years",
+                                                            "10": "10 Years",
+                                                            "15": "15 Years",
+                                                            "20": "20 Years",
+                                                            "30": "30 Years",
+                                                            "50": "50 Years",
+                                                        },
+                                                        value="1",
+                                                        id="sgs-duration-selection",
+                                                    ),
+                                                ],
+                                                id="sgs-index-selection-container",
+                                            ),
+                                        ],
+                                        id="mas-index-selection-container",
                                     ),
                                     html.Div(
                                         [
@@ -651,16 +694,20 @@ def update_index_selection_visibility(
 @app.callback(
     Output("msci-index-selection-container", "style"),
     Output("fred-index-selection-container", "style"),
+    Output("mas-index-selection-container", "style"),
     Output("others-index-selection-container", "style"),
     Input("index-provider-selection", "value"),
+    Input("index-provider-selection", "options"),
 )
-def update_msci_index_selection_visibility(index_provider: str):
-    if index_provider == "MSCI":
-        return {"display": "block"}, {"display": "none"}, {"display": "none"}
-    elif index_provider == "FRED":
-        return {"display": "none"}, {"display": "block"}, {"display": "none"}
-    else:
-        return {"display": "none"}, {"display": "none"}, {"display": "block"}
+def update_msci_index_selection_visibility(
+    index_provider: str, index_provider_options: dict[str, str]
+):
+    return tuple(
+        {"display": "block"}
+        if index_provider == index_provider_option
+        else {"display": "none"}
+        for index_provider_option in index_provider_options
+    )
 
 
 @app.callback(
@@ -693,6 +740,10 @@ def update_others_tax_treatment_selection_visibility(others_index: str):
     State("fred-index-selection", "options"),
     State("us-treasury-duration-selection", "value"),
     State("us-treasury-duration-selection", "options"),
+    State("mas-index-selection", "value"),
+    State("mas-index-selection", "options"),
+    State("sgs-duration-selection", "value"),
+    State("sgs-duration-selection", "options"),
     State("others-index-selection", "value"),
     State("others-index-selection", "options"),
     State("others-tax-treatment-selection", "value"),
@@ -714,6 +765,10 @@ def add_index(
     fred_index_options: dict[str, str],
     us_treasury_duration: str,
     us_treasury_duration_options: dict[str, str],
+    mas_index: str,
+    mas_index_options: dict[str, str],
+    sgs_duration: str,
+    sgs_duration_options: dict[str, str],
     others_index: str,
     others_index_options: dict[str, str],
     others_tax_treatment: str,
@@ -754,6 +809,12 @@ def add_index(
             index = (
                 f"{index_provider}|{fred_index}|{us_treasury_duration}",
                 f"{us_treasury_duration_options[us_treasury_duration]} {fred_index_options[fred_index]}",
+            )
+    elif index_provider == "MAS":
+        if mas_index == "SGS":
+            index = (
+                f"{index_provider}|{mas_index}|{sgs_duration}",
+                f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}",
             )
     else:
         index = (
