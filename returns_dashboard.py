@@ -639,30 +639,35 @@ def update_graph(
     if y_var == "rolling_returns" and baseline_security != "None":
         df = df.sub(df[baseline_security], axis=0, level=0)
     if y_var == "rolling_returns" and chart_type == "hist":
-        data = [
-            go.Histogram(
-                x=[None],
-                name=selected_securities_options[baseline_security],
-                marker=dict(color=securities_colourmap[baseline_security]),
-                histnorm="probability",
-                opacity=0.7,
-                showlegend=True,
+        data = list(
+            filter(
+                None,
+                [
+                    go.Histogram(
+                        x=[None],
+                        name=selected_securities_options[baseline_security],
+                        marker=dict(color=securities_colourmap[baseline_security]),
+                        histnorm="probability",
+                        opacity=0.7,
+                        showlegend=True,
+                    )
+                    if baseline_security != "None"
+                    else None,
+                    *[
+                        go.Histogram(
+                            x=df[column],
+                            name=selected_securities_options[column],
+                            marker=dict(color=securities_colourmap[column]),
+                            histnorm="probability",
+                            opacity=0.7,
+                            showlegend=True,
+                        )
+                        for column in df.columns
+                        if column != baseline_security
+                    ],
+                ],
             )
-            if baseline_security != "None"
-            else dict(),
-            *[
-                go.Histogram(
-                    x=df[column],
-                    name=selected_securities_options[column],
-                    marker=dict(color=securities_colourmap[column]),
-                    histnorm="probability",
-                    opacity=0.7,
-                    showlegend=True,
-                )
-                for column in df.columns
-                if column != baseline_security
-            ],
-        ]
+        )
     else:
         data = [
             go.Scatter(
@@ -675,6 +680,12 @@ def update_graph(
             )
             for column in df.columns
         ]
+
+    if y_var == "rolling_returns" and chart_type == "hist":
+        temp_fig = go.Figure(
+            data=data, layout=go.Layout(barmode="overlay")
+        ).full_figure_for_development(warn=False)
+
     match y_var:
         case "price":
             title = "Price"
@@ -707,7 +718,7 @@ def update_graph(
                 x0=0,
                 x1=0,
                 y0=0,
-                y1=0.2,
+                y1=temp_fig.layout.yaxis.range[1] * 1.05,
                 line=dict(
                     color=securities_colourmap[baseline_security]
                     if baseline_security != "None"
@@ -718,7 +729,7 @@ def update_graph(
                 opacity=0.7,
             )
         ]
-        if chart_type == "hist"
+        if y_var == "rolling_returns" and chart_type == "hist"
         else None,
     )
     return dict(data=data, layout=layout)

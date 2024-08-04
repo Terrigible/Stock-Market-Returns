@@ -23,4 +23,5 @@ dependencies:
   - conda-forge::selenium
   - python-calamine
   - yfinance
+  - python-kaleido
 prefix: C:\Users\leowy\anaconda3\envs\market-returns
