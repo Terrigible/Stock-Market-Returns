@@ -10,7 +10,6 @@ import httpx
 import numpy as np
 import pandas as pd
 import requests
-from fredapi import Fred
 from pandas.tseries.offsets import BMonthEnd, MonthEnd
 from requests.exceptions import JSONDecodeError
 
@@ -79,9 +78,26 @@ def read_gmo_data():
     return df
 
 
+def get_fred_series(series_id: str) -> pd.Series:
+    res = httpx.get(
+        f"https://api.stlouisfed.org/fred/series/observations",
+        params={
+            "series_id": series_id,
+            "api_key": os.environ["FRED_API_KEY"],
+            "file_type": "json",
+        },
+    )
+    return (
+        pd.DataFrame(res.json()["observations"])
+        .assign(date=lambda df: pd.to_datetime(df["date"]))
+        .set_index("date")
+        .loc[:, "value"]
+        .rename(series_id)
+    )
+
+
 def download_fed_funds_rate():
-    fred = Fred()
-    fed_funds_rate = fred.get_series("DFF").rename("ffr").rename_axis("date")
+    fed_funds_rate = get_fred_series("DFF").rename("ffr")
     fed_funds_rate.to_csv("data/fed_funds_rate.csv")
     return fed_funds_rate
 
@@ -317,8 +333,7 @@ def load_fred_usd_fx():
 
 
 def load_fred_usdsgd():
-    fred = Fred()
-    usdsgd = fred.get_series("DEXSIUS").rename("usdsgd").rename_axis("date")
+    usdsgd = get_fred_series("DEXSIUS").rename("usdsgd")
     return usdsgd
 
 
