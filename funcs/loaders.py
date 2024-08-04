@@ -3,7 +3,6 @@ import os
 from glob import glob
 from io import BytesIO
 from itertools import chain
-from typing import Literal
 from zipfile import ZipFile
 
 import httpx
@@ -128,7 +127,12 @@ async def download_us_treasury_rates_async():
     async with httpx.AsyncClient() as client:
         tasks = (
             client.get(
-                f'https://api.stlouisfed.org/fred/series/observations?series_id=DGS{duration}&api_key={os.environ["FRED_API_KEY"]}&file_type=json'
+                "https://api.stlouisfed.org/fred/series/observations",
+                params={
+                    "series_id": f"DGS{duration}",
+                    "api_key": os.environ["FRED_API_KEY"],
+                    "file_type": "json",
+                },
             )
             for duration in durations
         )
@@ -294,7 +298,12 @@ async def download_fred_usd_fx_async():
     async with httpx.AsyncClient() as client:
         tasks = (
             client.get(
-                f'https://api.stlouisfed.org/fred/series/observations?series_id={series}&api_key={os.environ["FRED_API_KEY"]}&file_type=json'
+                "https://api.stlouisfed.org/fred/series/observations",
+                params={
+                    "series_id": series,
+                    "api_key": os.environ["FRED_API_KEY"],
+                    "file_type": "json",
+                },
             )
             for series in series.values()
         )
@@ -339,7 +348,8 @@ def load_fred_usdsgd():
 
 def download_worldbank_exchange_rates():
     res = requests.get(
-        "https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF?downloadformat=csv"
+        "https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF",
+        params={"downloadformat": "csv"},
     )
     res.raise_for_status()
     with ZipFile(BytesIO(res.content)) as zf:
@@ -475,7 +485,8 @@ def load_mas_swap_points():
 
 def download_sgd_neer():
     sgd_neer_response = requests.get(
-        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/s$neer/s$neer_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
+        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/s$neer/s$neer_{
+            pd.Timestamp("today").strftime("%Y%m")}.xlsx',
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
     )
     if sgd_neer_response.status_code == 200:
@@ -483,7 +494,8 @@ def download_sgd_neer():
             f.write(sgd_neer_response.content)
     else:
         raise Exception(
-            f"Error downloading MAS swap points: {sgd_neer_response.status_code} {sgd_neer_response.reason}"
+            f"Error downloading MAS swap points: {
+                sgd_neer_response.status_code} {sgd_neer_response.reason}"
         )
 
 
