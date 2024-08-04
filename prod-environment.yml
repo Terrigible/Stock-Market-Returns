@@ -12,7 +12,7 @@ dependencies:
   - pandas
   - pip
   - plotly
-  - python=3.12
+  - defaults::python=3.12
   - requests
   - python-calamine
   - yfinance
