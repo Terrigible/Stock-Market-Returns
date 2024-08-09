@@ -15,7 +15,7 @@ dependencies:
   - pandas
   - pip
   - plotly
-  - defaults::python=3.12
+  - python=3.12
   - requests
   - scikit-learn
   - seaborn
