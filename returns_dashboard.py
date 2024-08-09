@@ -794,6 +794,9 @@ def update_portfolios(
 ):
     if portfolio_security is None:
         return portfolios, portfolios_options
+    if dca_interval is None:
+        dca_interval = 1
+
     if ls_dca == "LS":
         if investment_amount is None:
             return portfolios, portfolios_options
@@ -801,31 +804,33 @@ def update_portfolios(
             return portfolios, portfolios_options
         if dca_length is None:
             dca_length = 1
-        if dca_interval is None:
-            dca_interval = 1
-    if ls_dca == "DCA":
+    elif ls_dca == "DCA":
         if monthly_investment is None:
             return portfolios, portfolios_options
         if dca_length is None:
             return portfolios, portfolios_options
         if investment_horizon is None:
             investment_horizon = dca_length
-        if dca_interval is None:
-            dca_interval = 1
-    if dca_length > investment_horizon:
+    else:
         return portfolios, portfolios_options
+
     if variable_transaction_fees is None:
         variable_transaction_fees = 0
     if fixed_transaction_fees is None:
         fixed_transaction_fees = 0
     if annualised_holding_fees is None:
         annualised_holding_fees = 0
+
+    if dca_length > investment_horizon:
+        return portfolios, portfolios_options
+
     if (
         variable_transaction_fees < 0
         or fixed_transaction_fees < 0
         or annualised_holding_fees < 0
     ):
         return portfolios, portfolios_options
+
     if ls_dca == "LS":
         portfolio = (
             f"{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{
@@ -833,7 +838,6 @@ def update_portfolios(
             f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {
                 dca_length} months every {dca_interval} months"} {variable_transaction_fees/100}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees',
         )
-
     else:
         portfolio = (
             f"{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{
