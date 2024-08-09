@@ -783,14 +783,14 @@ def update_portfolios(
     portfolio_security_options: dict[str, str],
     currency: str,
     ls_dca: str,
-    investment_amount: float | None,
-    monthly_investment: float | None,
-    investment_horizon: int | None,
-    dca_length: int | None,
-    dca_interval: int | None,
-    variable_transaction_fees: float | None,
-    fixed_transaction_fees: float | None,
-    annualised_holding_fees: float | None,
+    investment_amount: int | float | None,
+    monthly_investment: int | float | None,
+    investment_horizon: int | float | None,
+    dca_length: int | float | None,
+    dca_interval: int | float | None,
+    variable_transaction_fees: int | float | None,
+    fixed_transaction_fees: int | float | None,
+    annualised_holding_fees: int | float | None,
 ):
     if portfolio_security is None:
         return portfolios, portfolios_options
