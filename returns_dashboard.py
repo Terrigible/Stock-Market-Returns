@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import yfinance as yf
-from dash import Dash
+from dash import Dash, no_update
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
@@ -306,13 +306,10 @@ def add_index(
     others_tax_treatment: str,
 ):
     if index_provider == "MSCI":
-        if (
-            glob(
-                f"data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls"
-            )
-            == []
+        if not glob(
+            f"data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls"
         ):
-            return selected_securities, selected_securities_options
+            return no_update
         index = (
             f"{index_provider}|{msci_index}|{msci_size}|{msci_style}|{msci_tax_treatment}",
             " ".join(
@@ -356,7 +353,7 @@ def add_index(
     if selected_securities is None:
         return [index[0]], {index[0]: index[1]}
     if index[0] in selected_securities:
-        return selected_securities, selected_securities_options
+        return no_update
     selected_securities.append(index[0])
     selected_securities_options.update({index[0]: index[1]})
     return selected_securities, selected_securities_options
@@ -383,23 +380,15 @@ def add_stock_etf(
     yf_securities_store: dict[str, str],
 ):
     if ";" in stock_etf:
-        return selected_securities, selected_securities_options, yf_securities_store
+        return no_update
     for yf_security in yf_securities_store:
         yss_ticker, _, yss_tax_treatment = yf_security.split("|")[1:]
         if stock_etf == yss_ticker and tax_treatment == yss_tax_treatment:
             if yf_security in selected_securities:
-                return (
-                    selected_securities,
-                    selected_securities_options,
-                    yf_securities_store,
-                )
+                return no_update
             if yf_security in selected_securities_options:
                 selected_securities.append(yf_security)
-                return (
-                    selected_securities,
-                    selected_securities_options,
-                    yf_securities_store,
-                )
+                return no_update
     ticker = yf.Ticker(stock_etf)
     with StringIO() as ticker_info_output_buffer, redirect_stderr(
         ticker_info_output_buffer
@@ -407,11 +396,11 @@ def add_stock_etf(
         ticker_info = ticker.info
         ticker_info_output = ticker_info_output_buffer.getvalue()
     if "404 Client Error: Not Found for url" in ticker_info_output:
-        return selected_securities, selected_securities_options, yf_securities_store
+        return no_update
     if ticker_info_output:
         print(ticker_info_output)
     if "currency" not in ticker_info:
-        return selected_securities, selected_securities_options, yf_securities_store
+        return no_update
     ticker_symbol = ticker.ticker
     currency = ticker_info["currency"]
     new_yf_security = f"YF|{ticker_symbol}|{currency}|{tax_treatment}"
@@ -528,7 +517,7 @@ def add_fund(
         f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}',
     )
     if security[0] in selected_securities:
-        return selected_securities, selected_securities_options
+        return no_update
     selected_securities.append(security[0])
     selected_securities_options.update({security[0]: security[1]})
     return selected_securities, selected_securities_options
@@ -793,26 +782,26 @@ def update_portfolios(
     annualised_holding_fees: int | float | None,
 ):
     if portfolio_security is None:
-        return portfolios, portfolios_options
+        return no_update
     if dca_interval is None:
         dca_interval = 1
 
     if ls_dca == "LS":
         if investment_amount is None:
-            return portfolios, portfolios_options
+            return no_update
         if investment_horizon is None:
-            return portfolios, portfolios_options
+            return no_update
         if dca_length is None:
             dca_length = 1
     elif ls_dca == "DCA":
         if monthly_investment is None:
-            return portfolios, portfolios_options
+            return no_update
         if dca_length is None:
-            return portfolios, portfolios_options
+            return no_update
         if investment_horizon is None:
             investment_horizon = dca_length
     else:
-        return portfolios, portfolios_options
+        return no_update
 
     if variable_transaction_fees is None:
         variable_transaction_fees = 0
@@ -822,14 +811,14 @@ def update_portfolios(
         annualised_holding_fees = 0
 
     if dca_length > investment_horizon:
-        return portfolios, portfolios_options
+        return no_update
 
     if (
         variable_transaction_fees < 0
         or fixed_transaction_fees < 0
         or annualised_holding_fees < 0
     ):
-        return portfolios, portfolios_options
+        return no_update
 
     if ls_dca == "LS":
         portfolio = (
@@ -849,7 +838,7 @@ def update_portfolios(
     if portfolios is None:
         return [portfolio[0]], {portfolio[0]: portfolio[1]}
     if portfolio[0] in portfolios:
-        return portfolios, portfolios_options
+        return no_update
     portfolios.append(portfolio[0])
     portfolios_options.update({portfolio[0]: portfolio[1]})
     return portfolios, portfolios_options
