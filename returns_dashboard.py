@@ -390,19 +390,12 @@ def add_stock_etf(
                 selected_securities.append(yf_security)
                 return no_update
     ticker = yf.Ticker(stock_etf)
-    with StringIO() as ticker_info_output_buffer, redirect_stderr(
-        ticker_info_output_buffer
-    ):
-        ticker_info = ticker.info
-        ticker_info_output = ticker_info_output_buffer.getvalue()
-    if "404 Client Error: Not Found for url" in ticker_info_output:
+    if ticker.history_metadata == {}:
         return no_update
-    if ticker_info_output:
-        print(ticker_info_output)
-    if "currency" not in ticker_info:
+    if "currency" not in ticker.history_metadata:
         return no_update
     ticker_symbol = ticker.ticker
-    currency = ticker_info["currency"]
+    currency = ticker.history_metadata["currency"]
     new_yf_security = f"YF|{ticker_symbol}|{currency}|{tax_treatment}"
     selected_securities.append(new_yf_security)
     selected_securities_options[new_yf_security] = f"{ticker_symbol} {tax_treatment}"
