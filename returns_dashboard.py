@@ -803,6 +803,13 @@ def update_portfolios(
     if annualised_holding_fees is None:
         annualised_holding_fees = 0
 
+    if isinstance(investment_horizon, float):
+        return no_update
+    if isinstance(dca_length, float):
+        return no_update
+    if isinstance(dca_interval, float):
+        return no_update
+
     if dca_length > investment_horizon:
         return no_update
 
@@ -895,6 +902,9 @@ def update_portfolio_graph(
                 ]
             ],
         )
+        investment_horizon = int(investment_horizon)
+        dca_length = int(dca_length)
+        dca_interval = int(dca_interval)
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
         portfolio_series = load_df(
