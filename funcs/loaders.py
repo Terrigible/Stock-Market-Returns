@@ -91,6 +91,8 @@ def get_fred_series(series_id: str) -> pd.Series:
         .assign(date=lambda df: pd.to_datetime(df["date"]))
         .set_index("date")
         .loc[:, "value"]
+        .replace(".", np.nan)
+        .astype(float)
         .rename(series_id)
     )
 
