@@ -1,4 +1,3 @@
-from contextlib import redirect_stderr
 from functools import cache
 from glob import glob
 from io import StringIO
@@ -34,7 +33,7 @@ from funcs.loaders import (
     read_spx_data,
     read_sti_data,
 )
-from layout import layout
+from layout import app_layout
 
 
 @cache
@@ -202,7 +201,7 @@ app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = app.server
 
-app.layout = layout
+app.layout = app_layout
 
 
 @app.callback(
@@ -822,17 +821,13 @@ def update_portfolios(
 
     if ls_dca == "LS":
         portfolio = (
-            f"{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{
-                dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
-            f'{portfolio_security_options[portfolio_security]} {currency}, {"Lump Sum"}, {investment_amount} invested for {investment_horizon} months, {f" DCA over {
-                dca_length} months every {dca_interval} months"} {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees',
+            f"{portfolio_security};{currency};LS;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
+            f"{portfolio_security_options[portfolio_security]} {currency}, Lump Sum, {investment_amount} invested for {investment_horizon} months, DCA over {dca_length} months every {dca_interval} months {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
         )
     else:
         portfolio = (
-            f"{portfolio_security};{currency};{ls_dca};{investment_amount};{investment_horizon};{monthly_investment};{
-                dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
-            f'{portfolio_security_options[portfolio_security]} {currency}, {"DCA"}, {monthly_investment} invested monthly for {dca_length} months, {
-                dca_interval} months apart, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees',
+            f"{portfolio_security};{currency};DCA;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
+            f"{portfolio_security_options[portfolio_security]} {currency}, DCA, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, held for {investment_horizon} months, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
         )
 
     if portfolios is None:

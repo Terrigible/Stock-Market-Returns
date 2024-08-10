@@ -79,7 +79,7 @@ def read_gmo_data():
 
 def get_fred_series(series_id: str) -> pd.Series:
     res = httpx.get(
-        f"https://api.stlouisfed.org/fred/series/observations",
+        "https://api.stlouisfed.org/fred/series/observations",
         params={
             "series_id": series_id,
             "api_key": os.environ["FRED_API_KEY"],
@@ -107,7 +107,7 @@ def load_fed_funds_rate():
             "data/fed_funds_rate.csv", parse_dates=["date"], index_col="date"
         )
         if fed_funds_rate.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, "D"
+            -1, True
         ) and os.environ.get("FRED_API_KEY", None):
             raise FileNotFoundError
         fed_funds_rate = fed_funds_rate["ffr"]
@@ -154,10 +154,10 @@ async def download_us_treasury_rates_async():
 async def load_us_treasury_rates_async():
     try:
         treasury_rates = pd.read_csv(
-            f"data/us_treasury.csv", parse_dates=["date"], index_col="date"
+            "data/us_treasury.csv", parse_dates=["date"], index_col="date"
         )
         if treasury_rates.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, "D"
+            -1, True
         ) and os.environ.get("FRED_API_KEY", None):
             raise FileNotFoundError
 
@@ -261,7 +261,7 @@ def load_mas_sgd_fx():
     try:
         sgd_fx = pd.read_csv("data/sgd_fx.csv", parse_dates=["date"], index_col="date")
         if sgd_fx.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, "D"
+            -1, True
         ) and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None):
             raise FileNotFoundError
     except FileNotFoundError:
@@ -328,7 +328,7 @@ async def load_fred_usd_fx_async():
     try:
         usd_fx = pd.read_csv("data/usd_fx.csv", parse_dates=["date"], index_col="date")
         if usd_fx.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, "D"
+            -1, True
         ) and os.environ.get("FRED_API_KEY", None):
             raise FileNotFoundError
     except FileNotFoundError:
@@ -361,7 +361,7 @@ def download_worldbank_exchange_rates():
             break
         else:
             raise FileNotFoundError("No file found in zip file")
-    series = df.loc[208].loc["1960":"2022"].astype(float)
+    series = df.T.loc["1960":"2022", 208].astype(float)
     return series
 
 
@@ -373,7 +373,7 @@ def load_worldbank_usdsgd():
                 series.set_axis(
                     pd.to_datetime(series.index, format="%Y") + pd.DateOffset(months=6)
                 ).loc[: load_fred_usdsgd().index[0]],
-                load_fred_usdsgd().iloc[[0]],
+                load_fred_usdsgd().iloc[0:1],
             ],
         )
         .resample("D")
@@ -386,7 +386,7 @@ def load_usdsgd():
     try:
         usdsgd = pd.read_csv("data/usdsgd.csv", parse_dates=["date"], index_col="date")
         if (
-            usdsgd.index[-1] < pd.to_datetime("today") + BMonthEnd(-1, "D")
+            usdsgd.index[-1] < pd.to_datetime("today") + BMonthEnd(-1, True)
             and os.environ.get("FRED_API_KEY", None)
             and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None)
         ):

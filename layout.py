@@ -2,7 +2,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 
-layout = dbc.Tabs(
+app_layout = dbc.Tabs(
     [
         dbc.Tab(
             label="Returns Dashboard",
