@@ -21,7 +21,8 @@ dependencies:
   - seaborn
   - snakeviz
   - conda-forge::selenium
-  - python-calamine
   - yfinance
   - python-kaleido
+  - pip:
+      - python-calamine
 prefix: C:\Users\leowy\anaconda3\envs\market-returns
