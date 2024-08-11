@@ -30,7 +30,7 @@ def read_msci_source(filename):
 
 
 def read_msci_data(filename_pattern):
-    return pd.concat(map(read_msci_source, glob(filename_pattern)))
+    return pd.concat(map(read_msci_source, sorted(glob(filename_pattern))))
 
 
 def read_sti_data():
