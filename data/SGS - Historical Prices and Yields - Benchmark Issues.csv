@@ -1,6 +1,6 @@
 SGS Prices and Yields - Benchmark Issues (2005 to 2007)
 
-Jan 1998 to Jul 2024 (Daily)
+Jan 1998 to Sep 2024 (Daily)
 
 ,,,Average Buying Rates of Govt Securities Dealers 1-Year T-Bill Yield,Average Buying Rates of Govt Securities Dealers 2-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 2-Year Bond Price,Average Buying Rates of Govt Securities Dealers 5-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 5-Year Bond Price,Average Buying Rates of Govt Securities Dealers 10-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 10-Year Bond Price,Average Buying Rates of Govt Securities Dealers 15-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 15-Year Bond Price,Average Buying Rates of Govt Securities Dealers 20-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 20-Year Bond Price,Average Buying Rates of Govt Securities Dealers 30-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 30-Year Bond Price,Average Buying Rates of Govt Securities Dealers 50-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 50-Year Bond Price
 1998,Jan,02,2.5,3.09,99.45,3.9,97.4,,,,,,,,,,
@@ -7011,6 +7011,30 @@ Jan 1998 to Jul 2024 (Daily)
 ,,29,3.39,2.98,96.24,2.91,100.39,2.97,103.42,3.01,92.44,2.99,96.18,2.92,106.55,2.93,101.7
 ,,30,3.39,2.97,96.27,2.88,100.5,2.94,103.65,2.97,92.82,2.96,96.62,2.9,106.87,2.92,102.11
 ,,31,3.39,2.94,96.34,2.8,100.85,2.88,104.19,2.9,93.64,2.9,97.66,2.88,107.36,2.89,102.78
+,Aug,01,3.34,2.9,96.42,2.77,100.99,2.85,104.46,2.87,94.04,2.88,97.93,2.87,107.54,2.88,103.08
+,,02,3.29,2.84,96.57,2.71,101.24,2.79,104.93,2.81,94.75,2.82,98.93,2.83,108.48,2.84,104.2
+,,05,3.27,2.64,96.99,2.58,101.82,2.69,105.87,2.71,95.92,2.73,100.28,2.74,110.26,2.75,106.66
+,,06,3.28,2.72,96.83,2.67,101.43,2.77,105.15,2.79,94.98,2.81,99.02,2.81,108.81,2.81,104.86
+,,07,3.29,2.79,96.68,2.78,100.94,2.88,104.2,2.89,93.79,2.91,97.4,2.92,106.63,2.92,102.12
+,,08,3.29,2.78,96.72,2.77,100.98,2.86,104.34,2.9,93.73,2.92,97.22,2.94,106.15,2.95,101.36
+,,12,3.29,2.81,96.66,2.81,100.84,2.87,104.26,2.9,93.65,2.93,97.08,2.95,105.88,2.96,100.94
+,,13,3.29,2.78,96.74,2.75,101.07,2.81,104.76,2.86,94.2,2.88,97.85,2.91,106.73,2.93,101.89
+,,14,3.28,2.72,96.86,2.7,101.31,2.76,105.19,2.81,94.72,2.85,98.43,2.88,107.4,2.89,102.74
+,,15,3.29,2.75,96.81,2.72,101.2,2.8,104.88,2.84,94.4,2.88,97.99,2.9,106.93,2.91,102.35
+,,16,3.29,2.77,96.76,2.76,101.03,2.82,104.67,2.87,94.06,2.91,97.48,2.93,106.41,2.92,102.03
+,,19,3.28,2.75,96.82,2.7,101.31,2.77,105.15,2.82,94.58,2.87,98.04,2.9,107.05,2.89,102.85
+,,20,3.28,2.75,96.81,2.7,101.28,2.77,105.12,2.83,94.54,2.88,97.85,2.9,106.85,2.9,102.54
+,,21,3.26,2.72,96.88,2.67,101.41,2.74,105.41,2.79,95.01,2.84,98.56,2.86,107.84,2.85,103.8
+,,22,3.25,2.69,96.95,2.66,101.48,2.72,105.57,2.78,95.12,2.83,98.64,2.85,107.94,2.85,103.93
+,,23,3.23,2.7,96.94,2.67,101.41,2.74,105.37,2.79,94.99,2.84,98.49,2.85,107.89,2.86,103.7
+,,26,3.19,2.65,97.06,2.64,101.55,2.71,105.65,2.77,95.23,2.83,98.77,2.83,108.49,2.83,104.42
+,,27,3.17,2.66,97.03,2.65,101.5,2.74,105.38,2.8,94.9,2.86,98.26,2.85,108.02,2.85,103.85
+,,28,3.17,2.58,97.2,2.57,101.37,2.68,105.87,2.76,95.34,2.82,98.86,2.81,108.75,2.82,104.76
+,,29,3.13,2.58,97.21,2.57,101.37,2.7,105.72,2.77,95.18,2.83,98.64,2.83,108.5,2.83,104.55
+,,30,3.14,2.55,97.27,2.56,101.4,2.71,105.66,2.79,94.97,2.83,98.71,2.82,108.58,2.82,104.73
+,Sep,02,3.14,2.57,97.23,2.61,101.21,2.75,105.31,2.84,94.45,2.89,97.79,2.86,107.69,2.87,103.43
+,,03,3.14,2.59,97.21,2.61,101.19,2.74,105.32,2.84,94.44,2.89,97.83,2.87,107.59,2.87,103.33
+,,04,3.13,2.53,97.32,2.53,101.54,2.67,105.97,2.76,95.34,2.81,99.01,2.81,108.86,2.81,104.85
 
 "* Data reflects bid rates quoted by SGS Primary Dealers to each other based on standard market lot transactions as specified in the Rules and Market Practices of the SGS Market. Prices quoted to non-Primary Dealers may be different, subject to factors such as transaction size and administrative costs."
 "* Figures before 2000 are the modes of closing bid prices quoted by SGS primary dealers."
