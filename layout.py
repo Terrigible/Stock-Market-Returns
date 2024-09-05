@@ -211,6 +211,7 @@ app_layout = dbc.Tabs(
                                         [
                                             "Great Eastern",
                                             "GMO",
+                                            "Fundsmith",
                                         ],
                                         value="Great Eastern",
                                         id="fund-company-selection",

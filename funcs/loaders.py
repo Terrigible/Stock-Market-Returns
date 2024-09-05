@@ -793,6 +793,19 @@ def read_greatlink_data(fund_name):
     return df
 
 
+def read_fundsmith_data(fund: str):
+    df = (
+        pd.read_csv(
+            f"data/Fundsmith {fund} EUR Acc.csv",
+            parse_dates=["Date"],
+            index_col="Date",
+        )
+        .rename_axis("date")[["Close"]]
+        .set_axis(["price"], axis=1)
+    )
+    return df
+
+
 __all__ = [
     "read_msci_data",
     "read_sti_data",

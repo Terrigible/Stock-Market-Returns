@@ -32,6 +32,7 @@ from funcs.loaders import (
     read_shiller_sp500_data,
     read_spx_data,
     read_sti_data,
+    read_fundsmith_data,
 )
 from layout import app_layout
 
@@ -120,6 +121,10 @@ def load_df(
             series = read_greatlink_data(fund).iloc[:, 0]
         elif fund_company == "GMO":
             series = read_gmo_data().iloc[:, 0]
+        elif fund_company == "Fundsmith":
+            series = read_fundsmith_data(fund.replace("Class ", "")).iloc[:, 0]
+        else:
+            raise ValueError(f"Invalid fund: {fund}")
         if interval == "Monthly":
             series = series.resample("BME").last()
     else:
@@ -476,6 +481,14 @@ def update_fund_selection_options(fund_company: str):
             ],
             "Quality Investment Fund",
         )
+    elif fund_company == "Fundsmith":
+        return (
+            [
+                "Equity Fund Class T",
+                "Equity Fund Class R",
+            ],
+            "Equity Fund Class T",
+        )
     else:
         return (
             [],
@@ -502,8 +515,12 @@ def add_fund(
 ):
     if fund_company == "Great Eastern":
         currency = "SGD"
-    else:
+    elif fund_company == "GMO":
         currency = "USD"
+    elif fund_company == "Fundsmith":
+        currency = "EUR"
+    else:
+        return no_update
     security = (
         f"Fund|{fund_company}|{fund}|{currency}",
         f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}',
