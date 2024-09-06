@@ -356,15 +356,15 @@ app_layout = dbc.Tabs(
             ),
         ),
         dbc.Tab(
-            label="Portfolio Simulator",
+            label="Strategy Tester",
             children=html.Div(
                 [
                     html.Div(
                         [
-                            html.Label("Security"),
+                            html.Label("Strategy"),
                             dcc.Dropdown(
                                 {},
-                                id="portfolio-security",
+                                id="strategy-portfolio",
                             ),
                             html.Label("Currency"),
                             dbc.Select(
@@ -373,7 +373,7 @@ app_layout = dbc.Tabs(
                                     "USD",
                                 ],
                                 value="SGD",
-                                id="portfolio-currency-selection",
+                                id="strategy-currency-selection",
                             ),
                             html.Label("Lump Sum / DCA"),
                             dbc.Select(
@@ -431,13 +431,13 @@ app_layout = dbc.Tabs(
                                 id="annualised-holding-fees-input",
                                 type="number",
                             ),
-                            html.Button("Add Portfolio", id="add-portfolio-button"),
+                            html.Button("Add Strategy", id="add-strategy-button"),
                             html.P(),
-                            html.Label("Portfolios"),
+                            html.Label("Strategies"),
                             dcc.Dropdown(
                                 {},
                                 multi=True,
-                                id="portfolios",
+                                id="strategies",
                             ),
                         ],
                         style={
@@ -451,10 +451,10 @@ app_layout = dbc.Tabs(
                         figure={
                             "data": [],
                             "layout": {
-                                "title": "Portfolio Simulation",
+                                "title": "Strategy Performance",
                             },
                         },
-                        id="portfolio-graph",
+                        id="strategy-graph",
                         style={
                             "width": "85%",
                             "height": "100%",

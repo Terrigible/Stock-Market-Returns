@@ -734,10 +734,10 @@ def update_graph(
 
 
 @app.callback(
-    Output("portfolio-security", "options"),
+    Output("strategy-portfolio", "options"),
     Input("selected-securities", "options"),
 )
-def update_portfolio_securities(selected_securities_options: dict[str, str]):
+def update_strategy_portfolios(selected_securities_options: dict[str, str]):
     return selected_securities_options
 
 
@@ -754,14 +754,14 @@ def update_ls_input_visibility(ls_dca: str):
 
 
 @app.callback(
-    Output("portfolios", "value"),
-    Output("portfolios", "options"),
-    Input("add-portfolio-button", "n_clicks"),
-    State("portfolios", "value"),
-    State("portfolios", "options"),
-    State("portfolio-security", "value"),
-    State("portfolio-security", "options"),
-    State("portfolio-currency-selection", "value"),
+    Output("strategies", "value"),
+    Output("strategies", "options"),
+    Input("add-strategy-button", "n_clicks"),
+    State("strategies", "value"),
+    State("strategies", "options"),
+    State("strategy-portfolio", "value"),
+    State("strategy-portfolio", "options"),
+    State("strategy-currency-selection", "value"),
     State("ls-dca-selection", "value"),
     State("investment-amount-input", "value"),
     State("monthly-investment-input", "value"),
@@ -773,12 +773,12 @@ def update_ls_input_visibility(ls_dca: str):
     State("annualised-holding-fees-input", "value"),
     prevent_initial_call=True,
 )
-def update_portfolios(
+def update_strategies(
     _,
-    portfolios: list[str] | None,
-    portfolios_options: dict[str, str],
-    portfolio_security: str | None,
-    portfolio_security_options: dict[str, str],
+    strategies: list[str] | None,
+    strategy_options: dict[str, str],
+    strategy_portfolio: str | None,
+    strategy_portfolio_options: dict[str, str],
     currency: str,
     ls_dca: str,
     investment_amount: int | float | None,
@@ -790,7 +790,7 @@ def update_portfolios(
     fixed_transaction_fees: int | float | None,
     annualised_holding_fees: int | float | None,
 ):
-    if portfolio_security is None:
+    if strategy_portfolio is None:
         return no_update
     if dca_interval is None:
         dca_interval = 1
@@ -837,48 +837,48 @@ def update_portfolios(
         return no_update
 
     if ls_dca == "LS":
-        portfolio = (
-            f"{portfolio_security};{currency};LS;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
-            f"{portfolio_security_options[portfolio_security]} {currency}, Lump Sum, {investment_amount} invested for {investment_horizon} months, DCA over {dca_length} months every {dca_interval} months {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
+        strategy = (
+            f"{strategy_portfolio};{currency};LS;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
+            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, Lump Sum, {investment_amount} invested for {investment_horizon} months, DCA over {dca_length} months every {dca_interval} months {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
         )
     else:
-        portfolio = (
-            f"{portfolio_security};{currency};DCA;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
-            f"{portfolio_security_options[portfolio_security]} {currency}, DCA, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, held for {investment_horizon} months, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
+        strategy = (
+            f"{strategy_portfolio};{currency};DCA;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
+            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, DCA, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, held for {investment_horizon} months, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
         )
 
-    if portfolios is None:
-        return [portfolio[0]], {portfolio[0]: portfolio[1]}
-    if portfolio[0] in portfolios:
+    if strategies is None:
+        return [strategy[0]], {strategy[0]: strategy[1]}
+    if strategy[0] in strategies:
         return no_update
-    portfolios.append(portfolio[0])
-    portfolios_options.update({portfolio[0]: portfolio[1]})
-    return portfolios, portfolios_options
+    strategies.append(strategy[0])
+    strategy_options.update({strategy[0]: strategy[1]})
+    return strategies, strategy_options
 
 
 @app.callback(
-    Output("portfolio-graph", "figure"),
-    Input("portfolios", "value"),
-    State("portfolios", "options"),
+    Output("strategy-graph", "figure"),
+    Input("strategies", "value"),
+    State("strategies", "options"),
     State("yf-securities-store", "data"),
     prevent_initial_call=True,
 )
-def update_portfolio_graph(
-    portfolios: list[str],
-    portfolio_options: dict[str, str],
+def update_strategy_graph(
+    strategies: list[str],
+    strategy_options: dict[str, str],
     yf_securities: dict[str, str],
 ):
     series = []
-    if not portfolios:
+    if not strategies:
         return {
             "data": [],
             "layout": {
-                "title": "Portfolio Simulation",
+                "title": "Strategy Performance",
             },
         }
-    for portfolio in portfolios:
+    for strategy in strategies:
         (
-            portfolio_security,
+            strategy_portfolio,
             currency,
             ls_dca,
             investment_amount,
@@ -889,7 +889,7 @@ def update_portfolio_graph(
             variable_transaction_fees,
             fixed_transaction_fees,
             annualised_holding_fees,
-        ) = portfolio.split(";")
+        ) = strategy.split(";")
         (
             investment_amount,
             investment_horizon,
@@ -919,21 +919,18 @@ def update_portfolio_graph(
         dca_interval = int(dca_interval)
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        portfolio_series = load_df(
-            portfolio_security,
+        strategy_series = load_df(
+            strategy_portfolio,
             "Monthly",
             currency,
             "No",
-            yf_securities.get(portfolio_security),
+            yf_securities.get(strategy_portfolio),
         )
         interest_rates = (
-            load_fed_funds_rate()[1]
-            .reindex(portfolio_series.index)
-            .fillna(0)
-            .to_numpy()
+            load_fed_funds_rate()[1].reindex(strategy_series.index).fillna(0).to_numpy()
             if currency == "USD"
             else load_sgd_interest_rates()[1]["sgd_ir_1m"]
-            .reindex(portfolio_series.index)
+            .reindex(strategy_series.index)
             .fillna(0)
             .to_numpy()
         )
@@ -942,7 +939,7 @@ def update_portfolio_graph(
             ending_values = (
                 pd.Series(
                     calculate_lumpsum_return_with_fees_and_interest_vector(
-                        portfolio_series.pct_change().to_numpy(),
+                        strategy_series.pct_change().to_numpy(),
                         dca_length,
                         dca_interval,
                         investment_horizon,
@@ -952,8 +949,8 @@ def update_portfolio_graph(
                         annualised_holding_fees,
                         interest_rates,
                     ),
-                    index=portfolio_series.index,
-                    name=portfolio,
+                    index=strategy_series.index,
+                    name=strategy,
                 )
                 .add(1)
                 .mul(investment_amount)
@@ -962,7 +959,7 @@ def update_portfolio_graph(
             ending_values = (
                 pd.Series(
                     calculate_dca_return_with_fees_and_interest_vector(
-                        portfolio_series.pct_change().to_numpy(),
+                        strategy_series.pct_change().to_numpy(),
                         dca_length,
                         dca_interval,
                         investment_horizon,
@@ -972,26 +969,26 @@ def update_portfolio_graph(
                         annualised_holding_fees,
                         interest_rates,
                     ),
-                    index=portfolio_series.index,
-                    name=portfolio,
+                    index=strategy_series.index,
+                    name=strategy,
                 )
                 .add(1)
                 .mul(monthly_investment * dca_length)
             )
         series.append(ending_values)
-    ending_values = pd.concat(series, axis=1, names=portfolios)
+    ending_values = pd.concat(series, axis=1, names=strategies)
     return {
         "data": [
             go.Scatter(
                 x=ending_values.index,
                 y=ending_values[security],
                 mode="lines",
-                name=portfolio_options[security],
+                name=strategy_options[security],
             )
             for security in ending_values.columns
         ],
         "layout": {
-            "title": "Portfolio Simulation",
+            "title": "Strategy Performance",
         },
     }
 
