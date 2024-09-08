@@ -356,12 +356,78 @@ app_layout = dbc.Tabs(
             ),
         ),
         dbc.Tab(
+            label="Portfolio Constructor",
+            children=html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("Security"),
+                            dbc.Select(
+                                {},
+                                id="portfolio-security-selection",
+                            ),
+                            html.Label("Weight (%)"),
+                            dcc.Input(
+                                id="security-weight",
+                                type="number",
+                                min=0,
+                                max=100,
+                            ),
+                            html.P(),
+                            html.Button("Add Security", id="add-security-button"),
+                            html.P(),
+                            html.Label("Portfolio Allocations"),
+                            dcc.Dropdown(
+                                {},
+                                id="portfolio-allocations",
+                                multi=True,
+                            ),
+                            html.Button("Add Portfolio", id="add-portfolio-button"),
+                            html.P(),
+                            dcc.Dropdown(
+                                {},
+                                id="portfolios",
+                                multi=True,
+                            ),
+                        ],
+                        style={
+                            "width": "15%",
+                            "padding": "1rem",
+                            "flex": "1",
+                            "overflow": "auto",
+                        },
+                    ),
+                    dcc.Graph(
+                        figure={
+                            "data": [],
+                            "layout": {
+                                "title": "Portfolio Simulation",
+                            },
+                        },
+                        id="portfolio-graph",
+                        style={
+                            "width": "85%",
+                            "height": "100%",
+                            "padding": "1rem",
+                        },
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "height": "95vh",
+                    "box-sizing": "border-box",
+                    "justify-content": "space-between",
+                    "padding": "1rem 1rem",
+                },
+            ),
+        ),
+        dbc.Tab(
             label="Strategy Tester",
             children=html.Div(
                 [
                     html.Div(
                         [
-                            html.Label("Strategy"),
+                            html.Label("Portfolio"),
                             dcc.Dropdown(
                                 {},
                                 id="strategy-portfolio",

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import yfinance as yf
-from dash import Dash, no_update
+from dash import Dash, no_update, ctx
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
@@ -734,11 +734,175 @@ def update_graph(
 
 
 @app.callback(
-    Output("strategy-portfolio", "options"),
+    Output("portfolio-security-selection", "options"),
     Input("selected-securities", "options"),
 )
-def update_strategy_portfolios(selected_securities_options: dict[str, str]):
-    return selected_securities_options
+def update_security_options(security_options: dict[str, str]):
+    return security_options
+
+
+@app.callback(
+    Output("portfolio-allocations", "value"),
+    Output("portfolio-allocations", "options"),
+    Input("add-security-button", "n_clicks"),
+    Input("portfolio-allocations", "value"),
+    State("portfolio-allocations", "options"),
+    State("portfolio-security-selection", "value"),
+    State("portfolio-security-selection", "options"),
+    State("security-weight", "value"),
+    allow_duplicate=True,
+)
+def add_allocation(
+    _,
+    portfolio_allocations: list[str] | None,
+    portfolio_allocation_options: dict[str, str],
+    security: str,
+    security_options: dict[str, str],
+    weight: float | int | None,
+):
+    trigger = ctx.triggered_id
+    if trigger is None:
+        return no_update
+    if trigger == "add-security-button":
+        if weight is None:
+            return no_update
+        if portfolio_allocations is None:
+            return [f"{security}|{weight}"], {
+                f"{security}|{weight}": f"{weight}% {security_options[security]}"
+            }
+        if f"{security}|{weight}" in portfolio_allocations:
+            return no_update
+        if security in [
+            portfolio_allocation.rsplit("|", maxsplit=1)[0]
+            for portfolio_allocation in portfolio_allocations
+        ]:
+            old_weight = [
+                portfolio_allocation.rsplit("|", maxsplit=1)[1]
+                for portfolio_allocation in portfolio_allocations
+            ][0]
+            portfolio_allocations.remove(f"{security}|{old_weight}")
+            portfolio_allocation_options.pop(f"{security}|{old_weight}")
+
+        portfolio_allocations.append(f"{security}|{weight}")
+        portfolio_allocation_options.update(
+            {f"{security}|{weight}": f"{weight}% {security_options[security]}"}
+        )
+        return portfolio_allocations, portfolio_allocation_options
+    if trigger == "portfolio-allocations":
+        if portfolio_allocations is None:
+            raise ValueError("This should not happen")
+        return portfolio_allocations, {
+            portfolio_allocation: portfolio_allocation_options[portfolio_allocation]
+            for portfolio_allocation in portfolio_allocations
+        }
+    return no_update
+
+
+@app.callback(
+    Output("portfolios", "value"),
+    Output("portfolios", "options"),
+    Input("add-portfolio-button", "n_clicks"),
+    State("portfolios", "value"),
+    State("portfolios", "options"),
+    State("portfolio-allocations", "value"),
+    State("portfolio-allocations", "options"),
+    prevent_initial_call=True,
+)
+def add_portfolio(
+    _,
+    portfolios: list[str] | None,
+    portfolio_options: dict[str, str],
+    portfolio_allocations: list[str] | None,
+    portfolio_allocations_options: dict[str, str],
+):
+    if portfolio_allocations is None:
+        return no_update
+    if portfolios is None:
+        return [",".join(portfolio_allocations)], {
+            ",".join(portfolio_allocations): ", ".join(
+                portfolio_allocations_options[portfolio_allocation]
+                for portfolio_allocation in portfolio_allocations
+            )
+        }
+    if ",".join(portfolio_allocations) in portfolios:
+        return no_update
+    portfolios.append(",".join(portfolio_allocations))
+    portfolio_options.update(
+        {
+            ",".join(portfolio_allocations): ", ".join(
+                portfolio_allocations_options[portfolio_allocation]
+                for portfolio_allocation in portfolio_allocations
+            )
+        }
+    )
+    return portfolios, portfolio_options
+
+
+@app.callback(
+    Output("portfolio-graph", "figure"),
+    Input("portfolios", "value"),
+    State("portfolios", "options"),
+)
+def update_portfolio_graph(portfolios: list[str], portfolio_options: dict[str, str]):
+    if not portfolios:
+        return {
+            "data": [],
+            "layout": {
+                "title": "Portfolio Performance",
+            },
+        }
+    data = []
+    for portfolio in portfolios:
+        securities = [
+            portfolio_allocation.rsplit("|", maxsplit=1)[0]
+            for portfolio_allocation in portfolio.split(",")
+        ]
+        weights = [
+            float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
+            for portfolio_allocation in portfolio.split(",")
+        ]
+        if sum(weights) > 100:
+            return no_update
+        df = pd.concat(
+            [
+                load_df(
+                    security,
+                    "Monthly",
+                    "USD",
+                    "No",
+                    None,
+                )
+                for security in securities
+            ],
+            axis=1,
+        )
+        df = (
+            df.pct_change()
+            .mul(weights)
+            .div(100)
+            .sum(axis=1, skipna=False)
+            .add(1)
+            .cumprod()
+        )
+        data.append(
+            go.Scatter(
+                x=df.index,
+                y=df,
+                name=portfolio_options[portfolio],
+            )
+        )
+    layout = {
+        "title": "Portfolio Performance",
+    }
+    return dict(data=data, layout=layout)
+
+
+@app.callback(
+    Output("strategy-portfolio", "options"),
+    Input("portfolios", "options"),
+)
+def update_strategy_portfolios(portfolio_options: dict[str, str]):
+    return portfolio_options
 
 
 @app.callback(
@@ -919,12 +1083,36 @@ def update_strategy_graph(
         dca_interval = int(dca_interval)
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        strategy_series = load_df(
-            strategy_portfolio,
-            "Monthly",
-            currency,
-            "No",
-            yf_securities.get(strategy_portfolio),
+        securities = [
+            portfolio_allocation.rsplit("|", maxsplit=1)[0]
+            for portfolio_allocation in strategy_portfolio.split(",")
+        ]
+        weights = [
+            float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
+            for portfolio_allocation in strategy_portfolio.split(",")
+        ]
+        if sum(weights) > 100:
+            return no_update
+        strategy_series = pd.concat(
+            [
+                load_df(
+                    security,
+                    "Monthly",
+                    currency,
+                    "No",
+                    yf_securities.get(security),
+                )
+                for security in securities
+            ],
+            axis=1,
+        )
+        strategy_series = (
+            strategy_series.pct_change()
+            .mul(weights)
+            .div(100)
+            .sum(axis=1, skipna=False)
+            .add(1)
+            .cumprod()
         )
         interest_rates = (
             load_fed_funds_rate()[1].reindex(strategy_series.index).fillna(0).to_numpy()
