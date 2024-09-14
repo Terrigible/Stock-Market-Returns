@@ -389,6 +389,15 @@ app_layout = dbc.Tabs(
                                 id="portfolios",
                                 multi=True,
                             ),
+                            html.Label("Currency"),
+                            dbc.Select(
+                                [
+                                    "SGD",
+                                    "USD",
+                                ],
+                                value="USD",
+                                id="portfolio-currency-selection",
+                            ),
                         ],
                         style={
                             "width": "15%",

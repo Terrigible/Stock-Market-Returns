@@ -842,8 +842,11 @@ def add_portfolio(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     State("portfolios", "options"),
+    Input("portfolio-currency-selection", "value"),
 )
-def update_portfolio_graph(portfolios: list[str], portfolio_options: dict[str, str]):
+def update_portfolio_graph(
+    portfolios: list[str], portfolio_options: dict[str, str], currency: str
+):
     if not portfolios:
         return {
             "data": [],
@@ -868,7 +871,7 @@ def update_portfolio_graph(portfolios: list[str], portfolio_options: dict[str, s
                 load_df(
                     security,
                     "Monthly",
-                    "USD",
+                    currency,
                     "No",
                     None,
                 )
