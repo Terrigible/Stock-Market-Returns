@@ -26,13 +26,10 @@ from funcs.loaders import (
     load_us_cpi,
     load_us_treasury_returns,
     load_usdsgd,
-    read_gmo_data,
     read_greatlink_data,
     read_msci_data,
     read_shiller_sp500_data,
-    read_spx_data,
-    read_sti_data,
-    read_fundsmith_data,
+    read_ft_data,
 )
 from layout import app_layout
 
@@ -65,9 +62,9 @@ def load_df(
                 series = series.resample("BME").last()
     elif source == "Others":
         if security.split("|")[1] == "STI":
-            series = read_sti_data().iloc[:, 0]
+            series = read_ft_data("Straits Times Index USD Gross").iloc[:, 0]
         elif security.split("|")[1] == "SPX":
-            series = read_spx_data(security.split("|")[2]).iloc[:, 0]
+            series = read_ft_data(f"S&P 500 USD {security.split("|")[2]}").iloc[:, 0]
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
         elif security.split("|")[1] == "SHILLER_SPX":
@@ -120,9 +117,11 @@ def load_df(
         if fund_company == "Great Eastern":
             series = read_greatlink_data(fund).iloc[:, 0]
         elif fund_company == "GMO":
-            series = read_gmo_data().iloc[:, 0]
+            series = read_ft_data("GMO Quality Investment Fund").iloc[:, 0]
         elif fund_company == "Fundsmith":
-            series = read_fundsmith_data(fund.replace("Class ", "")).iloc[:, 0]
+            series = read_ft_data(
+                f"Fundsmith {fund.replace("Class ", "")} EUR Acc"
+            ).iloc[:, 0]
         else:
             raise ValueError(f"Invalid fund: {fund}")
         if interval == "Monthly":

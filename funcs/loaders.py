@@ -33,47 +33,25 @@ def read_msci_data(filename_pattern):
     return pd.concat(map(read_msci_source, sorted(glob(filename_pattern))))
 
 
-def read_sti_data():
+def read_ft_data(filename):
     df = (
         pd.read_csv(
-            "data/Straits Times Index USD Gross.csv",
+            f"data/{filename}.csv",
             parse_dates=["Date"],
             index_col="Date",
         )
         .rename_axis("date")[["Close"]]
         .set_axis(["price"], axis=1)
     )
-    df.loc["2022-10-07"] = 5467.64
-    return df
 
+    if filename == "Straits Times Index USD Gross":
+        df.loc["2022-10-07"] = 5467.64
 
-def read_spx_data(tax_treatment: str):
-    df = (
-        pd.read_csv(
-            f"data/S&P 500 USD {tax_treatment}.csv",
-            parse_dates=["Date"],
-            index_col="Date",
-        )
-        .rename_axis("date")[["Close"]]
-        .set_axis(["price"], axis=1)
-    )
-    if tax_treatment == "Gross":
+    if filename == "S&P 500 USD Gross":
         df.update(
             df.loc[:"1987-12-31"].div(df.loc["1987-12-31"]).mul(df.loc["1988-01-04"])
         )
-    return df
 
-
-def read_gmo_data():
-    df = (
-        pd.read_csv(
-            "data/GMO Quality Investment Fund.csv",
-            parse_dates=["Date"],
-            index_col="Date",
-        )
-        .rename_axis("date")[["Close"]]
-        .set_axis(["price"], axis=1)
-    )
     return df
 
 
@@ -793,23 +771,8 @@ def read_greatlink_data(fund_name):
     return df
 
 
-def read_fundsmith_data(fund: str):
-    df = (
-        pd.read_csv(
-            f"data/Fundsmith {fund} EUR Acc.csv",
-            parse_dates=["Date"],
-            index_col="Date",
-        )
-        .rename_axis("date")[["Close"]]
-        .set_axis(["price"], axis=1)
-    )
-    return df
-
-
 __all__ = [
     "read_msci_data",
-    "read_sti_data",
-    "read_spx_data",
     "load_fed_funds_rate",
     "load_us_treasury_rates_async",
     "load_us_treasury_rates",
@@ -830,4 +793,5 @@ __all__ = [
     "load_us_cpi",
     "add_return_columns",
     "read_greatlink_data",
+    "read_ft_data",
 ]
