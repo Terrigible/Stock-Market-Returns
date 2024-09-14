@@ -843,9 +843,13 @@ def add_portfolio(
     Input("portfolios", "value"),
     State("portfolios", "options"),
     Input("portfolio-currency-selection", "value"),
+    State("yf-securities-store", "data"),
 )
 def update_portfolio_graph(
-    portfolios: list[str], portfolio_options: dict[str, str], currency: str
+    portfolios: list[str],
+    portfolio_options: dict[str, str],
+    currency: str,
+    yf_securities: dict[str, str],
 ):
     if not portfolios:
         return {
@@ -873,7 +877,7 @@ def update_portfolio_graph(
                     "Monthly",
                     currency,
                     "No",
-                    None,
+                    yf_securities.get(security),
                 )
                 for security in securities
             ],
