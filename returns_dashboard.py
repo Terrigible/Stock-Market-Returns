@@ -779,6 +779,7 @@ def add_allocation(
             old_weight = [
                 portfolio_allocation.rsplit("|", maxsplit=1)[1]
                 for portfolio_allocation in portfolio_allocations
+                if portfolio_allocation.rsplit("|", maxsplit=1)[0] == security
             ][0]
             portfolio_allocations.remove(f"{security}|{old_weight}")
             portfolio_allocation_options.pop(f"{security}|{old_weight}")
