@@ -817,6 +817,12 @@ def add_portfolio(
 ):
     if portfolio_allocations is None:
         return no_update
+    weights = [
+        float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
+        for portfolio_allocation in portfolio_allocations
+    ]
+    if sum(weights) != 100:
+        return no_update
     if portfolios is None:
         return [",".join(portfolio_allocations)], {
             ",".join(portfolio_allocations): ", ".join(
@@ -868,8 +874,6 @@ def update_portfolio_graph(
             float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
             for portfolio_allocation in portfolio.split(",")
         ]
-        if sum(weights) > 100:
-            return no_update
         df = pd.concat(
             [
                 load_df(
