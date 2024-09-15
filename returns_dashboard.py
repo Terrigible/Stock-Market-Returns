@@ -113,7 +113,7 @@ def load_df(
         if interval == "Monthly":
             series = series.resample("BME").last()
     elif source == "Fund":
-        fund_company, fund, currency = security.split("|")[1:]
+        fund_company, fund, fund_currency = security.split("|")[1:]
         if fund_company == "Great Eastern":
             series = read_greatlink_data(fund).iloc[:, 0]
         elif fund_company == "GMO":
@@ -124,6 +124,35 @@ def load_df(
             ).iloc[:, 0]
         else:
             raise ValueError(f"Invalid fund: {fund}")
+        if fund_currency != "USD":
+            if fund_currency == "SGD":
+                series = series.div(
+                    load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
+                )
+            else:
+                if fund_currency in load_fred_usd_fx().columns:
+                    series = series.mul(
+                        load_fred_usd_fx()[fund_currency]
+                        .resample("D")
+                        .ffill()
+                        .ffill()
+                        .reindex(series.index)
+                    )
+                elif fund_currency in load_mas_sgd_fx().columns:
+                    series = series.mul(
+                        load_mas_sgd_fx()[fund_currency]
+                        .resample("D")
+                        .ffill()
+                        .ffill()
+                        .reindex(series.index)
+                    )
+                    series = series.div(
+                        load_usdsgd()
+                        .resample("D")
+                        .ffill()
+                        .ffill()
+                        .reindex(series.index)
+                    )
         if interval == "Monthly":
             series = series.resample("BME").last()
     else:
