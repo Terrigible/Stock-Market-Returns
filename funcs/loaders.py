@@ -182,6 +182,7 @@ async def load_us_treasury_returns_async():
             )
             .cumprod()
         )
+        price.iloc[price.index.get_indexer([price.first_valid_index()])[0] - 1] = 1
         treasury_returns[duration] = price
 
     return treasury_returns
@@ -635,6 +636,7 @@ def load_sgs_returns():
             .add(rates.div(2).add(1).pow(-2 * (int(duration) - 1 / 365.25)))
             .cumprod()
         )
+        price.iloc[price.index.get_indexer([price.first_valid_index()])[0] - 1] = 1
         sgs_returns[duration] = price
 
     return sgs_returns

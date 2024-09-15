@@ -916,7 +916,7 @@ def update_portfolio_graph(
             ],
             axis=1,
         )
-        df = (
+        series = (
             df.pct_change()
             .mul(weights)
             .div(100)
@@ -924,10 +924,11 @@ def update_portfolio_graph(
             .add(1)
             .cumprod()
         )
+        series.iloc[series.index.get_indexer([series.first_valid_index()])[0] - 1] = 1
         data.append(
             go.Scatter(
-                x=df.index,
-                y=df,
+                x=series.index,
+                y=series,
                 name=portfolio_options[portfolio],
             )
         )
@@ -1154,6 +1155,10 @@ def update_strategy_graph(
             .add(1)
             .cumprod()
         )
+        strategy_series.iloc[
+            strategy_series.index.get_indexer([strategy_series.first_valid_index()])[0]
+            - 1
+        ] = 1
         interest_rates = (
             load_fed_funds_rate()[1].reindex(strategy_series.index).fillna(0).to_numpy()
             if currency == "USD"
