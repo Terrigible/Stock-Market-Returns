@@ -988,9 +988,9 @@ def update_strategies(
     ls_dca: str,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
-    investment_horizon: int | float | None,
-    dca_length: int | float | None,
-    dca_interval: int | float | None,
+    investment_horizon: int | None,
+    dca_length: int | None,
+    dca_interval: int | None,
     variable_transaction_fees: int | float | None,
     fixed_transaction_fees: int | float | None,
     annualised_holding_fees: int | float | None,
@@ -1023,13 +1023,6 @@ def update_strategies(
         fixed_transaction_fees = 0
     if annualised_holding_fees is None:
         annualised_holding_fees = 0
-
-    if isinstance(investment_horizon, float):
-        return no_update
-    if isinstance(dca_length, float):
-        return no_update
-    if isinstance(dca_interval, float):
-        return no_update
 
     if dca_length > investment_horizon:
         return no_update

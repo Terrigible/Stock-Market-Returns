@@ -462,6 +462,7 @@ app_layout = dbc.Tabs(
                                     dcc.Input(
                                         id="investment-amount-input",
                                         type="number",
+                                        min=0,
                                     ),
                                 ],
                                 id="ls-input-container",
@@ -472,6 +473,7 @@ app_layout = dbc.Tabs(
                                     dcc.Input(
                                         id="monthly-investment-input",
                                         type="number",
+                                        min=0,
                                     ),
                                 ],
                                 id="dca-input-container",
@@ -480,31 +482,40 @@ app_layout = dbc.Tabs(
                             dcc.Input(
                                 id="investment-horizon-input",
                                 type="number",
+                                min=1,
+                                step=1,
                             ),
                             html.Label("DCA Length (Months)"),
                             dcc.Input(
                                 id="dca-length-input",
                                 type="number",
+                                min=1,
+                                step=1,
                             ),
                             html.Label("DCA Interval (Months)"),
                             dcc.Input(
                                 id="dca-interval-input",
                                 type="number",
+                                min=1,
+                                step=1,
                             ),
                             html.Label("Variable Transaction Fees (%)"),
                             dcc.Input(
                                 id="variable-transaction-fees-input",
                                 type="number",
+                                min=0,
                             ),
                             html.Label("Fixed Transaction Fees ($)"),
                             dcc.Input(
                                 id="fixed-transaction-fees-input",
                                 type="number",
+                                min=0,
                             ),
                             html.Label("Annualised Holding Fees (% p.a.)"),
                             dcc.Input(
                                 id="annualised-holding-fees-input",
                                 type="number",
+                                min=0,
                             ),
                             html.Button("Add Strategy", id="add-strategy-button"),
                             html.P(),
