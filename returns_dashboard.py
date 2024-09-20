@@ -318,8 +318,8 @@ def add_index(
     selected_securities_options: dict[str, str],
     index_provider: str,
     index_provider_options: dict[str, str],
-    msci_index: str,
-    msci_index_options: dict[str, str],
+    msci_base_index: str,
+    msci_base_index_options: dict[str, str],
     msci_size: str,
     msci_size_options: dict[str, str],
     msci_style: str,
@@ -339,17 +339,17 @@ def add_index(
 ):
     if index_provider == "MSCI":
         if not glob(
-            f"data/{index_provider}/{msci_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls"
+            f"data/{index_provider}/{msci_base_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls"
         ):
             return no_update
         index = (
-            f"{index_provider}|{msci_index}|{msci_size}|{msci_style}|{msci_tax_treatment}",
+            f"{index_provider}|{msci_base_index}|{msci_size}|{msci_style}|{msci_tax_treatment}",
             " ".join(
                 filter(
                     None,
                     [
                         index_provider_options[index_provider],
-                        msci_index_options[msci_index],
+                        msci_base_index_options[msci_base_index],
                         (
                             None
                             if msci_size == "STANDARD"

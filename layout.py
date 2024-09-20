@@ -35,7 +35,7 @@ app_layout = dbc.Tabs(
                                     ),
                                     html.Div(
                                         [
-                                            html.Label("Index"),
+                                            html.Label("Base Index"),
                                             dbc.Select(
                                                 {
                                                     "WORLD": "World",
