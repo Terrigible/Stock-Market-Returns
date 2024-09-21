@@ -356,6 +356,12 @@ def add_index(
                             else msci_size_options[msci_size]
                         ),
                         (
+                            "Cap"
+                            if msci_size in ["SMALL", "SMID", "MID", "LARGE"]
+                            and msci_style == "BLEND"
+                            else None
+                        ),
+                        (
                             None
                             if msci_style == "BLEND"
                             else msci_style_options[msci_style]
