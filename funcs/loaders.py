@@ -51,6 +51,8 @@ def read_ft_data(filename):
         df.update(
             df.loc[:"1987-12-31"].div(df.loc["1987-12-31"]).mul(df.loc["1988-01-04"])
         )
+    if filename == "FTSE All-World USD Gross":
+        df.loc[["2021-04-21", "2021-05-05", "2021-05-13"]] = np.nan
 
     return df
 

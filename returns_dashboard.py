@@ -71,6 +71,8 @@ def load_df(
             series = read_shiller_sp500_data(security.split("|")[2]).iloc[:, 0]
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
+        elif security.split("|")[1] == "AWORLDS":
+            series = read_ft_data("FTSE All-World USD Gross").iloc[:, 0]
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
@@ -279,7 +281,7 @@ def update_msci_index_selection_visibility(
     Input("others-index-selection", "value"),
 )
 def update_others_tax_treatment_selection_visibility(others_index: str):
-    if others_index == "STI":
+    if others_index in ["STI", "AWORLDS"]:
         return {"display": "none"}
     else:
         return {"display": "block"}

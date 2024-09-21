@@ -159,6 +159,7 @@ app_layout = dbc.Tabs(
                                                     "STI": "STI",
                                                     "SPX": "S&P 500",
                                                     "SHILLER_SPX": "Shiller S&P 500",
+                                                    "AWORLDS": "FTSE All-World",
                                                 },
                                                 value="STI",
                                                 id="others-index-selection",
