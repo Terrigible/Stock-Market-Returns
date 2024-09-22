@@ -33,52 +33,59 @@ from funcs.loaders import (
 )
 from layout import app_layout
 
+import json
+
 
 @cache
 def load_df(
-    security: str,
+    security_str: str,
     interval: str,
     currency: str,
     adjust_for_inflation: str,
     yf_security: str | None,
 ):
-    source = security.split("|")[0]
+    security: dict[str, str] = json.loads(security_str)
+    source = security["source"]
     if source == "MSCI":
         series = read_msci_data(
-            "data/{}/{}/{}/{}/*{} {}*.xls".format(*security.split("|"), interval)
+            f"data/{security["source"]}/{security["msci_base_index"]}/{security["msci_size"]}/{security["msci_style"]}/*{security["msci_tax_treatment"]} {interval}*.xls"
         ).iloc[:, 0]
     elif source == "FRED":
-        if security.split("|")[1] == "US-T":
-            series = load_us_treasury_returns()[security.split("|")[2]]
+        if security["fred_index"] == "US-T":
+            series = load_us_treasury_returns()[security["us_treasury_duration"]]
             if interval == "Monthly":
                 series = series.resample("BME").last()
     elif source == "MAS":
-        if security.split("|")[1] == "SGS":
-            series = load_sgs_returns()[security.split("|")[2]]
+        if security["mas_index"] == "SGS":
+            series = load_sgs_returns()[security["sgs_duration"]]
             series = series.div(
                 load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
             )
             if interval == "Monthly":
                 series = series.resample("BME").last()
     elif source == "Others":
-        if security.split("|")[1] == "STI":
+        if security["others_index"] == "STI":
             series = read_ft_data("Straits Times Index USD Gross").iloc[:, 0]
-        elif security.split("|")[1] == "SPX":
-            series = read_ft_data(f"S&P 500 USD {security.split("|")[2]}").iloc[:, 0]
+        elif security["others_index"] == "SPX":
+            series = read_ft_data(
+                f"S&P 500 USD {security["others_tax_treatment"]}"
+            ).iloc[:, 0]
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
-        elif security.split("|")[1] == "SHILLER_SPX":
-            series = read_shiller_sp500_data(security.split("|")[2]).iloc[:, 0]
+        elif security["others_index"] == "SHILLER_SPX":
+            series = read_shiller_sp500_data(security["others_tax_treatment"]).iloc[
+                :, 0
+            ]
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
-        elif security.split("|")[1] == "AWORLDS":
+        elif security["others_index"] == "AWORLDS":
             series = read_ft_data("FTSE All-World USD Gross").iloc[:, 0]
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
             series = series.resample("BME").last()
     elif source == "YF":
-        ticker_currency = security.split("|")[2]
+        ticker_currency = security["currency"]
         series = pd.read_json(StringIO(yf_security), orient="index").iloc[:, 0]
         if ticker_currency != "USD":
             if ticker_currency == "SGD":
@@ -115,7 +122,9 @@ def load_df(
         if interval == "Monthly":
             series = series.resample("BME").last()
     elif source == "Fund":
-        fund_company, fund, fund_currency = security.split("|")[1:]
+        fund_company = security["fund_company"]
+        fund = security["fund"]
+        fund_currency = security["currency"]
         if fund_company == "Great Eastern":
             series = read_greatlink_data(fund).iloc[:, 0]
         elif fund_company == "GMO":
@@ -345,7 +354,15 @@ def add_index(
         ):
             return no_update
         index = (
-            f"{index_provider}|{msci_base_index}|{msci_size}|{msci_style}|{msci_tax_treatment}",
+            json.dumps(
+                {
+                    "source": index_provider,
+                    "msci_base_index": msci_base_index,
+                    "msci_size": msci_size,
+                    "msci_style": msci_style,
+                    "msci_tax_treatment": msci_tax_treatment,
+                }
+            ),
             " ".join(
                 filter(
                     None,
@@ -376,18 +393,36 @@ def add_index(
     elif index_provider == "FRED":
         if fred_index == "US-T":
             index = (
-                f"{index_provider}|{fred_index}|{us_treasury_duration}",
+                json.dumps(
+                    {
+                        "source": index_provider,
+                        "fred_index": fred_index,
+                        "us_treasury_duration": us_treasury_duration,
+                    }
+                ),
                 f"{us_treasury_duration_options[us_treasury_duration]} {fred_index_options[fred_index]}",
             )
     elif index_provider == "MAS":
         if mas_index == "SGS":
             index = (
-                f"{index_provider}|{mas_index}|{sgs_duration}",
+                json.dumps(
+                    {
+                        "source": index_provider,
+                        "mas_index": mas_index,
+                        "sgs_duration": sgs_duration,
+                    }
+                ),
                 f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}",
             )
     else:
         index = (
-            f"Others|{others_index}|{others_tax_treatment}",
+            json.dumps(
+                {
+                    "source": index_provider,
+                    "others_index": others_index,
+                    "others_tax_treatment": others_tax_treatment,
+                }
+            ),
             f"{others_index_options[others_index]} {others_tax_treatment}",
         )
     if selected_securities is None:
@@ -422,7 +457,8 @@ def add_stock_etf(
     if ";" in stock_etf:
         return no_update
     for yf_security in yf_securities_store:
-        yss_ticker, _, yss_tax_treatment = yf_security.split("|")[1:]
+        yss_ticker = json.loads(yf_security)["ticker"]
+        yss_tax_treatment = json.loads(yf_security)["tax_treatment"]
         if stock_etf == yss_ticker and tax_treatment == yss_tax_treatment:
             if yf_security in selected_securities:
                 return no_update
@@ -436,7 +472,14 @@ def add_stock_etf(
         return no_update
     ticker_symbol = ticker.ticker
     currency = ticker.history_metadata["currency"]
-    new_yf_security = f"YF|{ticker_symbol}|{currency}|{tax_treatment}"
+    new_yf_security = json.dumps(
+        {
+            "source": "YF",
+            "ticker": ticker_symbol,
+            "currency": currency,
+            "tax_treatment": tax_treatment,
+        }
+    )
     selected_securities.append(new_yf_security)
     selected_securities_options[new_yf_security] = f"{ticker_symbol} {tax_treatment}"
 
@@ -558,7 +601,14 @@ def add_fund(
     else:
         return no_update
     security = (
-        f"Fund|{fund_company}|{fund}|{currency}",
+        json.dumps(
+            {
+                "source": "Fund",
+                "fund_company": fund_company,
+                "fund": fund,
+                "currency": currency,
+            }
+        ),
         f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}',
     )
     if security[0] in selected_securities:
@@ -790,7 +840,7 @@ def update_security_options(security_options: dict[str, str]):
 )
 def add_allocation(
     _,
-    portfolio_allocations: list[str] | None,
+    portfolio_allocation_strs: list[str] | None,
     portfolio_allocation_options: dict[str, str],
     security: str,
     security_options: dict[str, str],
@@ -802,35 +852,41 @@ def add_allocation(
     if trigger == "add-security-button":
         if weight is None:
             return no_update
-        if portfolio_allocations is None:
-            return [f"{security}|{weight}"], {
-                f"{security}|{weight}": f"{weight}% {security_options[security]}"
+        new_allocation = json.dumps({security: weight})
+        if portfolio_allocation_strs is None:
+            return [new_allocation], {
+                new_allocation: f"{weight}% {security_options[security]}"
             }
-        if f"{security}|{weight}" in portfolio_allocations:
+        if new_allocation in portfolio_allocation_strs:
             return no_update
+        portfolio_allocations: list[dict[str, int | float]] = [
+            json.loads(portfolio_allocation_str)
+            for portfolio_allocation_str in portfolio_allocation_strs
+        ]
         if security in [
-            portfolio_allocation.rsplit("|", maxsplit=1)[0]
+            security
             for portfolio_allocation in portfolio_allocations
+            for security in portfolio_allocation
         ]:
             old_weight = [
-                portfolio_allocation.rsplit("|", maxsplit=1)[1]
+                portfolio_allocation[security]
                 for portfolio_allocation in portfolio_allocations
-                if portfolio_allocation.rsplit("|", maxsplit=1)[0] == security
+                if security in portfolio_allocation
             ][0]
-            portfolio_allocations.remove(f"{security}|{old_weight}")
-            portfolio_allocation_options.pop(f"{security}|{old_weight}")
+            portfolio_allocation_strs.remove(json.dumps({security: old_weight}))
+            portfolio_allocation_options.pop(json.dumps({security: old_weight}))
 
-        portfolio_allocations.append(f"{security}|{weight}")
+        portfolio_allocation_strs.append(new_allocation)
         portfolio_allocation_options.update(
-            {f"{security}|{weight}": f"{weight}% {security_options[security]}"}
+            {new_allocation: f"{weight}% {security_options[security]}"}
         )
-        return portfolio_allocations, portfolio_allocation_options
+        return portfolio_allocation_strs, portfolio_allocation_options
     if trigger == "portfolio-allocations":
-        if portfolio_allocations is None:
+        if portfolio_allocation_strs is None:
             raise ValueError("This should not happen")
-        return portfolio_allocations, {
+        return portfolio_allocation_strs, {
             portfolio_allocation: portfolio_allocation_options[portfolio_allocation]
-            for portfolio_allocation in portfolio_allocations
+            for portfolio_allocation in portfolio_allocation_strs
         }
     return no_update
 
@@ -847,38 +903,32 @@ def add_allocation(
 )
 def add_portfolio(
     _,
-    portfolios: list[str] | None,
+    portfolio_strs: list[str] | None,
     portfolio_options: dict[str, str],
-    portfolio_allocations: list[str] | None,
+    portfolio_allocation_strs: list[str] | None,
     portfolio_allocations_options: dict[str, str],
 ):
-    if portfolio_allocations is None:
+    if portfolio_allocation_strs is None:
         return no_update
     weights = [
-        float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
-        for portfolio_allocation in portfolio_allocations
+        float(value)
+        for portfolio_allocation_str in portfolio_allocation_strs
+        for value in json.loads(portfolio_allocation_str).values()
     ]
     if sum(weights) != 100:
         return no_update
-    if portfolios is None:
-        return [",".join(portfolio_allocations)], {
-            ",".join(portfolio_allocations): ", ".join(
-                portfolio_allocations_options[portfolio_allocation]
-                for portfolio_allocation in portfolio_allocations
-            )
-        }
-    if ",".join(portfolio_allocations) in portfolios:
-        return no_update
-    portfolios.append(",".join(portfolio_allocations))
-    portfolio_options.update(
-        {
-            ",".join(portfolio_allocations): ", ".join(
-                portfolio_allocations_options[portfolio_allocation]
-                for portfolio_allocation in portfolio_allocations
-            )
-        }
+    portfolio_str = json.dumps(portfolio_allocation_strs)
+    portfolio_title = ", ".join(
+        portfolio_allocations_options[portfolio_allocation]
+        for portfolio_allocation in portfolio_allocation_strs
     )
-    return portfolios, portfolio_options
+    if portfolio_strs is None:
+        return [portfolio_str], {portfolio_str: portfolio_title}
+    if portfolio_str in portfolio_strs:
+        return no_update
+    portfolio_strs.append(portfolio_str)
+    portfolio_options.update({portfolio_str: portfolio_title})
+    return portfolio_strs, portfolio_options
 
 
 @app.callback(
@@ -889,12 +939,12 @@ def add_portfolio(
     State("yf-securities-store", "data"),
 )
 def update_portfolio_graph(
-    portfolios: list[str],
+    portfolio_strs: list[str],
     portfolio_options: dict[str, str],
     currency: str,
     yf_securities: dict[str, str],
 ):
-    if not portfolios:
+    if not portfolio_strs:
         return {
             "data": [],
             "layout": {
@@ -902,14 +952,21 @@ def update_portfolio_graph(
             },
         }
     data = []
-    for portfolio in portfolios:
+    for portfolio_str in portfolio_strs:
+        portfolio: list[str] = json.loads(portfolio_str)
+        portfolio_allocations: list[dict[str, int | float]] = [
+            json.loads(portfolio_allocation_str)
+            for portfolio_allocation_str in portfolio
+        ]
         securities = [
-            portfolio_allocation.rsplit("|", maxsplit=1)[0]
-            for portfolio_allocation in portfolio.split(",")
+            security
+            for portfolio_allocation in portfolio_allocations
+            for security in portfolio_allocation
         ]
         weights = [
-            float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
-            for portfolio_allocation in portfolio.split(",")
+            float(weight)
+            for portfolio_allocation in portfolio_allocations
+            for weight in portfolio_allocation.values()
         ]
         df = pd.concat(
             [
@@ -937,7 +994,7 @@ def update_portfolio_graph(
             go.Scatter(
                 x=series.index,
                 y=series,
-                name=portfolio_options[portfolio],
+                name=portfolio_options[portfolio_str],
             )
         )
     layout = {
@@ -1041,15 +1098,31 @@ def update_strategies(
         or annualised_holding_fees < 0
     ):
         return no_update
-
+    investment_amount = investment_amount or 0
+    monthly_investment = monthly_investment or 0
+    strategy_str = json.dumps(
+        {
+            "strategy_portfolio": strategy_portfolio,
+            "currency": currency,
+            "ls_dca": ls_dca,
+            "investment_amount": investment_amount,
+            "investment_horizon": investment_horizon,
+            "monthly_investment": monthly_investment,
+            "dca_length": dca_length,
+            "dca_interval": dca_interval,
+            "variable_transaction_fees": variable_transaction_fees,
+            "fixed_transaction_fees": fixed_transaction_fees,
+            "annualised_holding_fees": annualised_holding_fees,
+        }
+    )
     if ls_dca == "LS":
         strategy = (
-            f"{strategy_portfolio};{currency};LS;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
+            strategy_str,
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, Lump Sum, {investment_amount} invested for {investment_horizon} months, DCA over {dca_length} months every {dca_interval} months {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
         )
     else:
         strategy = (
-            f"{strategy_portfolio};{currency};DCA;{investment_amount};{investment_horizon};{monthly_investment};{dca_length};{dca_interval};{variable_transaction_fees};{fixed_transaction_fees};{annualised_holding_fees}",
+            strategy_str,
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, DCA, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, held for {investment_horizon} months, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
         )
 
@@ -1070,32 +1143,31 @@ def update_strategies(
     prevent_initial_call=True,
 )
 def update_strategy_graph(
-    strategies: list[str],
+    strategy_strs: list[str],
     strategy_options: dict[str, str],
     yf_securities: dict[str, str],
 ):
     series = []
-    if not strategies:
+    if not strategy_strs:
         return {
             "data": [],
             "layout": {
                 "title": "Strategy Performance",
             },
         }
-    for strategy in strategies:
-        (
-            strategy_portfolio,
-            currency,
-            ls_dca,
-            investment_amount,
-            investment_horizon,
-            monthly_investment,
-            dca_length,
-            dca_interval,
-            variable_transaction_fees,
-            fixed_transaction_fees,
-            annualised_holding_fees,
-        ) = strategy.split(";")
+    for strategy_str in strategy_strs:
+        strategy: dict[str, str] = json.loads(strategy_str)
+        strategy_portfolio = strategy["strategy_portfolio"]
+        currency = strategy["currency"]
+        ls_dca = strategy["ls_dca"]
+        investment_amount = strategy["investment_amount"]
+        investment_horizon = strategy["investment_horizon"]
+        monthly_investment = strategy["monthly_investment"]
+        dca_length = strategy["dca_length"]
+        dca_interval = strategy["dca_interval"]
+        variable_transaction_fees = strategy["variable_transaction_fees"]
+        fixed_transaction_fees = strategy["fixed_transaction_fees"]
+        annualised_holding_fees = strategy["annualised_holding_fees"]
         (
             investment_amount,
             investment_horizon,
@@ -1107,7 +1179,7 @@ def update_strategy_graph(
             annualised_holding_fees,
         ) = (
             *[
-                float(x) if x != "None" else 0
+                float(x)
                 for x in [
                     investment_amount,
                     investment_horizon,
@@ -1120,18 +1192,25 @@ def update_strategy_graph(
                 ]
             ],
         )
+        portfolio_allocation_strs: list[str] = json.loads(strategy_portfolio)
+        portfolio_allocations: list[dict[str, int | float]] = [
+            json.loads(portfolio_allocation_str)
+            for portfolio_allocation_str in portfolio_allocation_strs
+        ]
         investment_horizon = int(investment_horizon)
         dca_length = int(dca_length)
         dca_interval = int(dca_interval)
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
         securities = [
-            portfolio_allocation.rsplit("|", maxsplit=1)[0]
-            for portfolio_allocation in strategy_portfolio.split(",")
+            security
+            for portfolio_allocation in portfolio_allocations
+            for security in portfolio_allocation
         ]
         weights = [
-            float(portfolio_allocation.rsplit("|", maxsplit=1)[1])
-            for portfolio_allocation in strategy_portfolio.split(",")
+            float(weight)
+            for portfolio_allocation in portfolio_allocations
+            for weight in portfolio_allocation.values()
         ]
         if sum(weights) > 100:
             return no_update
@@ -1184,7 +1263,7 @@ def update_strategy_graph(
                         interest_rates,
                     ),
                     index=strategy_series.index,
-                    name=strategy,
+                    name=strategy_str,
                 )
                 .add(1)
                 .mul(investment_amount)
@@ -1204,22 +1283,22 @@ def update_strategy_graph(
                         interest_rates,
                     ),
                     index=strategy_series.index,
-                    name=strategy,
+                    name=strategy_str,
                 )
                 .add(1)
                 .mul(monthly_investment * dca_length)
             )
         series.append(ending_values)
-    ending_values = pd.concat(series, axis=1, names=strategies)
+    ending_values = pd.concat(series, axis=1, names=strategy_strs)
     return {
         "data": [
             go.Scatter(
                 x=ending_values.index,
-                y=ending_values[security],
+                y=ending_values[strategy],
                 mode="lines",
-                name=strategy_options[security],
+                name=strategy_options[strategy],
             )
-            for security in ending_values.columns
+            for strategy in ending_values.columns
         ],
         "layout": {
             "title": "Strategy Performance",

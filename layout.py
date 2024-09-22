@@ -463,7 +463,7 @@ app_layout = dbc.Tabs(
                                     dcc.Input(
                                         id="investment-amount-input",
                                         type="number",
-                                        min=0,
+                                        min=0.01,
                                     ),
                                 ],
                                 id="ls-input-container",
@@ -474,7 +474,7 @@ app_layout = dbc.Tabs(
                                     dcc.Input(
                                         id="monthly-investment-input",
                                         type="number",
-                                        min=0,
+                                        min=0.01,
                                     ),
                                 ],
                                 id="dca-input-container",
