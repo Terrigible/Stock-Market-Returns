@@ -13,8 +13,8 @@ from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
 from funcs.calcs_numba import (
-    calculate_dca_return_with_fees_and_interest_vector,
-    calculate_lumpsum_return_with_fees_and_interest_vector,
+    calculate_dca_portfolio_value_with_fees_and_interest_vector,
+    calculate_lumpsum_portfolio_value_with_fees_and_interest_vector,
 )
 from funcs.loaders import (
     load_fed_funds_rate,
@@ -1249,44 +1249,36 @@ def update_strategy_graph(
         )
 
         if ls_dca == "LS":
-            ending_values = (
-                pd.Series(
-                    calculate_lumpsum_return_with_fees_and_interest_vector(
-                        strategy_series.pct_change().to_numpy(),
-                        dca_length,
-                        dca_interval,
-                        investment_horizon,
-                        investment_amount,
-                        variable_transaction_fees,
-                        fixed_transaction_fees,
-                        annualised_holding_fees,
-                        interest_rates,
-                    ),
-                    index=strategy_series.index,
-                    name=strategy_str,
-                )
-                .add(1)
-                .mul(investment_amount)
+            ending_values = pd.Series(
+                calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
+                    strategy_series.pct_change().to_numpy(),
+                    dca_length,
+                    dca_interval,
+                    investment_horizon,
+                    investment_amount,
+                    variable_transaction_fees,
+                    fixed_transaction_fees,
+                    annualised_holding_fees,
+                    interest_rates,
+                ),
+                index=strategy_series.index,
+                name=strategy_str,
             )
         else:
-            ending_values = (
-                pd.Series(
-                    calculate_dca_return_with_fees_and_interest_vector(
-                        strategy_series.pct_change().to_numpy(),
-                        dca_length,
-                        dca_interval,
-                        investment_horizon,
-                        monthly_investment,
-                        variable_transaction_fees,
-                        fixed_transaction_fees,
-                        annualised_holding_fees,
-                        interest_rates,
-                    ),
-                    index=strategy_series.index,
-                    name=strategy_str,
-                )
-                .add(1)
-                .mul(monthly_investment * dca_length)
+            ending_values = pd.Series(
+                calculate_dca_portfolio_value_with_fees_and_interest_vector(
+                    strategy_series.pct_change().to_numpy(),
+                    dca_length,
+                    dca_interval,
+                    investment_horizon,
+                    monthly_investment,
+                    variable_transaction_fees,
+                    fixed_transaction_fees,
+                    annualised_holding_fees,
+                    interest_rates,
+                ),
+                index=strategy_series.index,
+                name=strategy_str,
             )
         series.append(ending_values)
     ending_values = pd.concat(series, axis=1, names=strategy_strs)

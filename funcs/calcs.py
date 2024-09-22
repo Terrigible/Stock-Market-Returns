@@ -20,7 +20,7 @@ def calculate_return_vector(price: pd.Series, dca_length: int, investment_horizo
     )
 
 
-def calculate_lumpsum_return_with_fees_and_interest_vector(
+def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
     series: pd.Series,
     *,
     dca_length: int,
@@ -108,15 +108,10 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
         constant_values=np.nan,
     )
 
-    return (
-        pd.Series(shares_obtained, index=series.index)
-        .mul(series)
-        .div(investment_amount)
-        .sub(1)
-    )
+    return pd.Series(shares_obtained, index=series.index).mul(series)
 
 
-def calculate_dca_return_with_fees_and_interest_vector(
+def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     series: pd.Series,
     *,
     dca_length: int,
@@ -142,7 +137,6 @@ def calculate_dca_return_with_fees_and_interest_vector(
         raise ValueError(
             "Investment horizon must be greater than or equal to DCA length"
         )
-    investment_amount = monthly_amount * dca_length
     if interest_rates is None:
         interest_rates = pd.Series(0, index=series.index)
     else:
@@ -207,6 +201,4 @@ def calculate_dca_return_with_fees_and_interest_vector(
         pd.Series(shares_obtained, index=series.index)
         .mul(1 - variable_transaction_fees)
         .mul(series)
-        .div(investment_amount)
-        .sub(1)
     )

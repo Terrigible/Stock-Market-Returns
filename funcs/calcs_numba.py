@@ -73,7 +73,7 @@ def calculate_return_vector(
         )
     ]
 )
-def calculate_lumpsum_return_with_fees_and_interest_vector(
+def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
     monthly_returns: np.ndarray,
     dca_length: int,
     dca_interval: int,
@@ -128,7 +128,7 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
             share_value *= (
                 (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
             ) ** (1 / 12)
-        res[i] = (share_value - total_investment) / total_investment
+        res[i] = share_value
     return res
 
 
@@ -147,7 +147,7 @@ def calculate_lumpsum_return_with_fees_and_interest_vector(
         )
     ]
 )
-def calculate_dca_return_with_fees_and_interest_vector(
+def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     monthly_returns: np.ndarray,
     dca_length: int,
     dca_interval: int,
@@ -158,7 +158,6 @@ def calculate_dca_return_with_fees_and_interest_vector(
     annualised_holding_fees: float,
     interest_rates: np.ndarray,
 ):
-    total_investment = monthly_amount * dca_length
     dca_amount = monthly_amount * dca_interval
     if fixed_transaction_fees >= dca_amount:
         raise ValueError("Fixed fees must be less than the amount invested in each DCA")
@@ -192,5 +191,5 @@ def calculate_dca_return_with_fees_and_interest_vector(
             share_value *= (
                 (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
             ) ** (1 / 12)
-        res[i] = (share_value + funds_to_invest - total_investment) / total_investment
+        res[i] = share_value + funds_to_invest
     return res
