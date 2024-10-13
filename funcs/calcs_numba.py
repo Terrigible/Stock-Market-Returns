@@ -102,6 +102,10 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
         )
     res = np.empty_like(monthly_returns)
     res.fill(np.nan)
+    monthly_returns_with_fees = (
+        (1 + monthly_returns) ** 12 - annualised_holding_fees
+    ) ** (1 / 12) - 1
+    cash_returns = (1 + interest_rates / 100) ** (1 / 12) - 1
     for i in range(len(monthly_returns)):
         if i < investment_horizon:
             res[i] = np.nan
@@ -119,15 +123,11 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
                 ) - fixed_transaction_fees
                 capital -= dca_amount
                 cash = capital
-            share_value *= (
-                (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
-            ) ** (1 / 12)
-            cash *= (1 + interest_rates[j + 1] / 100) ** (1 / 12)
+            share_value *= 1 + monthly_returns_with_fees[j + 1]
+            cash *= 1 + cash_returns[j + 1]
         cash = 0
         for j in range(i - investment_horizon + dca_length, i):
-            share_value *= (
-                (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
-            ) ** (1 / 12)
+            share_value *= 1 + monthly_returns_with_fees[j + 1]
         res[i] = share_value
     return res
 
@@ -167,6 +167,10 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         )
     res = np.empty_like(monthly_returns)
     res.fill(np.nan)
+    monthly_returns_with_fees = (
+        (1 + monthly_returns) ** 12 - annualised_holding_fees
+    ) ** (1 / 12) - 1
+    cash_returns = (1 + interest_rates / 100) ** (1 / 12) - 1
     for i in range(len(monthly_returns)):
         if i < investment_horizon:
             res[i] = np.nan
@@ -183,13 +187,9 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                     - fixed_transaction_fees
                 )
                 funds_to_invest = 0
-            share_value *= (
-                (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
-            ) ** (1 / 12)
-            funds_to_invest *= (1 + interest_rates[j + 1] / 100) ** (1 / 12)
+            share_value *= 1 + monthly_returns_with_fees[j + 1]
+            funds_to_invest *= 1 + cash_returns[j + 1]
         for j in range(i - investment_horizon + dca_length, i):
-            share_value *= (
-                (1 + monthly_returns[j + 1]) ** 12 - annualised_holding_fees
-            ) ** (1 / 12)
+            share_value *= 1 + monthly_returns_with_fees[j + 1]
         res[i] = share_value + funds_to_invest
     return res
