@@ -134,6 +134,8 @@ def load_df(
             series = read_ft_data(
                 f"Fundsmith {fund.replace("Class ", "")} EUR Acc"
             ).iloc[:, 0]
+        elif fund_company == "Dimensional":
+            series = read_ft_data(f"Dimensional {fund} GBP Accumulation").iloc[:, 0]
         else:
             raise ValueError(f"Invalid fund: {fund}")
         if fund_currency != "USD":
@@ -569,6 +571,8 @@ def update_fund_selection_options(fund_company: str):
             ],
             "Equity Fund Class T",
         )
+    elif fund_company == "Dimensional":
+        return (["World Equity Fund"], "World Equity Fund")
     else:
         return (
             [],
@@ -599,6 +603,8 @@ def add_fund(
         currency = "USD"
     elif fund_company == "Fundsmith":
         currency = "EUR"
+    elif fund_company == "Dimensional":
+        currency = "USD"
     else:
         return no_update
     security = (
