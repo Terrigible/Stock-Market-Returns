@@ -432,7 +432,7 @@ app_layout = dbc.Tabs(
             ),
         ),
         dbc.Tab(
-            label="Strategy Tester",
+            label="Accumulation Strategy Tester",
             children=html.Div(
                 [
                     html.Div(
@@ -440,7 +440,7 @@ app_layout = dbc.Tabs(
                             html.Label("Portfolio"),
                             dcc.Dropdown(
                                 {},
-                                id="strategy-portfolio",
+                                id="accumulation-strategy-portfolio",
                             ),
                             html.Label("Currency"),
                             dbc.Select(
@@ -449,82 +449,84 @@ app_layout = dbc.Tabs(
                                     "USD",
                                 ],
                                 value="SGD",
-                                id="strategy-currency-selection",
+                                id="accumulation-strategy-currency-selection",
                             ),
                             html.Label("Lump Sum / DCA"),
                             dbc.Select(
                                 {"LS": "Lump Sum", "DCA": "DCA"},
                                 value="LS",
-                                id="ls-dca-selection",
+                                id="accumulation-ls-dca-selection",
                             ),
                             html.Div(
                                 [
                                     html.Label("Total Investment Amount"),
                                     dcc.Input(
-                                        id="investment-amount-input",
+                                        id="accumulation-investment-amount-input",
                                         type="number",
                                         min=0.01,
                                     ),
                                 ],
-                                id="ls-input-container",
+                                id="accumulation-ls-input-container",
                             ),
                             html.Div(
                                 [
                                     html.Label("Monthly Investment Amount"),
                                     dcc.Input(
-                                        id="monthly-investment-input",
+                                        id="accumulation-monthly-investment-input",
                                         type="number",
                                         min=0.01,
                                     ),
                                 ],
-                                id="dca-input-container",
+                                id="accumulation-dca-input-container",
                             ),
                             html.Label("Investment Horizon (Months)"),
                             dcc.Input(
-                                id="investment-horizon-input",
+                                id="accumulation-investment-horizon-input",
                                 type="number",
                                 min=1,
                                 step=1,
                             ),
                             html.Label("DCA Length (Months)"),
                             dcc.Input(
-                                id="dca-length-input",
+                                id="accumulation-dca-length-input",
                                 type="number",
                                 min=1,
                                 step=1,
                             ),
                             html.Label("DCA Interval (Months)"),
                             dcc.Input(
-                                id="dca-interval-input",
+                                id="accumulation-dca-interval-input",
                                 type="number",
                                 min=1,
                                 step=1,
                             ),
                             html.Label("Variable Transaction Fees (%)"),
                             dcc.Input(
-                                id="variable-transaction-fees-input",
+                                id="accumulation-variable-transaction-fees-input",
                                 type="number",
                                 min=0,
                             ),
                             html.Label("Fixed Transaction Fees ($)"),
                             dcc.Input(
-                                id="fixed-transaction-fees-input",
+                                id="accumulation-fixed-transaction-fees-input",
                                 type="number",
                                 min=0,
                             ),
                             html.Label("Annualised Holding Fees (% p.a.)"),
                             dcc.Input(
-                                id="annualised-holding-fees-input",
+                                id="accumulation-annualised-holding-fees-input",
                                 type="number",
                                 min=0,
                             ),
-                            html.Button("Add Strategy", id="add-strategy-button"),
+                            html.Button(
+                                "Add Strategy", id="add-accumulation-strategy-button"
+                            ),
                             html.P(),
                             html.Label("Strategies"),
                             dcc.Dropdown(
                                 {},
                                 multi=True,
-                                id="strategies",
+                                id="accumulation-strategies",
                             ),
                         ],
                         style={
@@ -541,7 +543,113 @@ app_layout = dbc.Tabs(
                                 "title": "Strategy Performance",
                             },
                         },
-                        id="strategy-graph",
+                        id="accumulation-strategy-graph",
+                        style={
+                            "width": "85%",
+                            "height": "100%",
+                            "padding": "1rem",
+                        },
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "height": "95vh",
+                    "box-sizing": "border-box",
+                    "justify-content": "space-between",
+                    "padding": "1rem 1rem",
+                },
+            ),
+        ),
+        dbc.Tab(
+            label="Withdrawal Strategy Tester",
+            children=html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Label("Portfolio"),
+                            dcc.Dropdown(
+                                {},
+                                id="withdrawal-strategy-portfolio",
+                            ),
+                            html.Label("Currency"),
+                            dbc.Select(
+                                [
+                                    "SGD",
+                                    "USD",
+                                ],
+                                value="SGD",
+                                id="withdrawal-strategy-currency-selection",
+                            ),
+                            html.Label("Initial Capital"),
+                            dcc.Input(
+                                id="withdrawal-initial-capital-input",
+                                type="number",
+                                min=0.01,
+                            ),
+                            html.Label("Monthly Withdrawal Amount"),
+                            dcc.Input(
+                                id="monthly-withdrawal-input",
+                                type="number",
+                                min=0.01,
+                            ),
+                            html.Label("Withdrawal Horizon (Months)"),
+                            dcc.Input(
+                                id="withdrawal-horizon-input",
+                                type="number",
+                                min=1,
+                                step=1,
+                            ),
+                            html.Label("Withdrawal Interval (Months)"),
+                            dcc.Input(
+                                id="withdrawal-interval-input",
+                                type="number",
+                                min=1,
+                                step=1,
+                            ),
+                            html.Label("Variable Transaction Fees (%)"),
+                            dcc.Input(
+                                id="withdrawal-variable-transaction-fees-input",
+                                type="number",
+                                min=0,
+                            ),
+                            html.Label("Fixed Transaction Fees ($)"),
+                            dcc.Input(
+                                id="withdrawal-fixed-transaction-fees-input",
+                                type="number",
+                                min=0,
+                            ),
+                            html.Label("Annualised Holding Fees (% p.a.)"),
+                            dcc.Input(
+                                id="withdrawal-annualised-holding-fees-input",
+                                type="number",
+                                min=0,
+                            ),
+                            html.Button(
+                                "Add Strategy", id="add-withdrawal-strategy-button"
+                            ),
+                            html.P(),
+                            html.Label("Strategies"),
+                            dcc.Dropdown(
+                                {},
+                                multi=True,
+                                id="withdrawal-strategies",
+                            ),
+                        ],
+                        style={
+                            "width": "15%",
+                            "padding": "1rem",
+                            "flex": "1",
+                            "overflow": "auto",
+                        },
+                    ),
+                    dcc.Graph(
+                        figure={
+                            "data": [],
+                            "layout": {
+                                "title": "Strategy Performance",
+                            },
+                        },
+                        id="withdrawal-strategy-graph",
                         style={
                             "width": "85%",
                             "height": "100%",

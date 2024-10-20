@@ -15,6 +15,7 @@ from plotly.colors import DEFAULT_PLOTLY_COLORS
 from funcs.calcs_numba import (
     calculate_dca_portfolio_value_with_fees_and_interest_vector,
     calculate_lumpsum_portfolio_value_with_fees_and_interest_vector,
+    calculate_withdrawal_portfolio_value_with_fees_vector,
 )
 from funcs.loaders import (
     load_fed_funds_rate,
@@ -174,7 +175,7 @@ def load_df(
                 load_us_cpi()
                 .iloc[:, 0]
                 .resample("D")
-                .ffill()
+                .interpolate("pchip")
                 .ffill()
                 .reindex(series.index)
             )
@@ -187,7 +188,7 @@ def load_df(
                 load_sg_cpi()
                 .iloc[:, 0]
                 .resample("D")
-                .ffill()
+                .interpolate("pchip")
                 .ffill()
                 .reindex(series.index)
             )
@@ -1004,17 +1005,18 @@ def update_portfolio_graph(
 
 
 @app.callback(
-    Output("strategy-portfolio", "options"),
+    Output("accumulation-strategy-portfolio", "options"),
+    Output("withdrawal-strategy-portfolio", "options"),
     Input("portfolios", "options"),
 )
 def update_strategy_portfolios(portfolio_options: dict[str, str]):
-    return portfolio_options
+    return portfolio_options, portfolio_options
 
 
 @app.callback(
-    Output("ls-input-container", "style"),
-    Output("dca-input-container", "style"),
-    Input("ls-dca-selection", "value"),
+    Output("accumulation-ls-input-container", "style"),
+    Output("accumulation-dca-input-container", "style"),
+    Input("accumulation-ls-dca-selection", "value"),
 )
 def update_ls_input_visibility(ls_dca: str):
     if ls_dca == "LS":
@@ -1024,26 +1026,26 @@ def update_ls_input_visibility(ls_dca: str):
 
 
 @app.callback(
-    Output("strategies", "value"),
-    Output("strategies", "options"),
-    Input("add-strategy-button", "n_clicks"),
-    State("strategies", "value"),
-    State("strategies", "options"),
-    State("strategy-portfolio", "value"),
-    State("strategy-portfolio", "options"),
-    State("strategy-currency-selection", "value"),
-    State("ls-dca-selection", "value"),
-    State("investment-amount-input", "value"),
-    State("monthly-investment-input", "value"),
-    State("investment-horizon-input", "value"),
-    State("dca-length-input", "value"),
-    State("dca-interval-input", "value"),
-    State("variable-transaction-fees-input", "value"),
-    State("fixed-transaction-fees-input", "value"),
-    State("annualised-holding-fees-input", "value"),
+    Output("accumulation-strategies", "value"),
+    Output("accumulation-strategies", "options"),
+    Input("add-accumulation-strategy-button", "n_clicks"),
+    State("accumulation-strategies", "value"),
+    State("accumulation-strategies", "options"),
+    State("accumulation-strategy-portfolio", "value"),
+    State("accumulation-strategy-portfolio", "options"),
+    State("accumulation-strategy-currency-selection", "value"),
+    State("accumulation-ls-dca-selection", "value"),
+    State("accumulation-investment-amount-input", "value"),
+    State("accumulation-monthly-investment-input", "value"),
+    State("accumulation-investment-horizon-input", "value"),
+    State("accumulation-dca-length-input", "value"),
+    State("accumulation-dca-interval-input", "value"),
+    State("accumulation-variable-transaction-fees-input", "value"),
+    State("accumulation-fixed-transaction-fees-input", "value"),
+    State("accumulation-annualised-holding-fees-input", "value"),
     prevent_initial_call=True,
 )
-def update_strategies(
+def update_accumulation_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
@@ -1136,13 +1138,13 @@ def update_strategies(
 
 
 @app.callback(
-    Output("strategy-graph", "figure"),
-    Input("strategies", "value"),
-    State("strategies", "options"),
+    Output("accumulation-strategy-graph", "figure"),
+    Input("accumulation-strategies", "value"),
+    State("accumulation-strategies", "options"),
     State("yf-securities-store", "data"),
     prevent_initial_call=True,
 )
-def update_strategy_graph(
+def update_accumulation_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     yf_securities: dict[str, str],
@@ -1280,6 +1282,225 @@ def update_strategy_graph(
                 index=strategy_series.index,
                 name=strategy_str,
             )
+        series.append(ending_values)
+    ending_values = pd.concat(series, axis=1, names=strategy_strs)
+    return {
+        "data": [
+            go.Scatter(
+                x=ending_values.index,
+                y=ending_values[strategy],
+                mode="lines",
+                name=strategy_options[strategy],
+            )
+            for strategy in ending_values.columns
+        ],
+        "layout": {
+            "title": "Strategy Performance",
+        },
+    }
+
+
+@app.callback(
+    Output("withdrawal-strategies", "value"),
+    Output("withdrawal-strategies", "options"),
+    Input("add-withdrawal-strategy-button", "n_clicks"),
+    State("withdrawal-strategies", "value"),
+    State("withdrawal-strategies", "options"),
+    State("withdrawal-strategy-portfolio", "value"),
+    State("withdrawal-strategy-portfolio", "options"),
+    State("withdrawal-strategy-currency-selection", "value"),
+    State("withdrawal-initial-capital-input", "value"),
+    State("monthly-withdrawal-input", "value"),
+    State("withdrawal-horizon-input", "value"),
+    State("withdrawal-interval-input", "value"),
+    State("withdrawal-variable-transaction-fees-input", "value"),
+    State("withdrawal-fixed-transaction-fees-input", "value"),
+    State("withdrawal-annualised-holding-fees-input", "value"),
+    prevent_initial_call=True,
+)
+def update_withdrawal_strategies(
+    _,
+    strategies: list[str] | None,
+    strategy_options: dict[str, str],
+    strategy_portfolio: str | None,
+    strategy_portfolio_options: dict[str, str],
+    currency: str,
+    initial_capital: int | float | None,
+    monthly_withdrawal: int | float | None,
+    withdrawal_horizon: int | None,
+    withdrawal_interval: int | None,
+    variable_transaction_fees: int | float | None,
+    fixed_transaction_fees: int | float | None,
+    annualised_holding_fees: int | float | None,
+):
+    if strategy_portfolio is None:
+        return no_update
+    if initial_capital is None:
+        return no_update
+    if monthly_withdrawal is None:
+        return no_update
+    if withdrawal_horizon is None:
+        return no_update
+    if withdrawal_interval is None:
+        withdrawal_interval = 1
+
+    if variable_transaction_fees is None:
+        variable_transaction_fees = 0
+    if fixed_transaction_fees is None:
+        fixed_transaction_fees = 0
+    if annualised_holding_fees is None:
+        annualised_holding_fees = 0
+
+    if (
+        variable_transaction_fees < 0
+        or fixed_transaction_fees < 0
+        or annualised_holding_fees < 0
+    ):
+        return no_update
+    initial_capital = initial_capital or 0
+    monthly_withdrawal = monthly_withdrawal or 0
+    strategy_str = json.dumps(
+        {
+            "strategy_portfolio": strategy_portfolio,
+            "currency": currency,
+            "initial_capital": initial_capital,
+            "withdrawal_horizon": withdrawal_horizon,
+            "monthly_withdrawal": monthly_withdrawal,
+            "withdrawal_interval": withdrawal_interval,
+            "variable_transaction_fees": variable_transaction_fees,
+            "fixed_transaction_fees": fixed_transaction_fees,
+            "annualised_holding_fees": annualised_holding_fees,
+        }
+    )
+
+    strategy = (
+        strategy_str,
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}, {monthly_withdrawal} withdrawn monthly, {withdrawal_interval} months apart for {withdrawal_horizon} months, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
+    )
+
+    if strategies is None:
+        return [strategy[0]], {strategy[0]: strategy[1]}
+    if strategy[0] in strategies:
+        return no_update
+    strategies.append(strategy[0])
+    strategy_options.update({strategy[0]: strategy[1]})
+    return strategies, strategy_options
+
+
+@app.callback(
+    Output("withdrawal-strategy-graph", "figure"),
+    Input("withdrawal-strategies", "value"),
+    State("withdrawal-strategies", "options"),
+    State("yf-securities-store", "data"),
+    prevent_initial_call=True,
+)
+def update_withdrawal_strategy_graph(
+    strategy_strs: list[str],
+    strategy_options: dict[str, str],
+    yf_securities: dict[str, str],
+):
+    series = []
+    if not strategy_strs:
+        return {
+            "data": [],
+            "layout": {
+                "title": "Strategy Performance",
+            },
+        }
+    for strategy_str in strategy_strs:
+        strategy: dict[str, str] = json.loads(strategy_str)
+        strategy_portfolio = strategy["strategy_portfolio"]
+        currency = strategy["currency"]
+        initial_capital = strategy["initial_capital"]
+        withdrawal_horizon = strategy["withdrawal_horizon"]
+        monthly_withdrawal = strategy["monthly_withdrawal"]
+        withdrawal_interval = strategy["withdrawal_interval"]
+        variable_transaction_fees = strategy["variable_transaction_fees"]
+        fixed_transaction_fees = strategy["fixed_transaction_fees"]
+        annualised_holding_fees = strategy["annualised_holding_fees"]
+        (
+            initial_capital,
+            withdrawal_horizon,
+            monthly_withdrawal,
+            withdrawal_interval,
+            variable_transaction_fees,
+            fixed_transaction_fees,
+            annualised_holding_fees,
+        ) = (
+            *[
+                float(x)
+                for x in [
+                    initial_capital,
+                    withdrawal_horizon,
+                    monthly_withdrawal,
+                    withdrawal_interval,
+                    variable_transaction_fees,
+                    fixed_transaction_fees,
+                    annualised_holding_fees,
+                ]
+            ],
+        )
+        portfolio_allocation_strs: list[str] = json.loads(strategy_portfolio)
+        portfolio_allocations: list[dict[str, int | float]] = [
+            json.loads(portfolio_allocation_str)
+            for portfolio_allocation_str in portfolio_allocation_strs
+        ]
+        withdrawal_horizon = int(withdrawal_horizon)
+        withdrawal_interval = int(withdrawal_interval)
+        variable_transaction_fees /= 100
+        annualised_holding_fees /= 100
+        securities = [
+            security
+            for portfolio_allocation in portfolio_allocations
+            for security in portfolio_allocation
+        ]
+        weights = [
+            float(weight)
+            for portfolio_allocation in portfolio_allocations
+            for weight in portfolio_allocation.values()
+        ]
+        if sum(weights) > 100:
+            return no_update
+        strategy_series = pd.concat(
+            [
+                load_df(
+                    security,
+                    "Monthly",
+                    currency,
+                    "No",
+                    yf_securities.get(security),
+                )
+                for security in securities
+            ],
+            axis=1,
+        )
+        strategy_series = (
+            strategy_series.pct_change()
+            .mul(weights)
+            .div(100)
+            .sum(axis=1, skipna=False)
+            .add(1)
+            .cumprod()
+        )
+        strategy_series.iloc[
+            strategy_series.index.get_indexer([strategy_series.first_valid_index()])[0]
+            - 1
+        ] = 1
+
+        ending_values = pd.Series(
+            calculate_withdrawal_portfolio_value_with_fees_vector(
+                strategy_series.pct_change().to_numpy(),
+                withdrawal_horizon,
+                withdrawal_interval,
+                initial_capital,
+                monthly_withdrawal,
+                variable_transaction_fees,
+                fixed_transaction_fees,
+                annualised_holding_fees,
+            ),
+            index=strategy_series.index,
+            name=strategy_str,
+        )
         series.append(ending_values)
     ending_values = pd.concat(series, axis=1, names=strategy_strs)
     return {

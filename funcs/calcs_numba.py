@@ -193,3 +193,52 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             share_value *= 1 + monthly_returns_with_fees[j + 1]
         res[i] = share_value + funds_to_invest
     return res
+
+
+@njit(
+    [
+        float64[:](
+            float64[:],
+            int64,
+            int64,
+            float64,
+            float64,
+            float64,
+            float64,
+            float64,
+        )
+    ]
+)
+def calculate_withdrawal_portfolio_value_with_fees_vector(
+    monthly_returns: np.ndarray,
+    withdrawal_horizon: int,
+    withdrawal_interval: int,
+    initial_portfolio_value: float,
+    monthly_withdrawal: float,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
+):
+    withdrawal_amount = monthly_withdrawal * withdrawal_interval
+    withdrawal_amount_with_fees = (
+        withdrawal_amount * (1 + variable_transaction_fees) + fixed_transaction_fees
+    )
+    monthly_returns_with_fees = (
+        (1 + monthly_returns) ** 12 - annualised_holding_fees
+    ) ** (1 / 12) - 1
+    res = np.zeros(len(monthly_returns))
+    for i in range(len(monthly_returns)):
+        if i < withdrawal_horizon:
+            res[i] = np.nan
+            continue
+        share_value = initial_portfolio_value
+        for index, j in enumerate(range(i - withdrawal_horizon, i)):
+            if index % withdrawal_interval == 0:
+                share_value -= withdrawal_amount_with_fees
+                if share_value <= 0:
+                    res[i] = 0
+                    break
+            share_value *= 1 + monthly_returns_with_fees[j + 1]
+        else:
+            res[i] = share_value
+    return res
