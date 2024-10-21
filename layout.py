@@ -479,6 +479,16 @@ app_layout = dbc.Tabs(
                                         type="number",
                                         min=0.01,
                                     ),
+                                    dbc.Label("Adjust for Inflation"),
+                                    dbc.Select(
+                                        {
+                                            "Not": "No",
+                                            "Monthly Investment": "Adjust Monthly Investment",
+                                            "Returns": "Adjust Returns",
+                                        },
+                                        value="Not",
+                                        id="accumulation-inflation-adjustment-selection",
+                                    ),
                                 ],
                                 id="accumulation-dca-input-container",
                             ),
@@ -595,6 +605,16 @@ app_layout = dbc.Tabs(
                                 id="monthly-withdrawal-input",
                                 type="number",
                                 min=0.01,
+                            ),
+                            dbc.Label("Adjust for Inflation"),
+                            dbc.Select(
+                                {
+                                    "Not": "No",
+                                    "Monthly Withdrawal": "Adjust Monthly Withdrawal",
+                                    "Returns": "Adjust Returns",
+                                },
+                                value="Not",
+                                id="withdrawal-inflation-adjustment-selection",
                             ),
                             dbc.Label("Withdrawal Horizon (Months)"),
                             dbc.Input(

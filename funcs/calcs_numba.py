@@ -140,6 +140,7 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
             int64,
             int64,
             float64,
+            float64[:],
             float64,
             float64,
             float64,
@@ -152,13 +153,14 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     dca_length: int,
     dca_interval: int,
     investment_horizon: int,
-    monthly_amount: float,
+    initial_monthly_amount: float,
+    cpi: np.ndarray,
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
     interest_rates: np.ndarray,
 ):
-    dca_amount = monthly_amount * dca_interval
+    dca_amount = initial_monthly_amount * dca_interval
     if fixed_transaction_fees >= dca_amount:
         raise ValueError("Fixed fees must be less than the amount invested in each DCA")
     if dca_interval > dca_length:
@@ -177,6 +179,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             continue
         share_value = 0
         funds_to_invest = 0
+        monthly_amount = initial_monthly_amount
         for index, j in enumerate(
             range(i - investment_horizon, i - investment_horizon + dca_length)
         ):
@@ -189,6 +192,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 funds_to_invest = 0
             share_value *= 1 + monthly_returns_with_fees[j + 1]
             funds_to_invest *= 1 + cash_returns[j + 1]
+            monthly_amount *= 1 + cpi[j + 1]
         for j in range(i - investment_horizon + dca_length, i):
             share_value *= 1 + monthly_returns_with_fees[j + 1]
         res[i] = share_value + funds_to_invest
@@ -203,6 +207,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             int64,
             float64,
             float64,
+            float64[:],
             float64,
             float64,
             float64,
@@ -214,15 +219,13 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     withdrawal_horizon: int,
     withdrawal_interval: int,
     initial_portfolio_value: float,
-    monthly_withdrawal: float,
+    initial_monthly_withdrawal: float,
+    cpi: np.ndarray,
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
 ):
-    withdrawal_amount = monthly_withdrawal * withdrawal_interval
-    withdrawal_amount_with_fees = (
-        withdrawal_amount * (1 + variable_transaction_fees) + fixed_transaction_fees
-    )
+    initial_withdrawal_amount = initial_monthly_withdrawal * withdrawal_interval
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12) - 1
@@ -232,13 +235,18 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             res[i] = np.nan
             continue
         share_value = initial_portfolio_value
+        withdrawal_amount = initial_withdrawal_amount
         for index, j in enumerate(range(i - withdrawal_horizon, i)):
             if index % withdrawal_interval == 0:
-                share_value -= withdrawal_amount_with_fees
+                share_value -= (
+                    withdrawal_amount * (1 + variable_transaction_fees)
+                    + fixed_transaction_fees
+                )
                 if share_value <= 0:
                     res[i] = 0
                     break
             share_value *= 1 + monthly_returns_with_fees[j + 1]
+            withdrawal_amount *= 1 + cpi[j + 1]
         else:
             res[i] = share_value
     return res
