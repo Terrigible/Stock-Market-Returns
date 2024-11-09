@@ -405,6 +405,8 @@ def add_index(
                 ),
                 f"{us_treasury_duration_options[us_treasury_duration]} {fred_index_options[fred_index]}",
             )
+        else:
+            return no_update
     elif index_provider == "MAS":
         if mas_index == "SGS":
             index = (
@@ -417,6 +419,8 @@ def add_index(
                 ),
                 f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}",
             )
+        else:
+            return no_update
     else:
         index = (
             json.dumps(
@@ -773,9 +777,30 @@ def update_graph(
         ]
 
     if y_var == "rolling_returns" and chart_type == "hist":
+        barmode = "overlay"
         temp_fig = go.Figure(
             data=data, layout=go.Layout(barmode="overlay")
         ).full_figure_for_development(warn=False)
+        shapes = [
+            dict(
+                type="line",
+                x0=0,
+                x1=0,
+                y0=0,
+                y1=temp_fig.layout.yaxis.range[1] * 1.05,
+                line=dict(
+                    color=securities_colourmap[baseline_security]
+                    if baseline_security != "None"
+                    else "grey",
+                    width=1,
+                    dash="dash",
+                ),
+                opacity=0.7,
+            )
+        ]
+    else:
+        barmode = None
+        shapes = None
 
     match y_var:
         case "price":
@@ -799,29 +824,9 @@ def update_graph(
             tickformat=tickformat,
             type="log" if "log" in log_scale else "linear",
         ),
-        barmode="overlay"
-        if y_var == "rolling_returns" and chart_type == "hist"
-        else None,
+        barmode=barmode,
         showlegend=True,
-        shapes=[
-            dict(
-                type="line",
-                x0=0,
-                x1=0,
-                y0=0,
-                y1=temp_fig.layout.yaxis.range[1] * 1.05,
-                line=dict(
-                    color=securities_colourmap[baseline_security]
-                    if baseline_security != "None"
-                    else "grey",
-                    width=1,
-                    dash="dash",
-                ),
-                opacity=0.7,
-            )
-        ]
-        if y_var == "rolling_returns" and chart_type == "hist"
-        else None,
+        shapes=shapes,
     )
     return dict(data=data, layout=layout)
 
