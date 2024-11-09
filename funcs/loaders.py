@@ -400,130 +400,50 @@ def load_usdsgd():
     return usdsgd
 
 
-def download_mas_swap_points():
-    swap_points_response = requests.get(
-        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/swap-points/swappoint_{pd.Timestamp("today").strftime("%Y%m")}.xlsx',
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-    )
-    if swap_points_response.status_code == 200:
-        with open("data/SwapPoint.xlsx", "wb") as f:
-            f.write(swap_points_response.content)
-    else:
-        raise Exception(
-            f"Error downloading MAS swap points: {swap_points_response.status_code} {swap_points_response.reason}"
-        )
-
-
 def read_mas_swap_points():
-    df = (
-        pd.concat(
-            pd.read_excel(
-                "data/SwapPoint.xlsx",
-                None,
-                engine="calamine",
-                skiprows=3,
-                skipfooter=6,
-                index_col=0,
-                header=[0, 1],
-            ).values(),
-            axis=1,
+    swap_points = (
+        pd.read_excel(
+            "data/US$_S$ Forward Swap Points.xlsx", engine="calamine", skipfooter=1
         )
-        .unstack()
-        .dropna()
-        .reset_index()
-        .rename(
-            {
-                "level_0": "month",
-                "level_1": "tenor",
-                "level_2": "day",
-                0: "swap_points",
-            },
-            axis=1,
+        .assign(
+            date=lambda df: pd.to_datetime(
+                df["Date"] - pd.DateOffset(days=0, normalize=True)
+            )
         )
-    )
-    df["date"] = df["month"] - MonthEnd() + pd.to_timedelta(df["day"], unit="D")
-    swap_points = df.set_index("date").drop(columns=["month", "day"])
-    swap_points = swap_points.pivot_table(columns="tenor", index="date").droplevel(
-        0, axis=1
+        .drop(columns=["Date"])
+        .set_index("date")
+        .sort_index()
+        .dropna(how="all")
     )
     return swap_points
 
 
 def load_mas_swap_points():
-    try:
-        swap_points = read_mas_swap_points()
-    except FileNotFoundError:
-        download_mas_swap_points()
-        swap_points = read_mas_swap_points()
-    if pd.Timestamp("today").tz_localize("Asia/Singapore") > (
-        swap_points.index[-1]
-        + pd.offsets.MonthBegin(2)
-        + pd.offsets.Week(weekday=0)
-        + pd.offsets.Hour(12)
-    ).tz_localize("Asia/Singapore"):
-        download_mas_swap_points()
     swap_points = read_mas_swap_points()
     return swap_points
 
 
-def download_sgd_neer():
-    sgd_neer_response = requests.get(
-        f'https://www.mas.gov.sg/-/media/mas-media-library/statistics/exchange-rates/s$neer/s$neer_{
-            pd.Timestamp("today").strftime("%Y%m")}.xlsx',
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-    )
-    if sgd_neer_response.status_code == 200:
-        with open("data/S$NEER.xlsx", "wb") as f:
-            f.write(sgd_neer_response.content)
-    else:
-        raise Exception(
-            f"Error downloading MAS swap points: {
-                sgd_neer_response.status_code} {sgd_neer_response.reason}"
-        )
-
-
 def read_sgd_neer():
     sgd_neer = (
-        pd.concat(
-            pd.read_excel(
-                "data/S$NEER.xlsx",
-                None,
-                engine="calamine",
-                names=["date", "neer"],
-                dtype={"date": str, "neer": float},
-                skiprows=6,
-            ).values()
+        pd.read_excel(
+            "data/S$ Nominal Effective Exchange Rate Index.xlsx", engine="calamine"
         )
-        .dropna()
-        .reset_index(drop=True)
-    )
-    sgd_neer["date"] = pd.to_datetime(
-        pd.DataFrame(
-            sgd_neer["date"]
-            .str.split()
-            .apply(lambda x: ([np.nan] * (3 - len(x)) + x))
-            .to_list()
+        .dropna(how="all")
+        .assign(
+            date=lambda df: pd.to_datetime(
+                df["Average for Week Ending"] - pd.DateOffset(days=0, normalize=True)
+            ),
+            neer=lambda df: df["Index (Year 1999=100)"],
         )
-        .ffill()
-        .sum(axis=1),
-        format="%Y%b%d",
+        .set_index("date")
+        .loc[:, ["neer"]]
+        .sort_index()
     )
-    return sgd_neer.set_index("date")
+    return sgd_neer
 
 
 def load_sgd_neer():
-    try:
-        sgd_neer = read_sgd_neer()
-    except FileNotFoundError:
-        download_sgd_neer()
-        sgd_neer = read_sgd_neer()
-    if pd.Timestamp("today").tz_localize("Asia/Singapore") > (
-        sgd_neer.index[-1]
-        + pd.offsets.MonthBegin(2)
-        + pd.offsets.Week(weekday=0)
-        + pd.offsets.Hour(12)
-    ).tz_localize("Asia/Singapore"):
-        download_sgd_neer()
+    sgd_neer = read_sgd_neer()
     return sgd_neer
 
 
