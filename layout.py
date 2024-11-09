@@ -441,7 +441,7 @@ app_layout = dbc.Tabs(
                     html.Div(
                         [
                             dbc.Label("Portfolio"),
-                            dcc.Dropdown(
+                            dbc.Select(
                                 {},
                                 id="accumulation-strategy-portfolio",
                             ),
@@ -581,7 +581,7 @@ app_layout = dbc.Tabs(
                     html.Div(
                         [
                             dbc.Label("Portfolio"),
-                            dcc.Dropdown(
+                            dbc.Select(
                                 {},
                                 id="withdrawal-strategy-portfolio",
                             ),
