@@ -9,7 +9,7 @@ import httpx
 import numpy as np
 import pandas as pd
 import requests
-from pandas.tseries.offsets import BMonthEnd, MonthEnd
+from pandas.tseries.offsets import BMonthEnd
 from requests.exceptions import JSONDecodeError
 
 
@@ -145,7 +145,7 @@ async def load_us_treasury_rates_async():
 
     except FileNotFoundError:
         treasury_rates = await download_us_treasury_rates_async()
-        treasury_rates.to_csv(f"data/us_treasury.csv")
+        treasury_rates.to_csv("data/us_treasury.csv")
 
     treasury_rates["20"] = treasury_rates["20"].fillna(
         treasury_rates["10"].add(treasury_rates["30"]).div(2)
@@ -222,6 +222,7 @@ def download_mas_sgd_fx():
     sgd_fx_response = requests.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily",
         headers={"keyid": os.environ["MAS_EXCHANGE_RATE_API_KEY"]},
+        timeout=20,
     )
     sgd_fx = (
         pd.DataFrame(sgd_fx_response.json()["elements"])
@@ -333,6 +334,7 @@ def download_worldbank_exchange_rates():
     res = requests.get(
         "https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF",
         params={"downloadformat": "csv"},
+        timeout=20,
     )
     res.raise_for_status()
     with ZipFile(BytesIO(res.content)) as zf:
@@ -446,6 +448,7 @@ def download_sgd_interest_rates():
     sgd_interest_rates_response = requests.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily",
         headers={"keyid": os.environ["MAS_INTEREST_RATE_API_KEY"]},
+        timeout=20,
     )
 
     sgd_interest_rates = (
@@ -564,6 +567,7 @@ def download_sg_cpi():
         sg_cpi_response = requests.get(
             "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            timeout=20,
         )
         sg_cpi = pd.DataFrame(sg_cpi_response.json()["Data"]["row"][0]["columns"])
         sg_cpi = sg_cpi.set_axis(["date", "sg_cpi"], axis=1)
