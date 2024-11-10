@@ -38,7 +38,7 @@ import json
 
 
 @cache
-def load_df(
+def load_data(
     security_str: str,
     interval: str,
     currency: str,
@@ -197,9 +197,19 @@ def load_df(
     return series
 
 
-def transform_df(
-    series: pd.Series, interval: str, y_var: str, return_duration: str, return_type: str
+def load_df(
+    security_str: str,
+    interval: str,
+    currency: str,
+    adjust_for_inflation: str,
+    yf_security: str | None,
+    y_var: str,
+    return_duration: str,
+    return_type: str,
 ) -> pd.Series:
+    series = load_data(
+        security_str, interval, currency, adjust_for_inflation, yf_security
+    )
     if y_var == "price":
         return series
     if y_var == "drawdown":
@@ -715,15 +725,12 @@ def update_graph(
     )
     df = pd.DataFrame(
         {
-            selected_security: transform_df(
-                load_df(
-                    selected_security,
-                    interval,
-                    currency,
-                    adjust_for_inflation,
-                    yf_securities.get(selected_security),
-                ),
+            selected_security: load_df(
+                selected_security,
                 interval,
+                currency,
+                adjust_for_inflation,
+                yf_securities.get(selected_security),
                 y_var,
                 return_duration,
                 return_type,
@@ -982,7 +989,7 @@ def update_portfolio_graph(
         ]
         df = pd.concat(
             [
-                load_df(
+                load_data(
                     security,
                     "Monthly",
                     currency,
@@ -1233,7 +1240,7 @@ def update_accumulation_strategy_graph(
             return no_update
         strategy_series = pd.concat(
             [
-                load_df(
+                load_data(
                     security,
                     "Monthly",
                     currency,
@@ -1502,7 +1509,7 @@ def update_withdrawal_strategy_graph(
             return no_update
         strategy_series = pd.concat(
             [
-                load_df(
+                load_data(
                     security,
                     "Monthly",
                     currency,
