@@ -22,10 +22,10 @@ def read_msci_source(filename):
         parse_dates=["Date"],
         date_format="%b %d, %Y",
         thousands=",",
+        index_col="Date",
     )
-    df = df.set_axis(["date", "price"], axis=1)
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.set_index("date")
+    df = df.set_axis(["price"], axis=1)
+    df = df.rename_axis("date")
     return df
 
 
@@ -405,11 +405,7 @@ def read_mas_swap_points():
         pd.read_excel(
             "data/US$_S$ Forward Swap Points.xlsx", engine="calamine", skipfooter=1
         )
-        .assign(
-            date=lambda df: pd.to_datetime(
-                df["Date"] - pd.DateOffset(days=0, normalize=True)
-            )
-        )
+        .assign(date=lambda df: df["Date"] - pd.DateOffset(days=0, normalize=True))
         .drop(columns=["Date"])
         .set_index("date")
         .sort_index()
@@ -430,9 +426,8 @@ def read_sgd_neer():
         )
         .dropna(how="all")
         .assign(
-            date=lambda df: pd.to_datetime(
-                df["Average for Week Ending"] - pd.DateOffset(days=0, normalize=True)
-            ),
+            date=lambda df: df["Average for Week Ending"]
+            - pd.DateOffset(days=0, normalize=True),
             neer=lambda df: df["Index (Year 1999=100)"],
         )
         .set_index("date")
