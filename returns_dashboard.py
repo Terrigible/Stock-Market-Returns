@@ -467,21 +467,29 @@ def add_stock_etf(
     _,
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
-    stock_etf: str,
+    stock_etf: str | None,
     tax_treatment: str,
     yf_securities_store: dict[str, str],
 ):
+    if not stock_etf:
+        return no_update
     if ";" in stock_etf:
         return no_update
-    for yf_security in yf_securities_store:
-        yss_ticker = json.loads(yf_security)["ticker"]
-        yss_tax_treatment = json.loads(yf_security)["tax_treatment"]
-        if stock_etf == yss_ticker and tax_treatment == yss_tax_treatment:
-            if yf_security in selected_securities:
-                return no_update
-            if yf_security in selected_securities_options:
-                selected_securities.append(yf_security)
-                return no_update
+    for yf_security_str in yf_securities_store:
+        yf_security = json.loads(yf_security_str)
+        if stock_etf != yf_security["ticker"]:
+            break
+        if tax_treatment != yf_security["tax_treatment"]:
+            break
+        if yf_security_str in selected_securities:
+            return no_update
+        if yf_security_str in selected_securities_options:
+            selected_securities.append(yf_security_str)
+            return (
+                selected_securities,
+                selected_securities_options,
+                yf_securities_store,
+            )
     ticker = yf.Ticker(stock_etf)
     if ticker.history_metadata == {}:
         return no_update
