@@ -1,4 +1,4 @@
-from functools import cache
+from functools import cache, reduce
 from glob import glob
 from io import StringIO
 from itertools import cycle
@@ -878,20 +878,11 @@ def add_allocation(
             }
         if new_allocation in portfolio_allocation_strs:
             return no_update
-        portfolio_allocations: list[dict[str, int | float]] = [
-            json.loads(portfolio_allocation_str)
-            for portfolio_allocation_str in portfolio_allocation_strs
-        ]
-        if security in [
-            security
-            for portfolio_allocation in portfolio_allocations
-            for security in portfolio_allocation
-        ]:
-            old_weight = [
-                portfolio_allocation[security]
-                for portfolio_allocation in portfolio_allocations
-                if security in portfolio_allocation
-            ][0]
+        portfolio_allocations: dict[str, int | float] = reduce(
+            dict.__or__, map(json.loads, portfolio_allocation_strs)
+        )
+        if security in portfolio_allocations:
+            old_weight = portfolio_allocations[security]
             portfolio_allocation_strs.remove(json.dumps({security: old_weight}))
             portfolio_allocation_options.pop(json.dumps({security: old_weight}))
 
@@ -929,11 +920,10 @@ def add_portfolio(
 ):
     if portfolio_allocation_strs is None:
         return no_update
-    weights = [
-        float(value)
-        for portfolio_allocation_str in portfolio_allocation_strs
-        for value in json.loads(portfolio_allocation_str).values()
-    ]
+    portfolio_allocations: dict[str, int | float] = reduce(
+        dict.__or__, map(json.loads, portfolio_allocation_strs)
+    )
+    weights = portfolio_allocations.values()
     if sum(weights) != 100:
         return no_update
     portfolio_str = json.dumps(portfolio_allocation_strs)
@@ -973,20 +963,11 @@ def update_portfolio_graph(
     data = []
     for portfolio_str in portfolio_strs:
         portfolio: list[str] = json.loads(portfolio_str)
-        portfolio_allocations: list[dict[str, int | float]] = [
-            json.loads(portfolio_allocation_str)
-            for portfolio_allocation_str in portfolio
-        ]
-        securities = [
-            security
-            for portfolio_allocation in portfolio_allocations
-            for security in portfolio_allocation
-        ]
-        weights = [
-            float(weight)
-            for portfolio_allocation in portfolio_allocations
-            for weight in portfolio_allocation.values()
-        ]
+        portfolio_allocations: dict[str, int | float] = reduce(
+            dict.__or__, map(json.loads, portfolio)
+        )
+        securities = portfolio_allocations.keys()
+        weights = list(portfolio_allocations.values())
         df = pd.concat(
             [
                 load_data(
@@ -1179,63 +1160,28 @@ def update_accumulation_strategy_graph(
             },
         }
     for strategy_str in strategy_strs:
-        strategy: dict[str, str] = json.loads(strategy_str)
-        strategy_portfolio = strategy["strategy_portfolio"]
-        currency = strategy["currency"]
-        ls_dca = strategy["ls_dca"]
-        investment_amount = strategy["investment_amount"]
-        investment_horizon = strategy["investment_horizon"]
-        monthly_investment = strategy["monthly_investment"]
-        adjust_for_inflation = strategy["adjust_for_inflation"]
-        dca_length = strategy["dca_length"]
-        dca_interval = strategy["dca_interval"]
-        variable_transaction_fees = strategy["variable_transaction_fees"]
-        fixed_transaction_fees = strategy["fixed_transaction_fees"]
-        annualised_holding_fees = strategy["annualised_holding_fees"]
-        (
-            investment_amount,
-            investment_horizon,
-            monthly_investment,
-            dca_length,
-            dca_interval,
-            variable_transaction_fees,
-            fixed_transaction_fees,
-            annualised_holding_fees,
-        ) = (
-            *[
-                float(x)
-                for x in [
-                    investment_amount,
-                    investment_horizon,
-                    monthly_investment,
-                    dca_length,
-                    dca_interval,
-                    variable_transaction_fees,
-                    fixed_transaction_fees,
-                    annualised_holding_fees,
-                ]
-            ],
-        )
+        strategy: dict[str, str | int | float] = json.loads(strategy_str)
+        strategy_portfolio = str(strategy["strategy_portfolio"])
+        currency = str(strategy["currency"])
+        ls_dca = str(strategy["ls_dca"])
+        investment_amount = float(strategy["investment_amount"])
+        investment_horizon = int(strategy["investment_horizon"])
+        monthly_investment = float(strategy["monthly_investment"])
+        adjust_for_inflation = str(strategy["adjust_for_inflation"])
+        dca_length = int(strategy["dca_length"])
+        dca_interval = int(strategy["dca_interval"])
+        variable_transaction_fees = float(strategy["variable_transaction_fees"])
+        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+        annualised_holding_fees = float(strategy["annualised_holding_fees"])
+
         portfolio_allocation_strs: list[str] = json.loads(strategy_portfolio)
-        portfolio_allocations: list[dict[str, int | float]] = [
-            json.loads(portfolio_allocation_str)
-            for portfolio_allocation_str in portfolio_allocation_strs
-        ]
-        investment_horizon = int(investment_horizon)
-        dca_length = int(dca_length)
-        dca_interval = int(dca_interval)
+        portfolio_allocations: dict[str, int | float] = reduce(
+            dict.__or__, map(json.loads, portfolio_allocation_strs)
+        )
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        securities = [
-            security
-            for portfolio_allocation in portfolio_allocations
-            for security in portfolio_allocation
-        ]
-        weights = [
-            float(weight)
-            for portfolio_allocation in portfolio_allocations
-            for weight in portfolio_allocation.values()
-        ]
+        securities = portfolio_allocations.keys()
+        weights = list(portfolio_allocations.values())
         if sum(weights) > 100:
             return no_update
         strategy_series = pd.concat(
@@ -1453,58 +1399,26 @@ def update_withdrawal_strategy_graph(
             },
         }
     for strategy_str in strategy_strs:
-        strategy: dict[str, str] = json.loads(strategy_str)
-        strategy_portfolio = strategy["strategy_portfolio"]
-        currency = strategy["currency"]
-        initial_capital = strategy["initial_capital"]
-        withdrawal_horizon = strategy["withdrawal_horizon"]
-        monthly_withdrawal = strategy["monthly_withdrawal"]
-        adjust_for_inflation = strategy["adjust_for_inflation"]
-        withdrawal_interval = strategy["withdrawal_interval"]
-        variable_transaction_fees = strategy["variable_transaction_fees"]
-        fixed_transaction_fees = strategy["fixed_transaction_fees"]
-        annualised_holding_fees = strategy["annualised_holding_fees"]
-        (
-            initial_capital,
-            withdrawal_horizon,
-            monthly_withdrawal,
-            withdrawal_interval,
-            variable_transaction_fees,
-            fixed_transaction_fees,
-            annualised_holding_fees,
-        ) = (
-            *[
-                float(x)
-                for x in [
-                    initial_capital,
-                    withdrawal_horizon,
-                    monthly_withdrawal,
-                    withdrawal_interval,
-                    variable_transaction_fees,
-                    fixed_transaction_fees,
-                    annualised_holding_fees,
-                ]
-            ],
-        )
+        strategy: dict[str, str | int | float] = json.loads(strategy_str)
+        strategy_portfolio = str(strategy["strategy_portfolio"])
+        currency = str(strategy["currency"])
+        initial_capital = float(strategy["initial_capital"])
+        withdrawal_horizon = int(strategy["withdrawal_horizon"])
+        monthly_withdrawal = float(strategy["monthly_withdrawal"])
+        adjust_for_inflation = str(strategy["adjust_for_inflation"])
+        withdrawal_interval = int(strategy["withdrawal_interval"])
+        variable_transaction_fees = float(strategy["variable_transaction_fees"])
+        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+        annualised_holding_fees = float(strategy["annualised_holding_fees"])
+
         portfolio_allocation_strs: list[str] = json.loads(strategy_portfolio)
-        portfolio_allocations: list[dict[str, int | float]] = [
-            json.loads(portfolio_allocation_str)
-            for portfolio_allocation_str in portfolio_allocation_strs
-        ]
-        withdrawal_horizon = int(withdrawal_horizon)
-        withdrawal_interval = int(withdrawal_interval)
+        portfolio_allocations: dict[str, int | float] = reduce(
+            dict.__or__, map(json.loads, portfolio_allocation_strs)
+        )
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        securities = [
-            security
-            for portfolio_allocation in portfolio_allocations
-            for security in portfolio_allocation
-        ]
-        weights = [
-            float(weight)
-            for portfolio_allocation in portfolio_allocations
-            for weight in portfolio_allocation.values()
-        ]
+        securities = portfolio_allocations.keys()
+        weights = list(portfolio_allocations.values())
         if sum(weights) > 100:
             return no_update
         strategy_series = pd.concat(
