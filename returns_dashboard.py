@@ -233,18 +233,12 @@ def load_df(
     elif interval == "Daily":
         series = series.div(
             series.reindex(
-                np.busday_offset(
-                    (
-                        series.index
-                        - pd.offsets.DateOffset(
-                            months=return_durations[return_duration]
-                        )
-                    )
-                    .to_numpy()
-                    .astype("datetime64[D]"),
-                    0,
-                    roll="backward",
-                ).astype("datetime64[ns]")
+                (
+                    series.index
+                    - pd.offsets.DateOffset(months=return_durations[return_duration])
+                    + pd.offsets.Day(1)
+                    - pd.offsets.BDay(1)
+                )
             ).set_axis(series.index, axis=0)
         ).sub(1)
     else:
