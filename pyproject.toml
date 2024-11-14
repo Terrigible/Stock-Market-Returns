@@ -15,7 +15,7 @@ dependencies = [
     "python-calamine>=0.3.1",
     "requests>=2.32.3",
     "scipy>=1.14.1",
-    "yfinance>=0.2.48",
+    "yfinance>=0.2.49",
 ]
 
 [dependency-groups]
@@ -26,6 +26,6 @@ dev = [
     "nbformat>=5.10.4",
     "seaborn>=0.13.2",
     "selenium>=4.26.1",
-    "snakeviz>=2.2.0",
+    "snakeviz>=2.2.2",
 ]
 prod = ["gunicorn>=23.0.0"]
