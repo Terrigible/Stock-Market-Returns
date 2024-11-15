@@ -1,3 +1,4 @@
+import json
 from functools import cache, reduce
 from glob import glob
 from io import StringIO
@@ -7,8 +8,9 @@ import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import polars as pl
 import yfinance as yf
-from dash import Dash, no_update, ctx
+from dash import Dash, ctx, no_update
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
@@ -27,14 +29,12 @@ from funcs.loaders import (
     load_us_cpi,
     load_us_treasury_returns,
     load_usdsgd,
+    read_ft_data,
     read_greatlink_data,
     read_msci_data,
     read_shiller_sp500_data,
-    read_ft_data,
 )
 from layout import app_layout
-
-import json
 
 
 @cache
@@ -180,7 +180,7 @@ def load_data(
                 .interpolate("pchip")
                 .ffill()
                 .reindex(series.index)
-            )
+            ).rename(series.name)
     elif currency == "SGD":
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
@@ -205,19 +205,24 @@ def load_df(
     yf_security: str | None,
     y_var: str,
     return_duration: str,
+    return_interval: str,
     return_type: str,
 ) -> pd.Series:
     series = load_data(
-        security_str, interval, currency, adjust_for_inflation, yf_security
+        security_str,
+        "Monthly" if y_var == "calendar_returns" else interval,
+        currency,
+        adjust_for_inflation,
+        yf_security,
     )
     if y_var == "price":
         return series
     if y_var == "drawdown":
         return series.div(series.cummax()).sub(1)
     return_durations = {
-        "1m": 1,
-        "3m": 3,
-        "6m": 6,
+        "1mo": 1,
+        "3mo": 3,
+        "6mo": 6,
         "1y": 12,
         "2y": 24,
         "3y": 36,
@@ -228,24 +233,48 @@ def load_df(
         "25y": 300,
         "30y": 360,
     }
-    if interval == "Monthly":
-        series = series.pct_change(return_durations[return_duration])
-    elif interval == "Daily":
-        series = series.div(
-            series.reindex(
-                (
-                    series.index
-                    - pd.offsets.DateOffset(months=return_durations[return_duration])
-                    + pd.offsets.Day(1)
-                    - pd.offsets.BDay(1)
-                )
-            ).set_axis(series.index, axis=0)
-        ).sub(1)
-    else:
-        raise ValueError("Invalid interval")
-    if return_type == "annualized":
-        series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
-    return series.dropna()
+    if y_var == "rolling_returns":
+        if interval == "Monthly":
+            series = series.pct_change(return_durations[return_duration])
+        elif interval == "Daily":
+            series = series.div(
+                series.reindex(
+                    (
+                        series.index
+                        - pd.offsets.DateOffset(
+                            months=return_durations[return_duration]
+                        )
+                        + pd.offsets.Day(1)
+                        - pd.offsets.BDay(1)
+                    )
+                ).set_axis(series.index, axis=0)
+            ).sub(1)
+        else:
+            raise ValueError("Invalid interval")
+        if return_type == "annualized":
+            series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
+        return series.dropna()
+    if y_var == "calendar_returns":
+        df_pl = pl.from_pandas(series.reset_index())
+        df = (
+            df_pl.set_sorted("date")
+            .group_by_dynamic("date", every=return_interval)
+            .agg(
+                pl.col("date").last().alias("date_end"),
+                pl.col("price").last(),
+            )
+            .with_columns(
+                pl.col("price").pct_change().alias("return"),
+            )
+            .drop_nulls()
+            .drop("date", "price")
+            .rename({"date_end": "date"})
+            .to_pandas()
+            .set_index("date")
+            .loc[:, "return"]
+        )
+        return df
+    raise ValueError("Invalid y_var")
 
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -654,9 +683,21 @@ def update_log_scale(y_var: str, log_scale: list[str]):
         return {"display": "none"}, []
 
 
+@app.callback(
+    Output("rolling-return-selection-container", "style"),
+    Output("calendar-return-selection-container", "style"),
+    Input("y-var-selection", "value"),
+)
+def update_return_duration_visibility(y_var: str):
+    if y_var == "rolling_returns":
+        return {"display": "block"}, {"display": "none"}
+    else:
+        return {"display": "none"}, {"display": "block"}
+
+
 @app.callback(Output("return-selection", "style"), Input("y-var-selection", "value"))
 def update_return_selection_visibility(y_var: str):
-    if y_var == "rolling_returns":
+    if y_var in ["rolling_returns", "calendar_returns"]:
         return {"display": "block"}
     else:
         return {"display": "none"}
@@ -701,6 +742,8 @@ def update_baseline_security_selection_options(
     Input("y-var-selection", "value"),
     Input("return-duration-selection", "value"),
     Input("return-duration-selection", "options"),
+    Input("return-interval-selection", "value"),
+    Input("return-interval-selection", "options"),
     Input("return-type-selection", "value"),
     Input("return-type-selection", "options"),
     Input("interval-selection", "value"),
@@ -718,6 +761,8 @@ def update_graph(
     y_var: str,
     return_duration: str,
     return_duration_options: dict[str, str],
+    return_interval: str,
+    return_interval_options: dict[str, str],
     return_type: str,
     return_type_options: dict[str, str],
     interval: str,
@@ -742,16 +787,19 @@ def update_graph(
                 yf_securities.get(selected_security),
                 y_var,
                 return_duration,
+                return_interval,
                 return_type,
             )
             for selected_security in selected_securities
         }
     )
-    if y_var == "rolling_returns" and baseline_security != "None":
+    if y_var in ["rolling_returns", "calendar_returns"] and baseline_security != "None":
         non_baseline_securities = df.columns.difference([baseline_security])
         df = df.sub(df[baseline_security], axis=0, level=0).dropna(
             subset=non_baseline_securities, how="all"
         )
+        if y_var == "calendar_returns":
+            df = df.drop(columns=baseline_security)
     if y_var == "rolling_returns" and chart_type == "hist":
         data = list(
             filter(
@@ -782,6 +830,17 @@ def update_graph(
                 ],
             )
         )
+    elif y_var == "calendar_returns":
+        data = [
+            go.Bar(
+                x=df.index,
+                y=df[column],
+                name=selected_securities_options[column],
+                marker=dict(color=securities_colourmap[column]),
+            )
+            for column in df.columns
+            if column != baseline_security
+        ]
     else:
         data = [
             go.Scatter(
@@ -817,6 +876,9 @@ def update_graph(
                 opacity=0.7,
             )
         ]
+    elif y_var == "calendar_returns":
+        barmode = "group"
+        shapes = None
     else:
         barmode = None
         shapes = None
@@ -830,6 +892,11 @@ def update_graph(
             tickformat = ".2%"
         case "rolling_returns":
             title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
+            if baseline_security != "None":
+                title += f" vs {baseline_security_options[baseline_security]}"
+            tickformat = ".2%"
+        case "calendar_returns":
+            title = f"{return_interval_options[return_interval]} Returns"
             if baseline_security != "None":
                 title += f" vs {baseline_security_options[baseline_security]}"
             tickformat = ".2%"

@@ -271,6 +271,7 @@ app_layout = dbc.Tabs(
                                     "price": "Price",
                                     "drawdown": "Drawdown",
                                     "rolling_returns": "Rolling Returns",
+                                    "calendar_returns": "Calendar Returns",
                                 },
                                 value="price",
                                 id="y-var-selection",
@@ -282,42 +283,63 @@ app_layout = dbc.Tabs(
                             ),
                             html.Div(
                                 [
-                                    dbc.Label("Return Duration"),
-                                    dbc.Select(
-                                        {
-                                            "1m": "1 Month",
-                                            "3m": "3 Months",
-                                            "6m": "6 Months",
-                                            "1y": "1 Year",
-                                            "2y": "2 Years",
-                                            "3y": "3 Years",
-                                            "5y": "5 Years",
-                                            "10y": "10 Years",
-                                            "15y": "15 Years",
-                                            "20y": "20 Years",
-                                            "25y": "25 Years",
-                                            "30y": "30 Years",
-                                        },
-                                        value="1m",
-                                        id="return-duration-selection",
+                                    html.Div(
+                                        [
+                                            dbc.Label("Return Interval"),
+                                            dbc.Select(
+                                                {
+                                                    "1mo": "Monthly",
+                                                    "3mo": "Quarterly",
+                                                    "6mo": "Semi-Annual",
+                                                    "1y": "Annual",
+                                                },
+                                                value="1mo",
+                                                id="return-interval-selection",
+                                            ),
+                                        ],
+                                        id="calendar-return-selection-container",
                                     ),
-                                    dbc.Label("Return Type"),
-                                    dbc.Select(
-                                        {
-                                            "cumulative": "Cumulative",
-                                            "annualized": "Annualized",
-                                        },
-                                        value="cumulative",
-                                        id="return-type-selection",
-                                    ),
-                                    dbc.Label("Chart Type"),
-                                    dbc.Select(
-                                        {
-                                            "line": "Line",
-                                            "hist": "Histogram",
-                                        },
-                                        value="line",
-                                        id="chart-type-selection",
+                                    html.Div(
+                                        [
+                                            dbc.Label("Return Duration"),
+                                            dbc.Select(
+                                                {
+                                                    "1mo": "1 Month",
+                                                    "3mo": "3 Months",
+                                                    "6mo": "6 Months",
+                                                    "1y": "1 Year",
+                                                    "2y": "2 Years",
+                                                    "3y": "3 Years",
+                                                    "5y": "5 Years",
+                                                    "10y": "10 Years",
+                                                    "15y": "15 Years",
+                                                    "20y": "20 Years",
+                                                    "25y": "25 Years",
+                                                    "30y": "30 Years",
+                                                },
+                                                value="1mo",
+                                                id="return-duration-selection",
+                                            ),
+                                            dbc.Label("Return Type"),
+                                            dbc.Select(
+                                                {
+                                                    "cumulative": "Cumulative",
+                                                    "annualized": "Annualized",
+                                                },
+                                                value="cumulative",
+                                                id="return-type-selection",
+                                            ),
+                                            dbc.Label("Chart Type"),
+                                            dbc.Select(
+                                                {
+                                                    "line": "Line",
+                                                    "hist": "Histogram",
+                                                },
+                                                value="line",
+                                                id="chart-type-selection",
+                                            ),
+                                        ],
+                                        id="rolling-return-selection-container",
                                     ),
                                     dbc.Label("Baseline"),
                                     dbc.Select(
