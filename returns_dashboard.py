@@ -244,7 +244,7 @@ def load_df(
     else:
         raise ValueError("Invalid interval")
     if return_type == "annualized":
-        series = series.add(1).pow(12 / round(return_durations[return_duration])).sub(1)
+        series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
     return series.dropna()
 
 
@@ -472,9 +472,9 @@ def add_stock_etf(
     for yf_security_str in yf_securities_store:
         yf_security = json.loads(yf_security_str)
         if stock_etf != yf_security["ticker"]:
-            break
+            continue
         if tax_treatment != yf_security["tax_treatment"]:
-            break
+            continue
         if yf_security_str in selected_securities:
             return no_update
         if yf_security_str in selected_securities_options:
