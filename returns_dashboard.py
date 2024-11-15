@@ -665,6 +665,7 @@ def update_return_selection_visibility(y_var: str):
 @app.callback(
     Output("baseline-security-selection", "options"),
     Output("baseline-security-selection", "value"),
+    Output("baseline-security-selection", "disabled"),
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
     Input("baseline-security-selection", "value"),
@@ -674,14 +675,20 @@ def update_baseline_security_selection_options(
     selected_securities_options: dict[str, str],
     baseline_security: str,
 ):
-    return {
-        "None": "None",
-        **{
-            k: v
-            for k, v in selected_securities_options.items()
-            if k in selected_securities
+    return (
+        {
+            "None": "None",
+            **{
+                k: v
+                for k, v in selected_securities_options.items()
+                if k in selected_securities
+            },
         },
-    }, baseline_security if baseline_security in selected_securities else "None"
+        baseline_security
+        if baseline_security in selected_securities and len(selected_securities) > 1
+        else "None",
+        len(selected_securities) <= 1,
+    )
 
 
 @app.callback(
@@ -741,7 +748,10 @@ def update_graph(
         }
     )
     if y_var == "rolling_returns" and baseline_security != "None":
-        df = df.sub(df[baseline_security], axis=0, level=0)
+        non_baseline_securities = df.columns.difference([baseline_security])
+        df = df.sub(df[baseline_security], axis=0, level=0).dropna(
+            subset=non_baseline_securities, how="all"
+        )
     if y_var == "rolling_returns" and chart_type == "hist":
         data = list(
             filter(
