@@ -362,7 +362,7 @@ def load_worldbank_usdsgd():
             ],
         )
         .resample("D")
-        .interpolate("polynomial", order=3)
+        .interpolate("pchip")
         .iloc[:-1]
     )
 
