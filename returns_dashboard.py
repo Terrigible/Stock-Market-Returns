@@ -48,6 +48,32 @@ def resample_bme(series: pd.Series):
     new_index = df.index[:-1].union([df["date"].iloc[-1]])
     return df["price"].set_axis(new_index)
 
+
+def convert_price_to_usd(
+    series: pd.Series,
+    currency: str,
+    usd_sgd: pd.Series = load_usdsgd(),
+    usd_fx: pd.DataFrame = load_fred_usd_fx(),
+    sgd_fx: pd.DataFrame = load_mas_sgd_fx(),
+):
+    if currency == "USD":
+        return series
+    if currency == "SGD":
+        return series.div(usd_sgd.resample("D").ffill().ffill().reindex(series.index))
+    if currency == "GBp":
+        series = series.div(100)
+        currency = "GBP"
+    if currency in usd_fx.columns:
+        return series.mul(
+            usd_fx[currency].resample("D").ffill().ffill().reindex(series.index)
+        )
+    if currency in sgd_fx.columns:
+        return series.mul(
+            sgd_fx[currency].resample("D").ffill().ffill().reindex(series.index)
+        ).div(usd_sgd.resample("D").ffill().ffill().reindex(series.index))
+    return series
+
+
 @cache
 def load_data(
     security_str: str,
@@ -99,6 +125,7 @@ def load_data(
     elif source == "YF":
         ticker_currency = security["currency"]
         series = pd.read_json(StringIO(yf_security), orient="index", typ="series")
+        series = convert_price_to_usd(series, ticker_currency)
         if interval == "Monthly":
             series = series.pipe(resample_bme)
     elif source == "Fund":
@@ -117,37 +144,9 @@ def load_data(
             series = read_ft_data(f"Dimensional {fund} GBP Accumulation").iloc[:, 0]
         else:
             raise ValueError(f"Invalid fund: {fund}")
-        if fund_currency != "USD":
-            if fund_currency == "SGD":
-                series = series.div(
-                    load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
-                )
-            else:
-                if fund_currency in load_fred_usd_fx().columns:
-                    series = series.mul(
-                        load_fred_usd_fx()[fund_currency]
-                        .resample("D")
-                        .ffill()
-                        .ffill()
-                        .reindex(series.index)
-                    )
-                elif fund_currency in load_mas_sgd_fx().columns:
-                    series = series.mul(
-                        load_mas_sgd_fx()[fund_currency]
-                        .resample("D")
-                        .ffill()
-                        .ffill()
-                        .reindex(series.index)
-                    )
-                    series = series.div(
-                        load_usdsgd()
-                        .resample("D")
-                        .ffill()
-                        .ffill()
-                        .reindex(series.index)
-                    )
+        series = convert_price_to_usd(series, fund_currency)
         if interval == "Monthly":
-            series = series.resample("BME").last()
+            series = series.pipe(resample_bme)
     else:
         raise ValueError(f"Invalid index: {security}")
     if currency == "USD":
@@ -159,7 +158,7 @@ def load_data(
                 .interpolate("pchip")
                 .ffill()
                 .reindex(series.index)
-            ).rename(series.name)
+            )
     elif currency == "SGD":
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
@@ -173,7 +172,7 @@ def load_data(
                 .ffill()
                 .reindex(series.index)
             )
-    return series
+    return series.rename_axis("date").rename("price")
 
 
 def load_df(
@@ -235,7 +234,7 @@ def load_df(
         return series.dropna()
     if y_var == "calendar_returns":
         df_pl = pl.from_pandas(series.reset_index())
-        df = (
+        df_pl = (
             df_pl.set_sorted("date")
             .group_by_dynamic("date", every=return_interval)
             .agg(
@@ -248,10 +247,8 @@ def load_df(
             .drop_nulls()
             .drop("date", "price")
             .rename({"date_end": "date"})
-            .to_pandas()
-            .set_index("date")
-            .loc[:, "return"]
         )
+        df = df_pl.to_pandas().set_index("date").loc[:, "return"]
         return df
     raise ValueError("Invalid y_var")
 

@@ -290,7 +290,6 @@ app_layout = dbc.Tabs(
                                                 {
                                                     "1mo": "Monthly",
                                                     "3mo": "Quarterly",
-                                                    "6mo": "Semi-Annual",
                                                     "1y": "Annual",
                                                 },
                                                 value="1mo",
