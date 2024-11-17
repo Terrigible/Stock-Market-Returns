@@ -37,6 +37,17 @@ from funcs.loaders import (
 from layout import app_layout
 
 
+def resample_bme(series: pd.Series):
+    df = (
+        series.rename("price")
+        .to_frame()
+        .assign(date=series.index)
+        .resample("BME")
+        .last()
+    )
+    new_index = df.index[:-1].union([df["date"].iloc[-1]])
+    return df["price"].set_axis(new_index)
+
 @cache
 def load_data(
     security_str: str,
@@ -55,7 +66,7 @@ def load_data(
         if security["fred_index"] == "US-T":
             series = load_us_treasury_returns()[security["us_treasury_duration"]]
             if interval == "Monthly":
-                series = series.resample("BME").last()
+                series = series.pipe(resample_bme)
     elif source == "MAS":
         if security["mas_index"] == "SGS":
             series = load_sgs_returns()[security["sgs_duration"]]
@@ -63,7 +74,7 @@ def load_data(
                 load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
             )
             if interval == "Monthly":
-                series = series.resample("BME").last()
+                series = series.pipe(resample_bme)
     elif source == "Others":
         if security["others_index"] == "STI":
             series = read_ft_data("Straits Times Index USD Gross").iloc[:, 0]
@@ -84,44 +95,12 @@ def load_data(
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
-            series = series.resample("BME").last()
+            series = series.pipe(resample_bme)
     elif source == "YF":
         ticker_currency = security["currency"]
-        series = pd.read_json(StringIO(yf_security), orient="index").iloc[:, 0]
-        if ticker_currency != "USD":
-            if ticker_currency == "SGD":
-                series = series.div(
-                    load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
-                )
-            else:
-                if ticker_currency == "GBp":
-                    series = series.div(100)
-                    ticker_currency = "GBP"
-                if ticker_currency in load_fred_usd_fx().columns:
-                    series = series.mul(
-                        load_fred_usd_fx()[ticker_currency]
-                        .resample("D")
-                        .ffill()
-                        .ffill()
-                        .reindex(series.index)
-                    )
-                elif ticker_currency in load_mas_sgd_fx().columns:
-                    series = series.mul(
-                        load_mas_sgd_fx()[ticker_currency]
-                        .resample("D")
-                        .ffill()
-                        .ffill()
-                        .reindex(series.index)
-                    )
-                    series = series.div(
-                        load_usdsgd()
-                        .resample("D")
-                        .ffill()
-                        .ffill()
-                        .reindex(series.index)
-                    )
+        series = pd.read_json(StringIO(yf_security), orient="index", typ="series")
         if interval == "Monthly":
-            series = series.resample("BME").last()
+            series = series.pipe(resample_bme)
     elif source == "Fund":
         fund_company = security["fund_company"]
         fund = security["fund"]
@@ -831,11 +810,32 @@ def update_graph(
             )
         )
     elif y_var == "calendar_returns":
+        match return_interval:
+            case "1mo":
+                index_offset = pd.offsets.BMonthEnd(0)
+                xperiod = "M1"
+                xtickformat = "%b %Y"
+            case "3mo":
+                index_offset = pd.offsets.BQuarterEnd(0)
+                xperiod = "M3"
+                xtickformat = "Q%q %Y"
+            case "1y":
+                index_offset = pd.offsets.BYearEnd(0)
+                xperiod = "M12"
+                xtickformat = "%Y"
+            case _:
+                raise ValueError("Invalid return_interval")
+        hovertext = df.index.to_series().apply(
+            lambda x: x.strftime("As of %d %b %Y") if x != x + index_offset else ""
+        )
         data = [
             go.Bar(
-                x=df.index,
+                x=df.index + index_offset,
                 y=df[column],
+                xperiod=xperiod,
+                xperiodalignment="middle",
                 name=selected_securities_options[column],
+                hovertext=hovertext,
                 marker=dict(color=securities_colourmap[column]),
             )
             for column in df.columns
@@ -886,28 +886,36 @@ def update_graph(
     match y_var:
         case "price":
             title = "Price"
-            tickformat = ".2f"
+            ytickformat = ".2f"
         case "drawdown":
             title = "Drawdown"
-            tickformat = ".2%"
+            ytickformat = ".2%"
         case "rolling_returns":
             title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
             if baseline_security != "None":
                 title += f" vs {baseline_security_options[baseline_security]}"
-            tickformat = ".2%"
+            ytickformat = ".2%"
         case "calendar_returns":
             title = f"{return_interval_options[return_interval]} Returns"
             if baseline_security != "None":
                 title += f" vs {baseline_security_options[baseline_security]}"
-            tickformat = ".2%"
+            ytickformat = ".2%"
         case _:
             raise ValueError("Invalid y_var")
 
     layout = go.Layout(
         title=title,
         hovermode="x unified",
+        xaxis=(
+            dict(
+                ticklabelmode="period",
+                tickformat=xtickformat,
+            )
+            if y_var == "calendar_returns"
+            else None
+        ),
         yaxis=dict(
-            tickformat=tickformat,
+            tickformat=ytickformat,
             type="log" if "log" in log_scale else "linear",
         ),
         barmode=barmode,
