@@ -14,7 +14,7 @@ dependencies = [
     "python-calamine>=0.3.1",
     "requests>=2.32.3",
     "scipy>=1.14.1",
-    "yfinance>=0.2.49",
+    "yfinance>=0.2.50",
     "polars>=1.14.0",
     "pyarrow>=18.0.0",
 ]
