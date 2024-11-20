@@ -853,16 +853,14 @@ def update_graph(
 
     if y_var == "rolling_returns" and chart_type == "hist":
         barmode = "overlay"
-        temp_fig = go.Figure(
-            data=data, layout=go.Layout(barmode="overlay")
-        ).full_figure_for_development(warn=False)
         shapes = [
             dict(
                 type="line",
                 x0=0,
                 x1=0,
                 y0=0,
-                y1=temp_fig.layout.yaxis.range[1] * 1.05,
+                y1=1,
+                yref="paper",
                 line=dict(
                     color=securities_colourmap[baseline_security]
                     if baseline_security != "None"

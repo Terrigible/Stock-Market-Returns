@@ -8,7 +8,6 @@ dependencies = [
     "dash-bootstrap-components>=1.6.0",
     "dash>=2.18.2",
     "httpx>=0.27.2",
-    "kaleido==0.2.1",
     "numba>=0.60.0",
     "pandas>=2.2.3",
     "plotly>=5.24.1",
