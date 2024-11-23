@@ -44,15 +44,10 @@ def read_ft_data(filename):
         .set_axis(["price"], axis=1)
     )
 
-    if filename == "Straits Times Index USD Gross":
-        df.loc["2022-10-07"] = 5467.64
-
     if filename == "S&P 500 USD Gross":
         df.update(
             df.loc[:"1987-12-31"].div(df.loc["1987-12-31"]).mul(df.loc["1988-01-04"])
         )
-    if filename == "FTSE All-World USD Gross":
-        df.loc[["2021-04-21", "2021-05-05", "2021-05-13"]] = np.nan
 
     return df
 
