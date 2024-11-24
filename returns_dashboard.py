@@ -954,7 +954,7 @@ def add_allocation(
         if weight is None:
             return no_update
         new_allocation = json.dumps({security: weight})
-        if portfolio_allocation_strs is None:
+        if not portfolio_allocation_strs:
             return [new_allocation], {
                 new_allocation: f"{weight}% {security_options[security]}"
             }
@@ -1000,7 +1000,7 @@ def add_portfolio(
     portfolio_allocation_strs: list[str] | None,
     portfolio_allocations_options: dict[str, str],
 ):
-    if portfolio_allocation_strs is None:
+    if not portfolio_allocation_strs:
         return no_update
     portfolio_allocations: dict[str, int | float] = reduce(
         dict.__or__, map(json.loads, portfolio_allocation_strs)
