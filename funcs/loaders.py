@@ -567,6 +567,7 @@ def download_sg_cpi():
         sg_cpi = pd.DataFrame(sg_cpi_response.json()["Data"]["row"][0]["columns"])
         sg_cpi = sg_cpi.set_axis(["date", "sg_cpi"], axis=1)
         sg_cpi["date"] = pd.to_datetime(sg_cpi["date"], format="%Y %b")
+        sg_cpi["sg_cpi"] = sg_cpi["sg_cpi"].astype(float)
         sg_cpi = sg_cpi.set_index("date").resample("BME").last()
     except JSONDecodeError:
         sg_cpi = pd.read_csv("data/sg_cpi.csv", index_col="date")
