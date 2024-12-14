@@ -14,7 +14,7 @@ from dash import Dash, ctx, no_update
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
-from funcs.calcs_numba import (
+from funcs.calcs_numpy import (
     calculate_dca_portfolio_value_with_fees_and_interest_vector,
     calculate_lumpsum_portfolio_value_with_fees_and_interest_vector,
     calculate_withdrawal_portfolio_value_with_fees_vector,

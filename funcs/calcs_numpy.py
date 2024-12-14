@@ -1,13 +1,10 @@
 import numpy as np
-import pandas as pd
-from numba import float64, int64, njit, optional
 
 
-@njit(float64(int64, int64, float64[:], optional(int64)))
 def calculate_return(
     ending_index: int,
     dca_length: int,
-    monthly_returns: pd.Series | np.ndarray,
+    monthly_returns: np.ndarray,
     investment_horizon=None,
 ):
     if investment_horizon is None:
@@ -32,7 +29,6 @@ def calculate_return(
     return share_value - 1
 
 
-@njit([float64[:](float64[:], int64, int64)])
 def calculate_return_vector(
     monthly_returns: np.ndarray, dca_length: int, investment_horizon: int
 ):
@@ -58,21 +54,6 @@ def calculate_return_vector(
     return res
 
 
-@njit(
-    [
-        float64[:](
-            float64[:],
-            int64,
-            int64,
-            int64,
-            float64,
-            float64,
-            float64,
-            float64,
-            float64[:],
-        )
-    ]
-)
 def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
     monthly_returns: np.ndarray,
     dca_length: int,
@@ -132,22 +113,6 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
     return res
 
 
-@njit(
-    [
-        float64[:](
-            float64[:],
-            int64,
-            int64,
-            int64,
-            float64,
-            float64[:],
-            float64,
-            float64,
-            float64,
-            float64[:],
-        )
-    ]
-)
 def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     monthly_returns: np.ndarray,
     dca_length: int,
@@ -199,21 +164,6 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     return res
 
 
-@njit(
-    [
-        float64[:](
-            float64[:],
-            int64,
-            int64,
-            float64,
-            float64,
-            float64[:],
-            float64,
-            float64,
-            float64,
-        )
-    ]
-)
 def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns: np.ndarray,
     withdrawal_horizon: int,
