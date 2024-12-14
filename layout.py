@@ -562,6 +562,7 @@ app_layout = dbc.Tabs(
                                 {},
                                 multi=True,
                                 id="accumulation-strategies",
+                                optionHeight=150,
                             ),
                         ],
                         style={
@@ -679,6 +680,7 @@ app_layout = dbc.Tabs(
                                 {},
                                 multi=True,
                                 id="withdrawal-strategies",
+                                optionHeight=150,
                             ),
                         ],
                         style={
