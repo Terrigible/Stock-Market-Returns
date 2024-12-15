@@ -93,6 +93,8 @@ def load_data(
             series = load_us_treasury_returns()[security["us_treasury_duration"]]
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
+        else:
+            raise ValueError(f"Invalid index: {security}")
     elif source == "MAS":
         if security["mas_index"] == "SGS":
             series = load_sgs_returns()[security["sgs_duration"]]
@@ -101,6 +103,8 @@ def load_data(
             )
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
+        else:
+            raise ValueError(f"Invalid index: {security}")
     elif source == "Others":
         if security["others_index"] == "STI":
             series = read_ft_data("Straits Times Index USD Gross").iloc[:, 0]
