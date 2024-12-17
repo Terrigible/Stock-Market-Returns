@@ -179,24 +179,14 @@ def load_data(
     return series.rename_axis("date").rename("price")
 
 
-def load_df(
-    security_str: str,
+def transform_data(
+    series: pd.Series,
     interval: str,
-    currency: str,
-    adjust_for_inflation: str,
-    yf_security: str | None,
     y_var: str,
     return_duration: str,
     return_interval: str,
     return_type: str,
 ) -> pd.Series:
-    series = load_data(
-        security_str,
-        "Monthly" if y_var == "calendar_returns" else interval,
-        currency,
-        adjust_for_inflation,
-        yf_security,
-    )
     if y_var == "price":
         return series
     if y_var == "drawdown":
@@ -255,6 +245,34 @@ def load_df(
         df = df_pl.to_pandas().set_index("date").loc[:, "return"]
         return df
     raise ValueError("Invalid y_var")
+
+
+def load_df(
+    security_str: str,
+    interval: str,
+    currency: str,
+    adjust_for_inflation: str,
+    yf_security: str | None,
+    y_var: str,
+    return_duration: str,
+    return_interval: str,
+    return_type: str,
+) -> pd.Series:
+    series = load_data(
+        security_str,
+        "Monthly" if y_var == "calendar_returns" else interval,
+        currency,
+        adjust_for_inflation,
+        yf_security,
+    )
+    return transform_data(
+        series,
+        interval,
+        y_var,
+        return_duration,
+        return_interval,
+        return_type,
+    )
 
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -1027,17 +1045,108 @@ def add_portfolio(
 
 
 @app.callback(
+    Output("portfolio-log-scale-selection", "style"),
+    Output("portfolio-log-scale-selection", "value"),
+    Input("portfolio-y-var-selection", "value"),
+    Input("portfolio-log-scale-selection", "value"),
+)
+def update_portfolio_log_scale(y_var: str, log_scale: list[str]):
+    if y_var == "price":
+        return {"display": "block"}, log_scale
+    else:
+        return {"display": "none"}, []
+
+
+@app.callback(
+    Output("portfolio-rolling-return-selection-container", "style"),
+    Output("portfolio-calendar-return-selection-container", "style"),
+    Input("portfolio-y-var-selection", "value"),
+)
+def update_portfolio_return_duration_visibility(y_var: str):
+    if y_var == "rolling_returns":
+        return {"display": "block"}, {"display": "none"}
+    else:
+        return {"display": "none"}, {"display": "block"}
+
+
+@app.callback(
+    Output("portfolio-return-selection", "style"),
+    Input("portfolio-y-var-selection", "value"),
+)
+def update_portfolio_return_selection_visibility(y_var: str):
+    if y_var in ["rolling_returns", "calendar_returns"]:
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+
+
+@app.callback(
+    Output("portfolio-baseline-security-selection", "options"),
+    Output("portfolio-baseline-security-selection", "value"),
+    Output("portfolio-baseline-security-selection", "disabled"),
+    Input("portfolios", "value"),
+    Input("portfolios", "options"),
+    Input("portfolio-baseline-security-selection", "value"),
+)
+def update_portfolio_baseline_security_selection_options(
+    selected_securities: list[str],
+    selected_securities_options: dict[str, str],
+    baseline_security: str,
+):
+    if not selected_securities:
+        return {"None": "None"}, "None", True
+    return (
+        {
+            "None": "None",
+            **{
+                k: v
+                for k, v in selected_securities_options.items()
+                if k in selected_securities
+            },
+        },
+        baseline_security
+        if baseline_security in selected_securities and len(selected_securities) > 1
+        else "None",
+        len(selected_securities) <= 1,
+    )
+
+
+@app.callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     State("portfolios", "options"),
-    Input("portfolio-currency-selection", "value"),
     State("yf-securities-store", "data"),
+    Input("portfolio-currency-selection", "value"),
+    Input("portfolio-inflation-adjustment-selection", "value"),
+    Input("portfolio-y-var-selection", "value"),
+    Input("portfolio-return-duration-selection", "value"),
+    Input("portfolio-return-duration-selection", "options"),
+    Input("portfolio-return-interval-selection", "value"),
+    Input("portfolio-return-interval-selection", "options"),
+    Input("portfolio-return-type-selection", "value"),
+    Input("portfolio-return-type-selection", "options"),
+    Input("portfolio-baseline-security-selection", "value"),
+    Input("portfolio-baseline-security-selection", "options"),
+    Input("portfolio-log-scale-selection", "value"),
+    Input("portfolio-chart-type-selection", "value"),
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
     portfolio_options: dict[str, str],
-    currency: str,
     yf_securities: dict[str, str],
+    currency: str,
+    adjust_for_inflation: str,
+    y_var: str,
+    return_duration: str,
+    return_duration_options: dict[str, str],
+    return_interval: str,
+    return_interval_options: dict[str, str],
+    return_type: str,
+    return_type_options: dict[str, str],
+    baseline_security: str,
+    baseline_security_options: dict[str, str],
+    log_scale: list[str],
+    chart_type: str,
 ):
     if not portfolio_strs:
         return {
@@ -1046,6 +1155,12 @@ def update_portfolio_graph(
                 "title": "Portfolio Performance",
             },
         }
+    portfolios_colourmap = dict(
+        zip(
+            portfolio_options.keys(),
+            cycle(DEFAULT_PLOTLY_COLORS),
+        )
+    )
     data = []
     for portfolio_str in portfolio_strs:
         portfolio: list[str] = json.loads(portfolio_str)
@@ -1054,38 +1169,192 @@ def update_portfolio_graph(
         )
         securities = portfolio_allocations.keys()
         weights = list(portfolio_allocations.values())
-        df = pd.concat(
+        portfolio_df = pd.concat(
             [
                 load_data(
                     security,
                     "Monthly",
                     currency,
-                    "No",
+                    adjust_for_inflation,
                     yf_securities.get(security),
                 )
                 for security in securities
             ],
             axis=1,
         )
-        series = (
-            df.pct_change()
+        portfolio_series = (
+            portfolio_df.pct_change()
             .mul(weights)
             .div(100)
             .sum(axis=1, skipna=False)
             .add(1)
             .cumprod()
+            .rename("price")
         )
-        series.iloc[series.index.get_indexer([series.first_valid_index()])[0] - 1] = 1
-        data.append(
-            go.Scatter(
-                x=series.index,
-                y=series,
-                name=portfolio_options[portfolio_str],
+        portfolio_series.iloc[
+            portfolio_series.index.get_indexer([portfolio_series.first_valid_index()])[
+                0
+            ]
+            - 1
+        ] = 1
+        portfolio_series = transform_data(
+            portfolio_series,
+            "Monthly",
+            y_var,
+            return_duration,
+            return_interval,
+            return_type,
+        ).rename(portfolio_str)
+        data.append(portfolio_series)
+    portfolios_df = pd.concat(data, axis=1)
+    if y_var in ["rolling_returns", "calendar_returns"] and baseline_security != "None":
+        non_baseline_securities = portfolios_df.columns.difference([baseline_security])
+        portfolios_df = portfolios_df.sub(
+            portfolios_df[baseline_security], axis=0, level=0
+        ).dropna(subset=non_baseline_securities, how="all")
+        if y_var == "calendar_returns":
+            portfolios_df = portfolios_df.drop(columns=baseline_security)
+    if y_var == "rolling_returns" and chart_type == "hist":
+        data = list(
+            filter(
+                None,
+                [
+                    go.Histogram(
+                        x=[None],
+                        name=portfolio_options[baseline_security],
+                        marker=dict(color=portfolios_colourmap[baseline_security]),
+                        histnorm="probability",
+                        opacity=0.7,
+                        showlegend=True,
+                    )
+                    if baseline_security != "None"
+                    else None,
+                    *[
+                        go.Histogram(
+                            x=portfolios_df[column],
+                            name=portfolio_options[column],
+                            marker=dict(color=portfolios_colourmap[column]),
+                            histnorm="probability",
+                            opacity=0.7,
+                            showlegend=True,
+                        )
+                        for column in portfolios_df.columns
+                        if column != baseline_security
+                    ],
+                ],
             )
         )
-    layout = {
-        "title": "Portfolio Performance",
-    }
+    elif y_var == "calendar_returns":
+        match return_interval:
+            case "1mo":
+                index_offset = pd.offsets.BMonthEnd(0)
+                xperiod = "M1"
+                xtickformat = "%b %Y"
+            case "3mo":
+                index_offset = pd.offsets.BQuarterEnd(0)
+                xperiod = "M3"
+                xtickformat = "Q%q %Y"
+            case "1y":
+                index_offset = pd.offsets.BYearEnd(0)
+                xperiod = "M12"
+                xtickformat = "%Y"
+            case _:
+                raise ValueError("Invalid return_interval")
+        hovertext = portfolios_df.index.to_series().apply(
+            lambda x: x.strftime("As of %d %b %Y") if x != x + index_offset else ""
+        )
+        data = [
+            go.Bar(
+                x=portfolios_df.index + index_offset,
+                y=portfolios_df[column],
+                xperiod=xperiod,
+                xperiodalignment="middle",
+                name=portfolio_options[column],
+                hovertext=hovertext,
+                marker=dict(color=portfolios_colourmap[column]),
+            )
+            for column in portfolios_df.columns
+            if column != baseline_security
+        ]
+    else:
+        data = [
+            go.Scatter(
+                x=portfolios_df.index,
+                y=portfolios_df[column],
+                name=portfolio_options[column],
+                line=dict(color=portfolios_colourmap[column], dash="dash")
+                if y_var == "rolling_returns" and column == baseline_security
+                else dict(color=portfolios_colourmap[column]),
+            )
+            for column in portfolios_df.columns
+        ]
+
+    if y_var == "rolling_returns" and chart_type == "hist":
+        barmode = "overlay"
+        shapes = [
+            dict(
+                type="line",
+                x0=0,
+                x1=0,
+                y0=0,
+                y1=1,
+                yref="paper",
+                line=dict(
+                    color=portfolios_colourmap[baseline_security]
+                    if baseline_security != "None"
+                    else "grey",
+                    width=1,
+                    dash="dash",
+                ),
+                opacity=0.7,
+            )
+        ]
+    elif y_var == "calendar_returns":
+        barmode = "group"
+        shapes = None
+    else:
+        barmode = None
+        shapes = None
+
+    match y_var:
+        case "price":
+            title = "Price"
+            ytickformat = ".2f"
+        case "drawdown":
+            title = "Drawdown"
+            ytickformat = ".2%"
+        case "rolling_returns":
+            title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
+            if baseline_security != "None":
+                title += f" vs {baseline_security_options[baseline_security]}"
+            ytickformat = ".2%"
+        case "calendar_returns":
+            title = f"{return_interval_options[return_interval]} Returns"
+            if baseline_security != "None":
+                title += f" vs {baseline_security_options[baseline_security]}"
+            ytickformat = ".2%"
+        case _:
+            raise ValueError("Invalid y_var")
+
+    layout = go.Layout(
+        title=title,
+        hovermode="x unified",
+        xaxis=(
+            dict(
+                ticklabelmode="period",
+                tickformat=xtickformat,
+            )
+            if y_var == "calendar_returns"
+            else None
+        ),
+        yaxis=dict(
+            tickformat=ytickformat,
+            type="log" if "log" in log_scale else "linear",
+        ),
+        barmode=barmode,
+        showlegend=True,
+        shapes=shapes,
+    )
     return dict(data=data, layout=layout)
 
 

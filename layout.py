@@ -423,6 +423,102 @@ app_layout = dbc.Tabs(
                                 value="USD",
                                 id="portfolio-currency-selection",
                             ),
+                            dbc.Label("Adjust for Inflation"),
+                            dbc.Select(
+                                [
+                                    "No",
+                                    "Yes",
+                                ],
+                                value="No",
+                                id="portfolio-inflation-adjustment-selection",
+                            ),
+                            dbc.Label("Value"),
+                            dbc.Select(
+                                {
+                                    "price": "Price",
+                                    "drawdown": "Drawdown",
+                                    "rolling_returns": "Rolling Returns",
+                                    "calendar_returns": "Calendar Returns",
+                                },
+                                value="price",
+                                id="portfolio-y-var-selection",
+                            ),
+                            dbc.Checklist(
+                                {"log": "Logarithmic Scale"},
+                                value=[],
+                                id="portfolio-log-scale-selection",
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            dbc.Label("Return Interval"),
+                                            dbc.Select(
+                                                {
+                                                    "1mo": "Monthly",
+                                                    "3mo": "Quarterly",
+                                                    "1y": "Annual",
+                                                },
+                                                value="1mo",
+                                                id="portfolio-return-interval-selection",
+                                            ),
+                                        ],
+                                        id="portfolio-calendar-return-selection-container",
+                                    ),
+                                    html.Div(
+                                        [
+                                            dbc.Label("Return Duration"),
+                                            dbc.Select(
+                                                {
+                                                    "1mo": "1 Month",
+                                                    "3mo": "3 Months",
+                                                    "6mo": "6 Months",
+                                                    "1y": "1 Year",
+                                                    "2y": "2 Years",
+                                                    "3y": "3 Years",
+                                                    "5y": "5 Years",
+                                                    "10y": "10 Years",
+                                                    "15y": "15 Years",
+                                                    "20y": "20 Years",
+                                                    "25y": "25 Years",
+                                                    "30y": "30 Years",
+                                                },
+                                                value="1mo",
+                                                id="portfolio-return-duration-selection",
+                                            ),
+                                            dbc.Label("Return Type"),
+                                            dbc.Select(
+                                                {
+                                                    "cumulative": "Cumulative",
+                                                    "annualized": "Annualized",
+                                                },
+                                                value="cumulative",
+                                                id="portfolio-return-type-selection",
+                                            ),
+                                            dbc.Label("Chart Type"),
+                                            dbc.Select(
+                                                {
+                                                    "line": "Line",
+                                                    "hist": "Histogram",
+                                                },
+                                                value="line",
+                                                id="portfolio-chart-type-selection",
+                                            ),
+                                        ],
+                                        id="portfolio-rolling-return-selection-container",
+                                    ),
+                                    dbc.Label("Baseline"),
+                                    dbc.Select(
+                                        {
+                                            "None": "None",
+                                        },
+                                        value="None",
+                                        id="portfolio-baseline-security-selection",
+                                    ),
+                                ],
+                                id="portfolio-return-selection",
+                                style={"display": "block"},
+                            ),
                         ],
                         style={
                             "width": "15%",
