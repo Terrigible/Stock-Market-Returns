@@ -455,6 +455,11 @@ def add_index(
         else:
             return no_update
     else:
+        others_tax_treatment = (
+            "Gross"
+            if others_index in ["STI", "AWORLDS", "SREIT"]
+            else others_tax_treatment
+        )
         index = (
             json.dumps(
                 {
