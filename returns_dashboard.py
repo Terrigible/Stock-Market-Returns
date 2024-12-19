@@ -122,6 +122,8 @@ def load_data(
                 series = series.resample("B").interpolate("linear")
         elif security["others_index"] == "AWORLDS":
             series = read_ft_data("FTSE All-World USD Gross").iloc[:, 0]
+        elif security["others_index"] == "SREIT":
+            series = read_ft_data("iEdge S-REIT Leaders USD Gross").iloc[:, 0]
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
@@ -324,7 +326,7 @@ def update_msci_index_selection_visibility(
     Input("others-index-selection", "value"),
 )
 def update_others_tax_treatment_selection_visibility(others_index: str):
-    if others_index in ["STI", "AWORLDS"]:
+    if others_index in ["STI", "AWORLDS", "SREIT"]:
         return {"display": "none"}
     else:
         return {"display": "block"}

@@ -160,6 +160,7 @@ app_layout = dbc.Tabs(
                                                     "SPX": "S&P 500",
                                                     "SHILLER_SPX": "Shiller S&P 500",
                                                     "AWORLDS": "FTSE All-World",
+                                                    "SREIT": "iEdge S-REIT Leaders",
                                                 },
                                                 value="STI",
                                                 id="others-index-selection",
