@@ -93,7 +93,8 @@ def load_fed_funds_rate_polars():
         )
         .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )["download"]
+        )
+        .get_column("download")
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -157,7 +158,8 @@ async def load_us_treasury_rates_polars_async():
         )
         .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )["download"]
+        )
+        .get_column("download")
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -311,10 +313,14 @@ def load_mas_sgd_fx():
             .dt.add_business_days(1, roll="forward")
             .dt.month_end()
             .dt.add_business_days(0, roll="backward")
-        ).with_columns(
+        )
+        .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
         )
-    )["download"].last() and "FRED_API_KEY" in os.environ:
+        .get_column("download")
+        .last()
+        and "FRED_API_KEY" in os.environ
+    ):
         sgd_fx = download_mas_sgd_fx_polars()
         sgd_fx.write_csv("data/sgd_fx.csv")
     return sgd_fx
@@ -389,7 +395,8 @@ async def load_fred_usd_fx_async_polars():
         )
         .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )["download"]
+        )
+        .get_column("download")
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -466,7 +473,8 @@ def load_usdsgd_polars():
         )
         .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )["download"]
+        )
+        .get_column("download")
         .last()
         and "FRED_API_KEY" in os.environ
         and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
@@ -556,10 +564,14 @@ def load_sgd_interest_rates_polars():
             .dt.add_business_days(1, roll="forward")
             .dt.month_end()
             .dt.add_business_days(0, roll="backward")
-        ).with_columns(
+        )
+        .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
         )
-    )["download"].last() and "MAS_INTEREST_RATE_API_KEY" in os.environ:
+        .get_column("download")
+        .last()
+        and "MAS_INTEREST_RATE_API_KEY" in os.environ
+    ):
         sgd_interest_rates = download_sgd_interest_rates_polars()
         sgd_interest_rates.write_csv("data/sgd_interest_rates.csv")
 
@@ -615,11 +627,10 @@ def read_sgs_data_polars():
             .str.to_date("%Y%b%d")
             .alias("date"),
         )
-        .drop("Year", "Month", "Day")
         .select(
             pl.col("date"),
             pl.all()
-            .exclude("date")
+            .exclude("date", "Year", "Month", "Day")
             .replace("", None)
             .cast(pl.Float64)
             .name.map(
@@ -723,7 +734,8 @@ def load_sg_cpi_polars():
         )
         .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )["download"]
+        )
+        .get_column("download")
         .last()
     ):
         sg_cpi = download_sg_cpi_polars()
@@ -782,7 +794,8 @@ async def load_us_cpi_polars_async():
         )
         .with_columns(
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )["download"]
+        )
+        .get_column("download")
         .last()
         and "BLS_API_KEY" in os.environ
     ):
