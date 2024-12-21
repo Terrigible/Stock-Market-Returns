@@ -784,6 +784,7 @@ async def load_us_cpi_polars_async():
             download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
         )["download"]
         .last()
+        and "BLS_API_KEY" in os.environ
     ):
         us_cpi = await download_us_cpi_polars_async()
         us_cpi.write_csv("data/us_cpi.csv")
