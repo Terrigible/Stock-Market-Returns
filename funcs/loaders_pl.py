@@ -724,9 +724,9 @@ def download_sg_cpi_polars():
 
 
 def load_sg_cpi_polars():
-    usdsgd = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
+    sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
     if (
-        usdsgd.with_columns(
+        sg_cpi.with_columns(
             next_download_date=pl.col("date")
             .dt.add_business_days(1, roll="forward")
             .dt.month_end()
@@ -740,7 +740,7 @@ def load_sg_cpi_polars():
     ):
         sg_cpi = download_sg_cpi_polars()
         sg_cpi.write_csv("data/sg_cpi.csv")
-    return usdsgd
+    return sg_cpi
 
 
 async def download_us_cpi_polars_async():
