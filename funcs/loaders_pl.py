@@ -15,15 +15,15 @@ def read_msci_data_polars(filename_pattern: str):
     return (
         pl.read_excel(
             sorted(glob(filename_pattern)),
-        read_options=dict(
-            skip_rows=7,
-            column_names=["date", "price"],
-        ),
+            read_options=dict(
+                skip_rows=7,
+                column_names=["date", "price"],
+            ),
         )
         .drop_nulls("price")
         .with_columns(
             pl.col("date").str.to_date("%b %d, %Y"),
-        pl.col("price").str.replace_all(",", "").cast(pl.Float64),
+            pl.col("price").str.replace_all(",", "").cast(pl.Float64),
         )
     )
 
@@ -79,16 +79,11 @@ def load_fed_funds_rate_polars():
     fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
 
     if (
-        fed_funds_rate.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(2, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        fed_funds_rate.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(2, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -144,16 +139,11 @@ async def load_us_treasury_rates_polars_async():
     treasury_rates = pl.read_csv("data/us_treasury.csv", use_pyarrow=True)
 
     if (
-        treasury_rates.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(2, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        treasury_rates.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(2, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -302,16 +292,11 @@ def load_mas_sgd_fx():
     sgd_fx = pl.read_csv("data/sgd_fx.csv", use_pyarrow=True)
 
     if (
-        sgd_fx.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        sgd_fx.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -381,16 +366,11 @@ async def download_fred_usd_fx_async_polars():
 async def load_fred_usd_fx_async_polars():
     usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
     if (
-        usd_fx.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(2, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        usd_fx.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(2, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -459,16 +439,11 @@ def load_worldbank_usdsgd_polars():
 def load_usdsgd_polars():
     usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
     if (
-        usdsgd.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        usdsgd.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "FRED_API_KEY" in os.environ
         and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
@@ -553,16 +528,11 @@ def load_sgd_interest_rates_polars():
     sgd_interest_rates = pl.read_csv("data/sgd_interest_rates.csv", use_pyarrow=True)
 
     if (
-        sgd_interest_rates.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        sgd_interest_rates.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "MAS_INTEREST_RATE_API_KEY" in os.environ
     ):
@@ -720,16 +690,11 @@ def download_sg_cpi_polars():
 def load_sg_cpi_polars():
     sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
     if (
-        sg_cpi.with_columns(
-            next_download_date=pl.col("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.offset_by("25d")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        sg_cpi.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.offset_by("25d")
+        .lt(datetime.date.today())
         .last()
     ):
         sg_cpi = download_sg_cpi_polars()
@@ -781,15 +746,10 @@ async def download_us_cpi_polars_async():
 async def load_us_cpi_polars_async():
     us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
     if (
-        us_cpi.with_columns(
-            next_download_date=pl.col("date")
-            .dt.month_end()
-            .dt.add_business_days(15, roll="backward")
-        )
-        .with_columns(
-            download=pl.lit(datetime.date.today()) >= pl.col("next_download_date")
-        )
-        .get_column("download")
+        us_cpi.get_column("date")
+        .dt.month_end()
+        .dt.add_business_days(15, roll="backward")
+        .lt(datetime.date.today())
         .last()
         and "BLS_API_KEY" in os.environ
     ):
