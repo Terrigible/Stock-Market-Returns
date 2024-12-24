@@ -654,7 +654,7 @@ def add_fund(
     elif fund_company == "Fundsmith":
         currency = "EUR"
     elif fund_company == "Dimensional":
-        currency = "USD"
+        currency = "GBP"
     else:
         return no_update
     security = (
