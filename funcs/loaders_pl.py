@@ -11,25 +11,19 @@ import pandas as pd
 import polars as pl
 
 
-def read_msci_source_polars(filename: str):
-    df = pl.read_excel(
-        filename,
+def read_msci_data_polars(filename_pattern: str):
+    return (
+        pl.read_excel(
+            sorted(glob(filename_pattern)),
         read_options=dict(
             skip_rows=7,
             column_names=["date", "price"],
         ),
-    )[:-17].with_columns(
-        pl.col("date").str.strptime(pl.Date, "%b %d, %Y"),
+        )
+        .drop_nulls("price")
+        .with_columns(
+            pl.col("date").str.to_date("%b %d, %Y"),
         pl.col("price").str.replace_all(",", "").cast(pl.Float64),
-    )
-    return df
-
-
-def read_msci_data_polars(filename_pattern: str):
-    return pl.concat(
-        map(
-            read_msci_source_polars,
-            sorted(glob(filename_pattern)),
         )
     )
 
