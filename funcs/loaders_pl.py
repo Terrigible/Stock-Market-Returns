@@ -204,7 +204,7 @@ def read_shiller_sp500_data_polars(tax_treatment: str):
     ).select(
         pl.col("Date")
         .str.pad_end(7, "0")
-        .str.strptime(pl.Date, "%Y.%m")
+        .str.to_date("%Y.%m")
         .dt.offset_by("2w")
         .alias("date"),
         pl.col("P")
@@ -412,7 +412,7 @@ def load_worldbank_usdsgd_polars():
                 .transpose(include_header=True)
                 .select(
                     pl.col("column")
-                    .str.strptime(pl.Date, "%Y")
+                    .str.to_date("%Y")
                     .dt.offset_by("6mo")
                     .alias("date"),
                     pl.col("column_0").cast(pl.Float64).alias("usd_sgd"),
