@@ -63,7 +63,7 @@ def get_fred_series_polars(series_id: str):
         .struct.unnest()
         .select(
             pl.col("date").str.to_date(),
-            pl.col("value").replace(".", pl.lit(None)).cast(pl.Float64),
+            pl.col("value").replace(".", None).cast(pl.Float64),
         )
     )
     return df
@@ -123,10 +123,7 @@ async def download_us_treasury_rates_polars_async():
         [
             pl.DataFrame(response.json()["observations"]).select(
                 pl.col("date").str.to_date(),
-                pl.col("value")
-                .replace(".", pl.lit(None))
-                .cast(pl.Float64)
-                .alias(duration),
+                pl.col("value").replace(".", None).cast(pl.Float64).alias(duration),
             )
             for duration, response in zip(durations, responses)
         ],
