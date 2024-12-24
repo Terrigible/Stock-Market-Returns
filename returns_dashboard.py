@@ -1579,20 +1579,10 @@ def update_accumulation_strategy_graph(
             .fillna(0)
             .to_numpy()
         )
-        us_cpi = (
-            load_us_cpi()["us_cpi"]
-            .reindex(strategy_series.index)
-            .pct_change()
-            .to_numpy()
-        )
-        sg_cpi = (
-            load_sg_cpi()["sg_cpi"]
-            .reindex(strategy_series.index)
-            .pct_change()
-            .to_numpy()
-        )
+        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
+        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
         cpi = (
-            np.zeros(len(strategy_series))
+            np.ones(len(strategy_series))
             if adjust_for_inflation != "Monthly Investment"
             else us_cpi
             if currency == "USD"
@@ -1808,20 +1798,10 @@ def update_withdrawal_strategy_graph(
             strategy_series.index.get_indexer([strategy_series.first_valid_index()])[0]
             - 1
         ] = 1
-        us_cpi = (
-            load_us_cpi()["us_cpi"]
-            .reindex(strategy_series.index)
-            .pct_change()
-            .to_numpy()
-        )
-        sg_cpi = (
-            load_sg_cpi()["sg_cpi"]
-            .reindex(strategy_series.index)
-            .pct_change()
-            .to_numpy()
-        )
+        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
+        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
         cpi = (
-            np.zeros(len(strategy_series))
+            np.ones(len(strategy_series))
             if adjust_for_inflation != "Monthly Withdrawal"
             else us_cpi
             if currency == "USD"

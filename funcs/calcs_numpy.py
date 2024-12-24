@@ -121,7 +121,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     dca_interval: int,
     investment_horizon: int,
     initial_monthly_amount: float,
-    cpi_mom: np.ndarray,
+    cpi: np.ndarray,
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
@@ -140,30 +140,33 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
     cash_returns = (1 + interest_rates / 100) ** (1 / 12)
-    cpi_mom = 1 + cpi_mom
     for i in range(len(monthly_returns)):
         if i < investment_horizon:
             res[i] = np.nan
             continue
         share_value = 0
         funds_to_invest = 0
-        monthly_amount = initial_monthly_amount
+        monthly_amounts = (
+            cpi[i - investment_horizon : i - investment_horizon + dca_length]
+            / cpi[i - investment_horizon]
+            * initial_monthly_amount
+        )
         for index, j in enumerate(
             range(i - investment_horizon, i - investment_horizon + dca_length)
         ):
-            funds_to_invest += monthly_amount
-            if ((index + 1) % dca_interval == 0) or (index == dca_length - 1):
+            funds_to_invest += monthly_amounts[index]
+            if ((index + 1) % dca_interval == 0) or (index + 1 == dca_length):
                 share_value += (
                     funds_to_invest * (1 - variable_transaction_fees)
                     - fixed_transaction_fees
                 )
                 funds_to_invest = 0
+            else:
+                funds_to_invest *= cash_returns[j + 1]
             share_value *= monthly_returns_with_fees[j + 1]
-            funds_to_invest *= cash_returns[j + 1]
-            monthly_amount *= cpi_mom[j + 1]
         for j in range(i - investment_horizon + dca_length, i):
             share_value *= monthly_returns_with_fees[j + 1]
-        res[i] = share_value + funds_to_invest
+        res[i] = share_value
     return res
 
 
@@ -173,7 +176,7 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     withdrawal_interval: int,
     initial_portfolio_value: float,
     initial_monthly_withdrawal: float,
-    cpi_mom: np.ndarray,
+    cpi: np.ndarray,
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
@@ -188,20 +191,19 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             res[i] = np.nan
             continue
         share_value = initial_portfolio_value
-        cpi = cpi_mom[i - withdrawal_horizon : i].copy()
-        cpi[0] = 0
-        cpi = (cpi + 1).cumprod()
         withdrawal_amounts = (
-            cpi * initial_withdrawal_amount * (1 + variable_transaction_fees)
+            cpi[i - withdrawal_horizon : i]
+            / cpi[i - withdrawal_horizon]
+            * initial_withdrawal_amount
+            * (1 + variable_transaction_fees)
             + fixed_transaction_fees
         )
         for index, j in enumerate(range(i - withdrawal_horizon, i)):
             if index % withdrawal_interval == 0:
                 share_value -= withdrawal_amounts[index]
                 if share_value <= 0:
-                    res[i] = 0
+                    share_value = 0
                     break
             share_value *= monthly_returns_with_fees[j + 1]
-        else:
-            res[i] = share_value
+        res[i] = share_value
     return res
