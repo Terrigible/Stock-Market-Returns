@@ -238,12 +238,11 @@ def transform_data(
                 pl.col("date").last().alias("date_end"),
                 pl.col("price").last(),
             )
-            .with_columns(
+            .select(
+                pl.col("date_end").alias("date"),
                 pl.col("price").pct_change().alias("return"),
             )
             .drop_nulls()
-            .drop("date", "price")
-            .rename({"date_end": "date"})
         )
         df = df_pl.to_pandas().set_index("date").loc[:, "return"]
         return df
