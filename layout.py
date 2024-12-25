@@ -35,17 +35,20 @@ app_layout = dbc.Tabs(
                                     ),
                                     html.Div(
                                         [
+                                            dbc.Label("Index Type"),
+                                            dbc.Select(
+                                                ["Regional", "Country"],
+                                                value="Regional",
+                                                id="msci-index-type-selection",
+                                            ),
                                             dbc.Label("Base Index"),
                                             dbc.Select(
                                                 {
                                                     "WORLD": "World",
                                                     "ACWI": "ACWI",
-                                                    "SINGAPORE": "Singapore",
                                                     "EM (EMERGING MARKETS)": "Emerging Markets",
                                                     "WORLD ex USA": "World ex USA",
-                                                    "USA": "USA",
                                                     "KOKUSAI INDEX (WORLD ex JP)": "World ex Japan",
-                                                    "JAPAN": "Japan",
                                                 },
                                                 value="WORLD",
                                                 id="msci-index-selection",

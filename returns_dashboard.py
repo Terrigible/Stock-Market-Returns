@@ -322,6 +322,48 @@ def update_msci_index_selection_visibility(
 
 
 @app.callback(
+    Output("msci-index-selection", "options"),
+    Output("msci-index-selection", "value"),
+    Input("msci-index-type-selection", "value"),
+)
+def update_msci_index_options(index_type: str):
+    if index_type == "Regional":
+        return {
+            "WORLD": "World",
+            "ACWI": "ACWI",
+            "EM (EMERGING MARKETS)": "Emerging Markets",
+            "WORLD ex USA": "World ex USA",
+            "KOKUSAI INDEX (WORLD ex JP)": "World ex Japan",
+        }, "WORLD"
+    if index_type == "Country":
+        return {
+            "AUSTRIA": "Austria",
+            "BELGIUM": "Belgium",
+            "DENMARK": "Denmark",
+            "FINLAND": "Finland",
+            "FRANCE": "France",
+            "GERMANY": "Germany",
+            "IRELAND": "Ireland",
+            "ITALY": "Italy",
+            "NETHERLANDS": "Netherlands",
+            "NORWAY": "Norway",
+            "PORTUGAL": "Portugal",
+            "SPAIN": "Spain",
+            "SWEDEN": "Sweden",
+            "SWITZERLAND": "Switzerland",
+            "UNITED KINGDOM": "United Kingdom",
+            "AUSTRALIA": "Australia",
+            "HONG KONG": "Hong Kong",
+            "JAPAN": "Japan",
+            "NEW ZEALAND": "New Zealand",
+            "SINGAPORE": "Singapore",
+            "CANADA": "Canada",
+            "USA": "USA",
+            "ISRAEL": "Israel",
+        }, "AUSTRIA"
+
+
+@app.callback(
     Output("others-tax-treatment-selection-container", "style"),
     Input("others-index-selection", "value"),
 )
@@ -929,7 +971,7 @@ def update_graph(
 
     layout = go.Layout(
         title=title,
-        hovermode="x unified",
+        hovermode="x",
         xaxis=(
             dict(
                 ticklabelmode="period",
@@ -1345,7 +1387,7 @@ def update_portfolio_graph(
 
     layout = go.Layout(
         title=title,
-        hovermode="x unified",
+        hovermode="x",
         xaxis=(
             dict(
                 ticklabelmode="period",
