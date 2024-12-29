@@ -337,30 +337,30 @@ def update_msci_index_options(index_type: str):
         }, "WORLD"
     if index_type == "Country":
         return {
+            "AUSTRALIA": "Australia",
             "AUSTRIA": "Austria",
             "BELGIUM": "Belgium",
+            "CANADA": "Canada",
             "DENMARK": "Denmark",
             "FINLAND": "Finland",
             "FRANCE": "France",
             "GERMANY": "Germany",
+            "HONG KONG": "Hong Kong",
             "IRELAND": "Ireland",
+            "ISRAEL": "Israel",
             "ITALY": "Italy",
+            "JAPAN": "Japan",
             "NETHERLANDS": "Netherlands",
+            "NEW ZEALAND": "New Zealand",
             "NORWAY": "Norway",
             "PORTUGAL": "Portugal",
+            "SINGAPORE": "Singapore",
             "SPAIN": "Spain",
             "SWEDEN": "Sweden",
             "SWITZERLAND": "Switzerland",
             "UNITED KINGDOM": "United Kingdom",
-            "AUSTRALIA": "Australia",
-            "HONG KONG": "Hong Kong",
-            "JAPAN": "Japan",
-            "NEW ZEALAND": "New Zealand",
-            "SINGAPORE": "Singapore",
-            "CANADA": "Canada",
             "USA": "USA",
-            "ISRAEL": "Israel",
-        }, "AUSTRIA"
+        }, "AUSTRALIA"
 
 
 @app.callback(
