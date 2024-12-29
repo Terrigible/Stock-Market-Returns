@@ -877,22 +877,23 @@ def update_graph(
                 ],
             )
         )
+
     elif y_var == "calendar_returns":
-        match return_interval:
-            case "1mo":
-                index_offset = pd.offsets.BMonthEnd(0)
-                xperiod = "M1"
-                xtickformat = "%b %Y"
-            case "3mo":
-                index_offset = pd.offsets.BQuarterEnd(0)
-                xperiod = "M3"
-                xtickformat = "Q%q %Y"
-            case "1y":
-                index_offset = pd.offsets.BYearEnd(0)
-                xperiod = "M12"
-                xtickformat = "%Y"
-            case _:
-                raise ValueError("Invalid return_interval")
+        if return_interval == "1mo":
+            index_offset = pd.offsets.BMonthEnd(0)
+            xperiod = "M1"
+            xtickformat = "%b %Y"
+        elif return_interval == "3mo":
+            index_offset = pd.offsets.BQuarterEnd(0)
+            xperiod = "M3"
+            xtickformat = "Q%q %Y"
+        elif return_interval == "1y":
+            index_offset = pd.offsets.BYearEnd(0)
+            xperiod = "M12"
+            xtickformat = "%Y"
+        else:
+            raise ValueError("Invalid return_interval")
+
         hovertext = df.index.to_series().apply(
             lambda x: x.strftime("As of %d %b %Y") if x != x + index_offset else ""
         )
@@ -949,25 +950,22 @@ def update_graph(
         barmode = None
         shapes = None
 
-    match y_var:
-        case "price":
-            title = "Price"
-            ytickformat = ".2f"
-        case "drawdown":
-            title = "Drawdown"
-            ytickformat = ".2%"
-        case "rolling_returns":
-            title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
-            if baseline_security != "None":
-                title += f" vs {baseline_security_options[baseline_security]}"
-            ytickformat = ".2%"
-        case "calendar_returns":
-            title = f"{return_interval_options[return_interval]} Returns"
-            if baseline_security != "None":
-                title += f" vs {baseline_security_options[baseline_security]}"
-            ytickformat = ".2%"
-        case _:
-            raise ValueError("Invalid y_var")
+    if y_var == "price":
+        title = "Price"
+        ytickformat = ".2f"
+    elif y_var == "drawdown":
+        title = "Drawdown"
+        ytickformat = ".2%"
+    elif y_var == "rolling_returns":
+        title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
+        ytickformat = ".2%"
+    elif y_var == "calendar_returns":
+        title = f"{return_interval_options[return_interval]} Returns"
+        ytickformat = ".2%"
+    else:
+        raise ValueError("Invalid y_var")
+    if baseline_security != "None":
+        title += f" vs {baseline_security_options[baseline_security]}"
 
     layout = go.Layout(
         title=title,
@@ -1293,22 +1291,23 @@ def update_portfolio_graph(
                 ],
             )
         )
+
     elif y_var == "calendar_returns":
-        match return_interval:
-            case "1mo":
-                index_offset = pd.offsets.BMonthEnd(0)
-                xperiod = "M1"
-                xtickformat = "%b %Y"
-            case "3mo":
-                index_offset = pd.offsets.BQuarterEnd(0)
-                xperiod = "M3"
-                xtickformat = "Q%q %Y"
-            case "1y":
-                index_offset = pd.offsets.BYearEnd(0)
-                xperiod = "M12"
-                xtickformat = "%Y"
-            case _:
-                raise ValueError("Invalid return_interval")
+        if return_interval == "1mo":
+            index_offset = pd.offsets.BMonthEnd(0)
+            xperiod = "M1"
+            xtickformat = "%b %Y"
+        elif return_interval == "3mo":
+            index_offset = pd.offsets.BQuarterEnd(0)
+            xperiod = "M3"
+            xtickformat = "Q%q %Y"
+        elif return_interval == "1y":
+            index_offset = pd.offsets.BYearEnd(0)
+            xperiod = "M12"
+            xtickformat = "%Y"
+        else:
+            raise ValueError("Invalid return_interval")
+
         hovertext = portfolios_df.index.to_series().apply(
             lambda x: x.strftime("As of %d %b %Y") if x != x + index_offset else ""
         )
@@ -1365,25 +1364,22 @@ def update_portfolio_graph(
         barmode = None
         shapes = None
 
-    match y_var:
-        case "price":
-            title = "Price"
-            ytickformat = ".2f"
-        case "drawdown":
-            title = "Drawdown"
-            ytickformat = ".2%"
-        case "rolling_returns":
-            title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
-            if baseline_security != "None":
-                title += f" vs {baseline_security_options[baseline_security]}"
-            ytickformat = ".2%"
-        case "calendar_returns":
-            title = f"{return_interval_options[return_interval]} Returns"
-            if baseline_security != "None":
-                title += f" vs {baseline_security_options[baseline_security]}"
-            ytickformat = ".2%"
-        case _:
-            raise ValueError("Invalid y_var")
+    if y_var == "price":
+        title = "Price"
+        ytickformat = ".2f"
+    elif y_var == "drawdown":
+        title = "Drawdown"
+        ytickformat = ".2%"
+    elif y_var == "rolling_returns":
+        title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
+        ytickformat = ".2%"
+    elif y_var == "calendar_returns":
+        title = f"{return_interval_options[return_interval]} Returns"
+        ytickformat = ".2%"
+    else:
+        raise ValueError("Invalid y_var")
+    if baseline_security != "None":
+        title += f" vs {baseline_security_options[baseline_security]}"
 
     layout = go.Layout(
         title=title,
