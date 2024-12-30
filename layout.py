@@ -605,7 +605,6 @@ app_layout = dbc.Tabs(
                                         {
                                             "Not": "No",
                                             "Monthly Investment": "Adjust Monthly Investment",
-                                            "Returns": "Adjust Returns",
                                         },
                                         value="Not",
                                         id="accumulation-inflation-adjustment-selection",
@@ -733,7 +732,6 @@ app_layout = dbc.Tabs(
                                 {
                                     "Not": "No",
                                     "Monthly Withdrawal": "Adjust Monthly Withdrawal",
-                                    "Returns": "Adjust Returns",
                                 },
                                 value="Not",
                                 id="withdrawal-inflation-adjustment-selection",

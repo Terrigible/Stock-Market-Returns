@@ -1526,7 +1526,6 @@ def update_accumulation_strategies(
             f"Lump Sum, "
             f"{investment_amount} invested for {investment_horizon} months, "
             f"DCA over {dca_length} months every {dca_interval} months, "
-            f"{adjust_for_inflation} adjusted for inflation, "
             f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
             f"{annualised_holding_fees}% p.a. Holding Fees",
         )
@@ -1602,7 +1601,7 @@ def update_accumulation_strategy_graph(
                     security,
                     "Monthly",
                     currency,
-                    "Yes" if adjust_for_inflation == "Returns" else "No",
+                    "No",
                     yf_securities.get(security),
                 )
                 for security in securities
@@ -1834,7 +1833,7 @@ def update_withdrawal_strategy_graph(
                     security,
                     "Monthly",
                     currency,
-                    "Yes" if adjust_for_inflation == "Returns" else "No",
+                    "No",
                     yf_securities.get(security),
                 )
                 for security in securities
