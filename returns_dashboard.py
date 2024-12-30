@@ -1522,12 +1522,24 @@ def update_accumulation_strategies(
     if ls_dca == "LS":
         strategy = (
             strategy_str,
-            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, Lump Sum, {investment_amount} invested for {investment_horizon} months, DCA over {dca_length} months every {dca_interval} months, {adjust_for_inflation} adjusted for inflation, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
+            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
+            f"Lump Sum, "
+            f"{investment_amount} invested for {investment_horizon} months, "
+            f"DCA over {dca_length} months every {dca_interval} months, "
+            f"{adjust_for_inflation} adjusted for inflation, "
+            f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
+            f"{annualised_holding_fees}% p.a. Holding Fees",
         )
     else:
         strategy = (
             strategy_str,
-            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, DCA, {monthly_investment} invested monthly for {dca_length} months, {dca_interval} months apart, held for {investment_horizon} months, {adjust_for_inflation} adjusted for inflation, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
+            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
+            f"DCA,"
+            f"{monthly_investment} invested monthly for {dca_length} months, "
+            f"{dca_interval} months apart, held for {investment_horizon} months, "
+            f"{adjust_for_inflation} adjusted for inflation, "
+            f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
+            f"{annualised_holding_fees}% p.a. Holding Fees",
         )
 
     if strategies is None:
@@ -1756,7 +1768,12 @@ def update_withdrawal_strategies(
 
     strategy = (
         strategy_str,
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}, {monthly_withdrawal} withdrawn monthly, {withdrawal_interval} months apart for {withdrawal_horizon} months, {adjust_for_inflation} adjusted for inflation, {variable_transaction_fees}% + ${fixed_transaction_fees} Fee, {annualised_holding_fees}% p.a. Holding Fees",
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
+        f"{monthly_withdrawal} withdrawn monthly, "
+        f"{withdrawal_interval} months apart for {withdrawal_horizon} months, "
+        f"{adjust_for_inflation} adjusted for inflation, "
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
+        f"{annualised_holding_fees}% p.a. Holding Fees",
     )
 
     if strategies is None:
