@@ -334,6 +334,7 @@ def update_msci_index_options(index_type: str):
             "EM (EMERGING MARKETS)": "Emerging Markets",
             "WORLD ex USA": "World ex USA",
             "KOKUSAI INDEX (WORLD ex JP)": "World ex Japan",
+            "EUROPE": "Europe",
         }, "WORLD"
     if index_type == "Country":
         return {

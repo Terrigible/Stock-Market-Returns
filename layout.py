@@ -49,6 +49,7 @@ app_layout = dbc.Tabs(
                                                     "EM (EMERGING MARKETS)": "Emerging Markets",
                                                     "WORLD ex USA": "World ex USA",
                                                     "KOKUSAI INDEX (WORLD ex JP)": "World ex Japan",
+                                                    "EUROPE": "Europe",
                                                 },
                                                 value="WORLD",
                                                 id="msci-index-selection",
