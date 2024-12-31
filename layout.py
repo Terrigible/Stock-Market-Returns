@@ -184,6 +184,16 @@ app_layout = dbc.Tabs(
                                     ),
                                     html.P(),
                                     dbc.Button("Add Index", id="add-index-button"),
+                                    html.P(),
+                                    dbc.Toast(
+                                        "The constructed index is not available",
+                                        id="index-toast",
+                                        header="Info",
+                                        is_open=False,
+                                        dismissable=True,
+                                        duration=2000,
+                                        color="info",
+                                    ),
                                 ],
                                 id="index-selection-container",
                             ),
@@ -203,8 +213,23 @@ app_layout = dbc.Tabs(
                                     dbc.Button(
                                         "Add Stock/ETF", id="add-stock-etf-button"
                                     ),
+                                    html.P(),
+                                    dbc.Toast(
+                                        "The selected ticker is not available",
+                                        id="stock-etf-toast",
+                                        header="Info",
+                                        is_open=False,
+                                        dismissable=True,
+                                        duration=2000,
+                                        color="info",
+                                    ),
                                 ],
                                 id="stock-etf-selection-container",
+                            ),
+                            dcc.Store(
+                                id="yf-invalid-securities-store",
+                                storage_type="memory",
+                                data=[],
                             ),
                             dcc.Store(
                                 id="yf-securities-store", storage_type="memory", data={}

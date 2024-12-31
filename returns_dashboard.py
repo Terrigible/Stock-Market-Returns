@@ -375,6 +375,7 @@ def update_others_tax_treatment_selection_visibility(others_index: str):
 
 
 @app.callback(
+    Output("index-toast", "is_open"),
     Output("selected-securities", "value"),
     Output("selected-securities", "options"),
     Input("add-index-button", "n_clicks"),
@@ -430,7 +431,7 @@ def add_index(
         if not glob(
             f"data/{index_provider}/{msci_base_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls"
         ):
-            return no_update
+            return True, no_update, no_update
         index = (
             json.dumps(
                 {
@@ -481,7 +482,7 @@ def add_index(
                 f"{us_treasury_duration_options[us_treasury_duration]} {fred_index_options[fred_index]}",
             )
         else:
-            return no_update
+            return True, no_update, no_update
     elif index_provider == "MAS":
         if mas_index == "SGS":
             index = (
@@ -495,7 +496,7 @@ def add_index(
                 f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}",
             )
         else:
-            return no_update
+            return True, no_update, no_update
     else:
         others_tax_treatment = (
             "Gross"
@@ -513,23 +514,27 @@ def add_index(
             f"{others_index_options[others_index]} {others_tax_treatment}",
         )
     if selected_securities is None:
-        return [index[0]], {index[0]: index[1]}
+        return False, [index[0]], {index[0]: index[1]}
     if index[0] in selected_securities:
         return no_update
     selected_securities.append(index[0])
     selected_securities_options.update({index[0]: index[1]})
-    return selected_securities, selected_securities_options
+    return False, selected_securities, selected_securities_options
 
 
 @app.callback(
+    Output("stock-etf-toast", "children"),
+    Output("stock-etf-toast", "is_open"),
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
+    Output("yf-invalid-securities-store", "data"),
     Output("yf-securities-store", "data"),
     Input("add-stock-etf-button", "n_clicks"),
     State("selected-securities", "value"),
     State("selected-securities", "options"),
     State("stock-etf-input", "value"),
     State("stock-etf-tax-treatment-selection", "value"),
+    State("yf-invalid-securities-store", "data"),
     State("yf-securities-store", "data"),
     prevent_initial_call=True,
 )
@@ -539,12 +544,22 @@ def add_stock_etf(
     selected_securities_options: dict[str, str],
     stock_etf: str | None,
     tax_treatment: str,
+    yf_invalid_securities_store: list[str],
     yf_securities_store: dict[str, str],
 ):
     if not stock_etf:
         return no_update
     if ";" in stock_etf:
-        return no_update
+        return "Invalid character: ;", True, no_update, no_update, no_update, no_update
+    if stock_etf in yf_invalid_securities_store:
+        return (
+            "The selected ticker is not available",
+            True,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+        )
     for yf_security_str in yf_securities_store:
         yf_security = json.loads(yf_security_str)
         if stock_etf != yf_security["ticker"]:
@@ -556,17 +571,35 @@ def add_stock_etf(
         if yf_security_str in selected_securities_options:
             selected_securities.append(yf_security_str)
             return (
+                no_update,
+                no_update,
                 selected_securities,
                 selected_securities_options,
+                no_update,
                 yf_securities_store,
             )
     ticker = yf.Ticker(stock_etf)
     if ticker.history_metadata == {}:
-        return no_update
-    if "currency" not in ticker.history_metadata:
-        return no_update
+        yf_invalid_securities_store.append(stock_etf)
+        return (
+            "The selected ticker is not available",
+            True,
+            no_update,
+            no_update,
+            yf_invalid_securities_store,
+            no_update,
+        )
     ticker_symbol = ticker.ticker
-    currency = ticker.history_metadata["currency"]
+    if "currency" not in ticker.history_metadata:
+        currency = "USD"
+        toast = (
+            "The selected ticker does not have currency information. Defaulting to USD."
+        )
+        show_toast = True
+    else:
+        currency = ticker.history_metadata["currency"]
+        toast = no_update
+        show_toast = no_update
     new_yf_security = json.dumps(
         {
             "source": "YF",
@@ -594,7 +627,14 @@ def add_stock_etf(
         df["Adj Close"] = manually_adjusted
     yf_securities_store[new_yf_security] = df["Adj Close"].to_json(orient="index")
 
-    return selected_securities, selected_securities_options, yf_securities_store
+    return (
+        toast,
+        show_toast,
+        selected_securities,
+        selected_securities_options,
+        no_update,
+        yf_securities_store,
+    )
 
 
 @app.callback(
