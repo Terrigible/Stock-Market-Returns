@@ -86,7 +86,7 @@ def load_data(
     source = security["source"]
     if source == "MSCI":
         series = read_msci_data(
-            f"data/{security["source"]}/{security["msci_base_index"]}/{security["msci_size"]}/{security["msci_style"]}/*{security["msci_tax_treatment"]} {interval}*.xls"
+            f"data/MSCI/{security['msci_base_index']}/{security['msci_size']}/{security['msci_style']}/*{security['msci_tax_treatment']} {interval}*.xls"
         ).iloc[:, 0]
     elif source == "FRED":
         if security["fred_index"] == "US-T":
@@ -110,7 +110,7 @@ def load_data(
             series = read_ft_data("Straits Times Index USD Gross").iloc[:, 0]
         elif security["others_index"] == "SPX":
             series = read_ft_data(
-                f"S&P 500 USD {security["others_tax_treatment"]}"
+                f"S&P 500 USD {security['others_tax_treatment']}"
             ).iloc[:, 0]
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
@@ -145,7 +145,7 @@ def load_data(
             series = read_ft_data("GMO Quality Investment Fund").iloc[:, 0]
         elif fund_company == "Fundsmith":
             series = read_ft_data(
-                f"Fundsmith {fund.replace("Class ", "")} EUR Acc"
+                f"Fundsmith {fund.replace('Class ', '')} EUR Acc"
             ).iloc[:, 0]
         elif fund_company == "Dimensional":
             series = read_ft_data(f"Dimensional {fund} GBP Accumulation").iloc[:, 0]
@@ -436,7 +436,7 @@ def add_index(
         index = (
             json.dumps(
                 {
-                    "source": index_provider,
+                    "source": "MSCI",
                     "msci_base_index": msci_base_index,
                     "msci_size": msci_size,
                     "msci_style": msci_style,
@@ -475,7 +475,7 @@ def add_index(
             index = (
                 json.dumps(
                     {
-                        "source": index_provider,
+                        "source": "FRED",
                         "fred_index": fred_index,
                         "us_treasury_duration": us_treasury_duration,
                     }
@@ -489,7 +489,7 @@ def add_index(
             index = (
                 json.dumps(
                     {
-                        "source": index_provider,
+                        "source": "MAS",
                         "mas_index": mas_index,
                         "sgs_duration": sgs_duration,
                     }
@@ -507,7 +507,7 @@ def add_index(
         index = (
             json.dumps(
                 {
-                    "source": index_provider,
+                    "source": "Others",
                     "others_index": others_index,
                     "others_tax_treatment": others_tax_treatment,
                 }
@@ -689,14 +689,14 @@ def update_fund_selection_options(fund_company: str):
             ],
             "Great Eastern-Lion Dynamic Balanced",
         )
-    elif fund_company == "GMO":
+    if fund_company == "GMO":
         return (
             [
                 "Quality Investment Fund",
             ],
             "Quality Investment Fund",
         )
-    elif fund_company == "Fundsmith":
+    if fund_company == "Fundsmith":
         return (
             [
                 "Equity Fund Class T",
@@ -704,13 +704,12 @@ def update_fund_selection_options(fund_company: str):
             ],
             "Equity Fund Class T",
         )
-    elif fund_company == "Dimensional":
+    if fund_company == "Dimensional":
         return (["World Equity Fund"], "World Equity Fund")
-    else:
-        return (
-            [],
-            None,
-        )
+    return (
+        [],
+        None,
+    )
 
 
 @app.callback(
@@ -749,7 +748,7 @@ def add_fund(
                 "currency": currency,
             }
         ),
-        f'{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}',
+        f"{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}",
     )
     if security[0] in selected_securities:
         return no_update
@@ -767,8 +766,7 @@ def add_fund(
 def update_log_scale(y_var: str, log_scale: list[str]):
     if y_var == "price":
         return {"display": "block"}, log_scale
-    else:
-        return {"display": "none"}, []
+    return {"display": "none"}, []
 
 
 @app.callback(
@@ -779,16 +777,14 @@ def update_log_scale(y_var: str, log_scale: list[str]):
 def update_return_duration_visibility(y_var: str):
     if y_var == "rolling_returns":
         return {"display": "block"}, {"display": "none"}
-    else:
-        return {"display": "none"}, {"display": "block"}
+    return {"display": "none"}, {"display": "block"}
 
 
 @app.callback(Output("return-selection", "style"), Input("y-var-selection", "value"))
 def update_return_selection_visibility(y_var: str):
     if y_var in ["rolling_returns", "calendar_returns"]:
         return {"display": "block"}
-    else:
-        return {"display": "none"}
+    return {"display": "none"}
 
 
 @app.callback(
@@ -1141,8 +1137,7 @@ def add_portfolio(
 def update_portfolio_log_scale(y_var: str, log_scale: list[str]):
     if y_var == "price":
         return {"display": "block"}, log_scale
-    else:
-        return {"display": "none"}, []
+    return {"display": "none"}, []
 
 
 @app.callback(
@@ -1153,8 +1148,7 @@ def update_portfolio_log_scale(y_var: str, log_scale: list[str]):
 def update_portfolio_return_duration_visibility(y_var: str):
     if y_var == "rolling_returns":
         return {"display": "block"}, {"display": "none"}
-    else:
-        return {"display": "none"}, {"display": "block"}
+    return {"display": "none"}, {"display": "block"}
 
 
 @app.callback(
@@ -1164,8 +1158,7 @@ def update_portfolio_return_duration_visibility(y_var: str):
 def update_portfolio_return_selection_visibility(y_var: str):
     if y_var in ["rolling_returns", "calendar_returns"]:
         return {"display": "block"}
-    else:
-        return {"display": "none"}
+    return {"display": "none"}
 
 
 @app.callback(
@@ -1461,8 +1454,7 @@ def update_strategy_portfolios(portfolio_options: dict[str, str]):
 def update_ls_input_visibility(ls_dca: str):
     if ls_dca == "LS":
         return {"display": "block"}, {"display": "none"}
-    else:
-        return {"display": "none"}, {"display": "block"}
+    return {"display": "none"}, {"display": "block"}
 
 
 @app.callback(
