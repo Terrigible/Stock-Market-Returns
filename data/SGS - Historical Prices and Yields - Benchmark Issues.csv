@@ -1,6 +1,6 @@
 SGS Prices and Yields - Benchmark Issues (2005 to 2007)
 
-Jan 1998 to Dec 2024 (Daily)
+Jan 1998 to Dec 2025 (Daily)
 
 ,,,Average Buying Rates of Govt Securities Dealers 1-Year T-Bill Yield,Average Buying Rates of Govt Securities Dealers 2-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 2-Year Bond Price,Average Buying Rates of Govt Securities Dealers 5-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 5-Year Bond Price,Average Buying Rates of Govt Securities Dealers 10-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 10-Year Bond Price,Average Buying Rates of Govt Securities Dealers 15-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 15-Year Bond Price,Average Buying Rates of Govt Securities Dealers 20-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 20-Year Bond Price,Average Buying Rates of Govt Securities Dealers 30-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 30-Year Bond Price,Average Buying Rates of Govt Securities Dealers 50-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 50-Year Bond Price
 1998,Jan,02,2.5,3.09,99.45,3.9,97.4,,,,,,,,,,
@@ -7101,6 +7101,47 @@ Jan 1998 to Dec 2024 (Daily)
 ,,04,2.75,2.74,97.24,2.68,100.84,2.71,105.5,2.76,95.44,2.73,100.3,2.69,111.33,2.7,108.06
 ,,05,2.75,2.74,97.25,2.69,100.8,2.71,105.49,2.76,95.43,2.74,100.23,2.69,111.31,2.7,108.0
 ,,06,2.75,2.74,97.26,2.69,100.81,2.71,105.5,2.75,95.49,2.73,100.31,2.68,111.47,2.7,108.15
+,,09,2.75,2.71,97.32,2.65,100.95,2.68,105.7,2.73,95.78,2.71,100.57,2.67,111.75,2.68,108.55
+,,10,2.75,2.72,97.3,2.66,100.93,2.7,105.55,2.76,95.45,2.74,100.15,2.69,111.33,2.71,107.78
+,,11,2.75,2.74,97.28,2.67,100.89,2.71,105.49,2.76,95.42,2.75,99.97,2.7,111.05,2.72,107.39
+,,12,2.75,2.76,97.25,2.7,100.75,2.73,105.27,2.78,95.2,2.76,99.89,2.71,110.9,2.73,107.17
+,,13,2.75,2.77,97.23,2.72,100.64,2.75,105.1,2.79,95.07,2.77,99.69,2.72,110.64,2.74,106.85
+,,16,2.75,2.8,97.19,2.76,100.49,2.79,104.83,2.82,94.73,2.8,99.25,2.75,110.03,2.77,106.09
+,,17,2.75,2.81,97.17,2.79,100.38,2.81,104.6,2.84,94.46,2.8,99.25,2.76,109.82,2.78,105.84
+,,18,2.75,2.8,97.2,2.78,100.4,2.82,104.58,2.85,94.37,2.8,99.19,2.76,109.78,2.78,105.81
+,,19,2.76,2.83,97.14,2.85,100.1,2.9,103.87,2.94,93.38,2.86,98.19,2.82,108.46,2.84,104.03
+,,20,2.77,2.86,97.1,2.9,99.89,2.96,103.39,3.0,92.71,2.91,97.54,2.87,107.6,2.89,102.89
+,,23,2.78,2.86,97.1,2.91,99.87,2.96,103.34,3.0,92.65,2.91,97.44,2.87,107.5,2.89,102.77
+,,24,2.78,2.88,97.08,2.92,99.79,2.99,103.08,3.03,92.35,2.94,97.03,2.9,106.92,2.92,102.02
+,,26,2.78,2.84,97.16,2.93,99.77,3.0,103.07,3.03,92.39,2.94,97.07,2.9,106.8,2.93,101.75
+,,27,2.78,2.82,97.19,2.89,99.93,2.96,103.33,3.0,92.74,2.9,97.56,2.88,107.39,2.9,102.44
+,,30,2.78,2.77,97.3,2.85,100.09,2.92,103.71,2.97,93.05,2.88,97.88,2.85,107.83,2.88,103.16
+,,31,2.78,2.72,97.38,2.82,100.25,2.86,104.18,2.92,93.59,2.83,98.66,2.81,108.8,2.83,104.44
+
+"* Data reflects bid rates quoted by SGS Primary Dealers to each other based on standard market lot transactions as specified in the Rules and Market Practices of the SGS Market. Prices quoted to non-Primary Dealers may be different, subject to factors such as transaction size and administrative costs."
+"* Figures before 2000 are the modes of closing bid prices quoted by SGS primary dealers."
+"* Figures after 2000 are the average of closing bid rates quoted by SGS primary dealers."
+"* Overnight repo rates are closing offer rates quoted by SGS primary dealers."
+"* The 7-year benchmark was discontinued on 1 February 2011."
+"* The final 3-month T-bill was issued on 20th June 2013."
+"* Issuance of 6-month T-bills ceased on 27th December 2013 and resumed on 2nd July 2019."
+"* The SGS Overnight Repo rate was discontinued on 1 January 2014."
+"* Yield is quoted as % p.a."
+"* Bond price is quoted in S$ per S$100 of principal amount, excluding any applicable accrued interest (i.e. on clean basis)."
+
+,,,Average Buying Rates of Govt Securities Dealers 1-Year T-Bill Yield,Average Buying Rates of Govt Securities Dealers 2-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 2-Year Bond Price,Average Buying Rates of Govt Securities Dealers 5-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 5-Year Bond Price,Average Buying Rates of Govt Securities Dealers 10-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 10-Year Bond Price,Average Buying Rates of Govt Securities Dealers 15-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 15-Year Bond Price,Average Buying Rates of Govt Securities Dealers 20-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 20-Year Bond Price,Average Buying Rates of Govt Securities Dealers 30-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 30-Year Bond Price,Average Buying Rates of Govt Securities Dealers 50-Year Bond Yield,Average Buying Rates of Govt Securities Dealers 50-Year Bond Price
+2025,Jan,02,2.8,2.75,97.34,2.81,100.28,2.88,103.98,2.91,93.66,2.83,98.66,2.81,108.84,2.82,104.72
+,,03,2.8,2.75,97.35,2.78,100.4,2.89,103.96,2.91,93.68,2.83,98.79,2.8,109.06,2.8,105.16
+,,06,2.8,2.84,97.2,2.87,100.01,2.99,103.07,3.01,92.64,2.92,97.36,2.87,107.5,2.88,103.21
+,,07,2.8,2.85,97.19,2.87,100.01,2.99,103.13,2.99,92.8,2.91,97.53,2.87,107.55,2.87,103.33
+,,08,2.8,2.87,97.16,2.9,99.89,3.01,102.93,3.02,92.52,2.94,97.07,2.89,107.03,2.89,102.8
+,,09,2.8,2.87,97.17,2.88,99.96,3.0,103.06,3.0,92.7,2.93,97.17,2.89,107.17,2.88,102.98
+,,10,2.8,2.89,97.13,2.92,99.83,3.03,102.8,3.03,92.41,2.97,96.63,2.91,106.59,2.91,102.25
+,,13,2.8,2.97,97.01,3.01,99.43,3.09,102.25,3.09,91.74,3.04,95.53,2.99,105.08,2.98,100.6
+,,14,2.8,2.97,97.01,3.02,99.39,3.09,102.26,3.08,91.77,3.04,95.52,2.99,105.15,2.97,100.72
+,,15,2.8,2.97,97.02,3.02,99.41,3.09,102.29,3.07,91.88,3.02,95.73,2.97,105.43,2.96,101.09
+,,16,2.8,2.9,97.14,2.96,99.66,3.01,102.94,3.0,92.69,2.96,96.73,2.91,106.71,2.9,102.7
+,,17,2.81,2.87,97.2,2.91,99.86,2.97,103.3,2.96,93.12,2.93,97.24,2.87,107.47,2.86,103.62
 
 "* Data reflects bid rates quoted by SGS Primary Dealers to each other based on standard market lot transactions as specified in the Rules and Market Practices of the SGS Market. Prices quoted to non-Primary Dealers may be different, subject to factors such as transaction size and administrative costs."
 "* Figures before 2000 are the modes of closing bid prices quoted by SGS primary dealers."
