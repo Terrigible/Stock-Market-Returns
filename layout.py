@@ -396,7 +396,6 @@ app_layout = dbc.Tabs(
                         style={
                             "width": "85%",
                             "height": "100%",
-                            "padding": "1rem",
                         },
                     ),
                 ],
@@ -568,7 +567,6 @@ app_layout = dbc.Tabs(
                         style={
                             "width": "85%",
                             "height": "100%",
-                            "padding": "1rem",
                         },
                     ),
                 ],
@@ -708,7 +706,6 @@ app_layout = dbc.Tabs(
                         style={
                             "width": "85%",
                             "height": "100%",
-                            "padding": "1rem",
                         },
                     ),
                 ],
@@ -825,7 +822,6 @@ app_layout = dbc.Tabs(
                         style={
                             "width": "85%",
                             "height": "100%",
-                            "padding": "1rem",
                         },
                     ),
                 ],
