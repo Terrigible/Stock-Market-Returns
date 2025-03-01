@@ -560,7 +560,7 @@ def load_sgs_returns():
 def download_sg_cpi():
     try:
         sg_cpi_response = requests.get(
-            "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
+            "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751",
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
             timeout=20,
         )
@@ -594,7 +594,7 @@ async def download_us_cpi_async():
                 json={
                     "seriesid": ["CUSR0000SA0"],
                     "startyear": f"{year}",
-                    "endyear": f"{year+9}",
+                    "endyear": f"{year + 9}",
                     "catalog": "true",
                     "registrationkey": os.environ["BLS_API_KEY"],
                 },
