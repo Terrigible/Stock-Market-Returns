@@ -538,6 +538,7 @@ def add_index(
     State("yf-invalid-securities-store", "data"),
     State("yf-securities-store", "data"),
     prevent_initial_call=True,
+    running=[(Output("add-stock-etf-button", "disabled"), True, False)],
 )
 def add_stock_etf(
     _,
