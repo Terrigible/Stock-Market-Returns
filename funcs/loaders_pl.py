@@ -11,7 +11,7 @@ import pandas as pd
 import polars as pl
 
 
-def read_msci_data_polars(filename_pattern: str):
+def read_msci_data(filename_pattern: str):
     return (
         pl.read_excel(
             sorted(glob(filename_pattern)),
@@ -28,7 +28,7 @@ def read_msci_data_polars(filename_pattern: str):
     )
 
 
-def read_ft_data_polars(filename: str):
+def read_ft_data(filename: str):
     df = pl.read_csv(f"data/{filename}.csv", try_parse_dates=True).select(
         pl.col("Date").alias("date"), pl.col("Close").alias("price")
     )
@@ -48,7 +48,7 @@ def read_ft_data_polars(filename: str):
     return df
 
 
-def get_fred_series_polars(series_id: str):
+def get_fred_series(series_id: str):
     res = httpx.get(
         "https://api.stlouisfed.org/fred/series/observations",
         params={
@@ -69,13 +69,13 @@ def get_fred_series_polars(series_id: str):
     return df
 
 
-def download_fed_funds_rate_polars():
-    fed_funds_rate = get_fred_series_polars("DFF").rename({"value": "ffr"})
+def download_fed_funds_rate():
+    fed_funds_rate = get_fred_series("DFF").rename({"value": "ffr"})
     fed_funds_rate.write_csv("data/fed_funds_rate.csv")
     return fed_funds_rate
 
 
-def load_fed_funds_rate_polars():
+def load_fed_funds_rate():
     fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
 
     if (
@@ -87,7 +87,7 @@ def load_fed_funds_rate_polars():
         .last()
         and "FRED_API_KEY" in os.environ
     ):
-        fed_funds_rate = download_fed_funds_rate_polars()
+        fed_funds_rate = download_fed_funds_rate()
         fed_funds_rate.write_csv("data/fed_funds_rate.csv")
 
     fed_funds_rate_1m = (
@@ -104,7 +104,7 @@ def load_fed_funds_rate_polars():
     return fed_funds_rate, fed_funds_rate_1m
 
 
-async def download_us_treasury_rates_polars_async():
+async def download_us_treasury_rates_async():
     durations = ["1MO", "3MO", "6MO", "1", "2", "3", "5", "7", "10", "20", "30"]
     async with httpx.AsyncClient() as client:
         tasks = (
@@ -132,7 +132,7 @@ async def download_us_treasury_rates_polars_async():
     return treasury_rates
 
 
-async def load_us_treasury_rates_polars_async():
+async def load_us_treasury_rates_async():
     treasury_rates = pl.read_csv("data/us_treasury.csv", use_pyarrow=True)
 
     if (
@@ -144,7 +144,7 @@ async def load_us_treasury_rates_polars_async():
         .last()
         and "FRED_API_KEY" in os.environ
     ):
-        treasury_rates = await download_us_treasury_rates_polars_async()
+        treasury_rates = await download_us_treasury_rates_async()
         treasury_rates.write_csv("data/us_treasury.csv")
 
     treasury_rates = treasury_rates.with_columns(
@@ -157,8 +157,8 @@ async def load_us_treasury_rates_polars_async():
     return treasury_rates
 
 
-async def load_us_treasury_returns_polars_async():
-    treasury_rates = await load_us_treasury_rates_polars_async()
+async def load_us_treasury_returns_async():
+    treasury_rates = await load_us_treasury_rates_async()
     treasury_returns = pl.DataFrame().with_columns(treasury_rates["date"])
     # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
     for duration in treasury_rates.drop("date").columns:
@@ -196,7 +196,7 @@ async def load_us_treasury_returns_polars_async():
     return treasury_returns
 
 
-def read_shiller_sp500_data_polars(tax_treatment: str):
+def read_shiller_sp500_data(tax_treatment: str):
     return pl.read_excel(
         "data/ie_data.xls",
         sheet_name="Data",
@@ -222,7 +222,7 @@ def read_shiller_sp500_data_polars(tax_treatment: str):
     )
 
 
-def download_mas_sgd_fx_polars():
+def download_mas_sgd_fx():
     sgd_fx_response = httpx.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily",
         headers={"keyid": os.environ["MAS_EXCHANGE_RATE_API_KEY"]},
@@ -298,12 +298,12 @@ def load_mas_sgd_fx():
         .last()
         and "FRED_API_KEY" in os.environ
     ):
-        sgd_fx = download_mas_sgd_fx_polars()
+        sgd_fx = download_mas_sgd_fx()
         sgd_fx.write_csv("data/sgd_fx.csv")
     return sgd_fx
 
 
-async def download_fred_usd_fx_async_polars():
+async def download_fred_usd_fx_async():
     series = {
         "1_MXN": "DEXMXUS",
         "1_INR": "DEXINUS",
@@ -361,7 +361,7 @@ async def download_fred_usd_fx_async_polars():
     return usd_fx
 
 
-async def load_fred_usd_fx_async_polars():
+async def load_fred_usd_fx_async():
     usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
     if (
         usd_fx.get_column("date")
@@ -372,19 +372,19 @@ async def load_fred_usd_fx_async_polars():
         .last()
         and "FRED_API_KEY" in os.environ
     ):
-        usd_fx = await download_fred_usd_fx_async_polars()
+        usd_fx = await download_fred_usd_fx_async()
         usd_fx.write_csv("data/usd_fx.csv")
     return usd_fx
 
 
-def load_fred_usdsgd_polars():
-    usdsgd = get_fred_series_polars("DEXSIUS").select(
+def load_fred_usdsgd():
+    usdsgd = get_fred_series("DEXSIUS").select(
         pl.col("date"), pl.col("value").alias("usd_sgd")
     )
     return usdsgd
 
 
-def download_worldbank_exchange_rates_polars():
+def download_worldbank_exchange_rates():
     res = httpx.get(
         "https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF",
         params={"downloadformat": "csv"},
@@ -403,8 +403,8 @@ def download_worldbank_exchange_rates_polars():
     return df
 
 
-def load_worldbank_usdsgd_polars():
-    df = download_worldbank_exchange_rates_polars()
+def load_worldbank_usdsgd():
+    df = download_worldbank_exchange_rates()
     return pl.from_pandas(
         pl.concat(
             [
@@ -418,10 +418,8 @@ def load_worldbank_usdsgd_polars():
                     .alias("date"),
                     pl.col("column_0").cast(pl.Float64).alias("usd_sgd"),
                 )
-                .filter(
-                    pl.col("date") <= get_fred_series_polars("DEXSIUS")["date"].first()
-                ),
-                load_fred_usdsgd_polars()[0:1],
+                .filter(pl.col("date") <= get_fred_series("DEXSIUS")["date"].first()),
+                load_fred_usdsgd()[0:1],
             ]
         )
         .to_pandas()
@@ -434,7 +432,7 @@ def load_worldbank_usdsgd_polars():
     )
 
 
-def load_usdsgd_polars():
+def load_usdsgd():
     usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
     if (
         usdsgd.get_column("date")
@@ -446,10 +444,8 @@ def load_usdsgd_polars():
         and "FRED_API_KEY" in os.environ
         and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
     ):
-        world_bank_usdsgd = load_worldbank_usdsgd_polars().rename(
-            {"usd_sgd": "usd_sgd_wb"}
-        )
-        fred_usdsgd = load_fred_usdsgd_polars().rename({"usd_sgd": "usd_sgd_fred"})
+        world_bank_usdsgd = load_worldbank_usdsgd().rename({"usd_sgd": "usd_sgd_wb"})
+        fred_usdsgd = load_fred_usdsgd().rename({"usd_sgd": "usd_sgd_fred"})
         mas_usdsgd = (
             load_mas_sgd_fx().select(["date", "USD"]).rename({"USD": "usd_sgd_mas"})
         )
@@ -466,7 +462,7 @@ def load_usdsgd_polars():
     return usdsgd
 
 
-def read_mas_swap_points_polars():
+def read_mas_swap_points():
     return (
         pl.read_excel(
             "data/US$_S$ Forward Swap Points.xlsx",
@@ -478,12 +474,12 @@ def read_mas_swap_points_polars():
     )
 
 
-def load_mas_swap_points_polars():
-    swap_points = read_mas_swap_points_polars()
+def load_mas_swap_points():
+    swap_points = read_mas_swap_points()
     return swap_points
 
 
-def read_sgd_neer_polars():
+def read_sgd_neer():
     return (
         pl.read_excel(
             "data/S$ Nominal Effective Exchange Rate Index.xlsx", engine="calamine"
@@ -496,12 +492,12 @@ def read_sgd_neer_polars():
     )
 
 
-def load_sgd_neer_polars():
-    neer = read_sgd_neer_polars()
+def load_sgd_neer():
+    neer = read_sgd_neer()
     return neer
 
 
-def download_sgd_interest_rates_polars():
+def download_sgd_interest_rates():
     sgd_interest_rates_response = httpx.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily",
         headers={"keyid": os.environ["MAS_INTEREST_RATE_API_KEY"]},
@@ -522,7 +518,7 @@ def download_sgd_interest_rates_polars():
     )
 
 
-def load_sgd_interest_rates_polars():
+def load_sgd_interest_rates():
     sgd_interest_rates = pl.read_csv("data/sgd_interest_rates.csv", use_pyarrow=True)
 
     if (
@@ -534,7 +530,7 @@ def load_sgd_interest_rates_polars():
         .last()
         and "MAS_INTEREST_RATE_API_KEY" in os.environ
     ):
-        sgd_interest_rates = download_sgd_interest_rates_polars()
+        sgd_interest_rates = download_sgd_interest_rates()
         sgd_interest_rates.write_csv("data/sgd_interest_rates.csv")
 
     sgd_interest_rates_1m = (
@@ -567,7 +563,7 @@ def load_sgd_interest_rates_polars():
     return sgd_interest_rates, sgd_interest_rates_1m
 
 
-def read_sgs_data_polars():
+def read_sgs_data():
     with open("data/SGS - Historical Prices and Yields - Benchmark Issues.csv") as f:
         file = f.readlines()
         columns = file[4].strip("\n").split(",")
@@ -604,8 +600,8 @@ def read_sgs_data_polars():
     )
 
 
-def load_sgs_rates_polars():
-    sgs = read_sgs_data_polars()
+def load_sgs_rates():
+    sgs = read_sgs_data()
     sgs = (
         sgs.select(
             pl.all()
@@ -623,8 +619,8 @@ def load_sgs_rates_polars():
     return sgs
 
 
-def load_sgs_returns_polars():
-    sgs_rates = load_sgs_rates_polars()
+def load_sgs_returns():
+    sgs_rates = load_sgs_rates()
     sgs_returns = pl.DataFrame().with_columns(sgs_rates["date"])
     # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
     for duration in sgs_rates.drop("date").columns:
@@ -659,7 +655,7 @@ def load_sgs_returns_polars():
     return sgs_returns
 
 
-def download_sg_cpi_polars():
+def download_sg_cpi():
     sg_cpi_response = httpx.get(
         "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
         params={"seriesNoORrowNo": 1},
@@ -686,7 +682,7 @@ def download_sg_cpi_polars():
     return sg_cpi
 
 
-def load_sg_cpi_polars():
+def load_sg_cpi():
     sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
     if (
         sg_cpi.get_column("date")
@@ -696,12 +692,12 @@ def load_sg_cpi_polars():
         .lt(datetime.date.today())
         .last()
     ):
-        sg_cpi = download_sg_cpi_polars()
+        sg_cpi = download_sg_cpi()
         sg_cpi.write_csv("data/sg_cpi.csv")
     return sg_cpi
 
 
-async def download_us_cpi_polars_async():
+async def download_us_cpi_async():
     async with httpx.AsyncClient() as client:
         tasks = (
             client.post(
@@ -709,7 +705,7 @@ async def download_us_cpi_polars_async():
                 json={
                     "seriesid": ["CUSR0000SA0"],
                     "startyear": f"{year}",
-                    "endyear": f"{year+9}",
+                    "endyear": f"{year + 9}",
                     "catalog": "true",
                     "registrationkey": os.environ["BLS_API_KEY"],
                 },
@@ -742,7 +738,7 @@ async def download_us_cpi_polars_async():
     return us_cpi
 
 
-async def load_us_cpi_polars_async():
+async def load_us_cpi_async():
     us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
     if (
         us_cpi.get_column("date")
@@ -752,7 +748,7 @@ async def load_us_cpi_polars_async():
         .last()
         and "BLS_API_KEY" in os.environ
     ):
-        us_cpi = await download_us_cpi_polars_async()
+        us_cpi = await download_us_cpi_async()
         us_cpi.write_csv("data/us_cpi.csv")
         return us_cpi
 
