@@ -1093,6 +1093,8 @@ def add_allocation(
 @app.callback(
     Output("portfolios", "value"),
     Output("portfolios", "options"),
+    Output("portfolio-allocations", "value", allow_duplicate=True),
+    Output("portfolio-allocations", "options", allow_duplicate=True),
     Input("add-portfolio-button", "n_clicks"),
     State("portfolios", "value"),
     State("portfolios", "options"),
@@ -1121,12 +1123,12 @@ def add_portfolio(
         for portfolio_allocation in portfolio_allocation_strs
     )
     if portfolio_strs is None:
-        return [portfolio_str], {portfolio_str: portfolio_title}
+        return [portfolio_str], {portfolio_str: portfolio_title}, [], {}
     if portfolio_str in portfolio_strs:
         return no_update
     portfolio_strs.append(portfolio_str)
     portfolio_options.update({portfolio_str: portfolio_title})
-    return portfolio_strs, portfolio_options
+    return portfolio_strs, portfolio_options, [], {}
 
 
 @app.callback(
