@@ -14,7 +14,7 @@ dependencies = [
     "requests>=2.32.3",
     "scipy>=1.15.2",
     "yfinance>=0.2.56",
-    "polars>=1.28.0",
+    "polars>=1.27.1",
     "pyarrow>=19.0.1",
     "fastexcel>=0.13.0",
 ]
