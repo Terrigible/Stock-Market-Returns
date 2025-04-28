@@ -86,7 +86,12 @@ def load_data(
     source = security["source"]
     if source == "MSCI":
         series = read_msci_data(
-            f"data/MSCI/{security['msci_base_index']}/{security['msci_size']}/{security['msci_style']}/*{security['msci_tax_treatment']} {interval}*.xls"
+            f"data/"
+            f"MSCI/"
+            f"{security['msci_base_index']}/"
+            f"{security['msci_size']}/"
+            f"{security['msci_style']}/"
+            f"*{security['msci_tax_treatment']} {interval}*.xls"
         ).iloc[:, 0]
     elif source == "FRED":
         if security["fred_index"] == "US-T":
@@ -430,7 +435,12 @@ def add_index(
 ):
     if index_provider == "MSCI":
         if not glob(
-            f"data/{index_provider}/{msci_base_index}/{msci_size}/{msci_style}/* {msci_tax_treatment}*.xls"
+            f"data/"
+            f"{index_provider}/"
+            f"{msci_base_index}/"
+            f"{msci_size}/"
+            f"{msci_style}/"
+            f"* {msci_tax_treatment}*.xls"
         ):
             return True, no_update, no_update
         index = (

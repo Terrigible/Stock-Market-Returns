@@ -69,11 +69,15 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
 ):
     if investment_horizon < dca_length:
         raise ValueError(
-            f"Investment horizon ({investment_horizon}) must be greater than or equal to DCA length ({dca_length})"
+            f"Investment horizon ({investment_horizon}) "
+            f"must be greater than or equal to "
+            f"DCA length ({dca_length})"
         )
     if fixed_transaction_fees >= total_investment / dca_length * dca_interval:
         raise ValueError(
-            f"Fixed fees ({fixed_transaction_fees}) must be less than the amount invested in each DCA ({total_investment / dca_length * dca_interval})"
+            f"Fixed fees ({fixed_transaction_fees}) "
+            f"must be less than "
+            f"the amount invested in each DCA ({total_investment / dca_length * dca_interval})"
         )
     if dca_interval > dca_length:
         raise ValueError(
@@ -81,7 +85,9 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
         )
     if dca_interval >= investment_horizon / 2:
         print(
-            f"Warning: DCA interval ({dca_interval}) is large relative to investment horizon ({investment_horizon}). Figures might not be representative of market returns"
+            f"Warning: DCA interval ({dca_interval}) "
+            f"is large relative to investment horizon ({investment_horizon}). "
+            f"Figures might not be representative of market returns"
         )
     res = np.empty_like(monthly_returns)
     res.fill(np.nan)
