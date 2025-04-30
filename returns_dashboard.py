@@ -1315,7 +1315,7 @@ def update_portfolio_graph(
                 [
                     go.Histogram(
                         x=[None],
-                        name=portfolio_options[baseline_security],
+                        name=portfolio_options[baseline_security].replace(", ", "<br>"),
                         marker=dict(color=portfolios_colourmap[baseline_security]),
                         histnorm="probability",
                         opacity=0.7,
@@ -1326,7 +1326,7 @@ def update_portfolio_graph(
                     *[
                         go.Histogram(
                             x=portfolios_df[column],
-                            name=portfolio_options[column],
+                            name=portfolio_options[column].replace(", ", "<br>"),
                             marker=dict(color=portfolios_colourmap[column]),
                             histnorm="probability",
                             opacity=0.7,
@@ -1364,7 +1364,7 @@ def update_portfolio_graph(
                 y=portfolios_df[column],
                 xperiod=xperiod,
                 xperiodalignment="middle",
-                name=portfolio_options[column],
+                name=portfolio_options[column].replace(", ", "<br>"),
                 hovertext=hovertext,
                 marker=dict(color=portfolios_colourmap[column]),
             )
@@ -1376,7 +1376,7 @@ def update_portfolio_graph(
             go.Scatter(
                 x=portfolios_df.index,
                 y=portfolios_df[column],
-                name=portfolio_options[column],
+                name=portfolio_options[column].replace(", ", "<br>"),
                 line=dict(color=portfolios_colourmap[column], dash="dash")
                 if y_var == "rolling_returns" and column == baseline_security
                 else dict(color=portfolios_colourmap[column]),
@@ -1445,6 +1445,7 @@ def update_portfolio_graph(
         ),
         barmode=barmode,
         showlegend=True,
+        legend=go.layout.Legend(valign="top"),
         shapes=shapes,
     )
     return dict(data=data, layout=layout)
@@ -1579,7 +1580,7 @@ def update_accumulation_strategies(
         strategy = (
             strategy_str,
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
-            f"DCA,"
+            f"DCA, "
             f"{monthly_investment} invested monthly for {dca_length} months, "
             f"{dca_interval} months apart, held for {investment_horizon} months, "
             f"{adjust_for_inflation} adjusted for inflation, "
@@ -1725,13 +1726,15 @@ def update_accumulation_strategy_graph(
                 x=ending_values.index,
                 y=ending_values[strategy],
                 mode="lines",
-                name=strategy_options[strategy],
+                name=strategy_options[strategy].replace(", ", "<br>"),
             )
             for strategy in ending_values.columns
         ],
-        "layout": {
-            "title": "Strategy Performance",
-        },
+        "layout": go.Layout(
+            title="Strategy Performance",
+            showlegend=True,
+            legend=go.layout.Legend(valign="top"),
+        ),
     }
 
 
@@ -1931,13 +1934,15 @@ def update_withdrawal_strategy_graph(
                 x=ending_values.index,
                 y=ending_values[strategy],
                 mode="lines",
-                name=strategy_options[strategy],
+                name=strategy_options[strategy].replace(", ", "<br>"),
             )
             for strategy in ending_values.columns
         ],
-        "layout": {
-            "title": "Strategy Performance",
-        },
+        "layout": go.Layout(
+            title="Strategy Performance",
+            showlegend=True,
+            legend=go.layout.Legend(valign="top"),
+        ),
     }
 
 
