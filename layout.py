@@ -601,16 +601,14 @@ app_layout = dbc.Tabs(
                                 value="LS",
                                 id="accumulation-ls-dca-selection",
                             ),
-                            html.Div(
-                                [
-                                    dbc.Label("Total Investment Amount"),
-                                    dbc.Input(
-                                        id="accumulation-investment-amount-input",
-                                        type="number",
-                                        min=0.01,
-                                    ),
-                                ],
-                                id="accumulation-ls-input-container",
+                            dbc.Label(
+                                "Total Investment Amount",
+                                id="accumulation-investment-amount-label",
+                            ),
+                            dbc.Input(
+                                id="accumulation-investment-amount-input",
+                                type="number",
+                                min=0.01,
                             ),
                             html.Div(
                                 [

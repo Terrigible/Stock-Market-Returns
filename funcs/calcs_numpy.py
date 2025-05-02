@@ -126,6 +126,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     dca_length: int,
     dca_interval: int,
     investment_horizon: int,
+    initial_portfolio_value: float,
     initial_monthly_amount: float,
     cpi: np.ndarray,
     variable_transaction_fees: float,
@@ -150,7 +151,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         if i < investment_horizon:
             res[i] = np.nan
             continue
-        share_value = 0
+        share_value = initial_portfolio_value
         funds_to_invest = 0
         monthly_amounts = (
             cpi[i - investment_horizon : i - investment_horizon + dca_length]

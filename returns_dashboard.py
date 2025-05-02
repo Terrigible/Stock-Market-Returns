@@ -1461,14 +1461,14 @@ def update_strategy_portfolios(portfolio_options: dict[str, str]):
 
 
 @app.callback(
-    Output("accumulation-ls-input-container", "style"),
+    Output("accumulation-investment-amount-label", "children"),
     Output("accumulation-dca-input-container", "style"),
     Input("accumulation-ls-dca-selection", "value"),
 )
 def update_ls_input_visibility(ls_dca: str):
     if ls_dca == "LS":
-        return {"display": "block"}, {"display": "none"}
-    return {"display": "none"}, {"display": "block"}
+        return "Total Investment Amount", {"display": "none"}
+    return "Initial Portfolio Value", {"display": "block"}
 
 
 @app.callback(
@@ -1580,6 +1580,7 @@ def update_accumulation_strategies(
         strategy = (
             strategy_str,
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
+            f"{investment_amount} initial capital, "
             f"DCA, "
             f"{monthly_investment} invested monthly for {dca_length} months, "
             f"{dca_interval} months apart, held for {investment_horizon} months, "
@@ -1708,6 +1709,7 @@ def update_accumulation_strategy_graph(
                     dca_length,
                     dca_interval,
                     investment_horizon,
+                    investment_amount,
                     monthly_investment,
                     cpi,
                     variable_transaction_fees,
