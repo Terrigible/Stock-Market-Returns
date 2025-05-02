@@ -903,7 +903,9 @@ def update_graph(
                     go.Histogram(
                         x=[None],
                         name=selected_securities_options[baseline_security],
-                        marker=dict(color=securities_colourmap[baseline_security]),
+                        marker=go.histogram.Marker(
+                            color=securities_colourmap[baseline_security]
+                        ),
                         histnorm="probability",
                         opacity=0.7,
                         showlegend=True,
@@ -914,7 +916,9 @@ def update_graph(
                         go.Histogram(
                             x=df[column],
                             name=selected_securities_options[column],
-                            marker=dict(color=securities_colourmap[column]),
+                            marker=go.histogram.Marker(
+                                color=securities_colourmap[column]
+                            ),
                             histnorm="probability",
                             opacity=0.7,
                             showlegend=True,
@@ -953,7 +957,7 @@ def update_graph(
                 xperiodalignment="middle",
                 name=selected_securities_options[column],
                 hovertext=hovertext,
-                marker=dict(color=securities_colourmap[column]),
+                marker=go.bar.Marker(color=securities_colourmap[column]),
             )
             for column in df.columns
             if column != baseline_security
@@ -964,9 +968,9 @@ def update_graph(
                 x=df.index,
                 y=df[column],
                 name=selected_securities_options[column],
-                line=dict(color=securities_colourmap[column], dash="dash")
+                line=go.scatter.Line(color=securities_colourmap[column], dash="dash")
                 if y_var == "rolling_returns" and column == baseline_security
-                else dict(color=securities_colourmap[column]),
+                else go.scatter.Line(color=securities_colourmap[column]),
             )
             for column in df.columns
         ]
@@ -974,14 +978,14 @@ def update_graph(
     if y_var == "rolling_returns" and chart_type == "hist":
         barmode = "overlay"
         shapes = [
-            dict(
+            go.layout.Shape(
                 type="line",
                 x0=0,
                 x1=0,
                 y0=0,
                 y1=1,
                 yref="paper",
-                line=dict(
+                line=go.layout.shape.Line(
                     color=securities_colourmap[baseline_security]
                     if baseline_security != "None"
                     else "grey",
@@ -1019,14 +1023,14 @@ def update_graph(
         title=title,
         hovermode="x",
         xaxis=(
-            dict(
+            go.layout.XAxis(
                 ticklabelmode="period",
                 tickformat=xtickformat,
             )
             if y_var == "calendar_returns"
             else None
         ),
-        yaxis=dict(
+        yaxis=go.layout.YAxis(
             tickformat=ytickformat,
             type="log" if "log" in log_scale else "linear",
         ),
@@ -1316,7 +1320,9 @@ def update_portfolio_graph(
                     go.Histogram(
                         x=[None],
                         name=portfolio_options[baseline_security].replace(", ", "<br>"),
-                        marker=dict(color=portfolios_colourmap[baseline_security]),
+                        marker=go.histogram.Marker(
+                            color=portfolios_colourmap[baseline_security]
+                        ),
                         histnorm="probability",
                         opacity=0.7,
                         showlegend=True,
@@ -1327,7 +1333,9 @@ def update_portfolio_graph(
                         go.Histogram(
                             x=portfolios_df[column],
                             name=portfolio_options[column].replace(", ", "<br>"),
-                            marker=dict(color=portfolios_colourmap[column]),
+                            marker=go.histogram.Marker(
+                                color=portfolios_colourmap[column]
+                            ),
                             histnorm="probability",
                             opacity=0.7,
                             showlegend=True,
@@ -1366,7 +1374,7 @@ def update_portfolio_graph(
                 xperiodalignment="middle",
                 name=portfolio_options[column].replace(", ", "<br>"),
                 hovertext=hovertext,
-                marker=dict(color=portfolios_colourmap[column]),
+                marker=go.bar.Marker(color=portfolios_colourmap[column]),
             )
             for column in portfolios_df.columns
             if column != baseline_security
@@ -1377,9 +1385,9 @@ def update_portfolio_graph(
                 x=portfolios_df.index,
                 y=portfolios_df[column],
                 name=portfolio_options[column].replace(", ", "<br>"),
-                line=dict(color=portfolios_colourmap[column], dash="dash")
+                line=go.scatter.Line(color=portfolios_colourmap[column], dash="dash")
                 if y_var == "rolling_returns" and column == baseline_security
-                else dict(color=portfolios_colourmap[column]),
+                else go.scatter.Line(color=portfolios_colourmap[column]),
             )
             for column in portfolios_df.columns
         ]
@@ -1387,14 +1395,14 @@ def update_portfolio_graph(
     if y_var == "rolling_returns" and chart_type == "hist":
         barmode = "overlay"
         shapes = [
-            dict(
+            go.layout.Shape(
                 type="line",
                 x0=0,
                 x1=0,
                 y0=0,
                 y1=1,
                 yref="paper",
-                line=dict(
+                line=go.layout.shape.Line(
                     color=portfolios_colourmap[baseline_security]
                     if baseline_security != "None"
                     else "grey",
@@ -1432,14 +1440,14 @@ def update_portfolio_graph(
         title=title,
         hovermode="x",
         xaxis=(
-            dict(
+            go.layout.XAxis(
                 ticklabelmode="period",
                 tickformat=xtickformat,
             )
             if y_var == "calendar_returns"
             else None
         ),
-        yaxis=dict(
+        yaxis=go.layout.YAxis(
             tickformat=ytickformat,
             type="log" if "log" in log_scale else "linear",
         ),
