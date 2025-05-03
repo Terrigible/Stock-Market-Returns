@@ -307,6 +307,7 @@ app_layout = dbc.Tabs(
                                 id="y-var-selection",
                             ),
                             dbc.Switch("log-scale-switch", label="Logarithmic Scale"),
+                            dbc.Switch("percent-scale-switch", label="% Scale"),
                             html.Div(
                                 [
                                     html.Div(
@@ -469,6 +470,9 @@ app_layout = dbc.Tabs(
                             dbc.Switch(
                                 "portfolio-log-scale-switch",
                                 label="Logarithmic Scale",
+                            ),
+                            dbc.Switch(
+                                "portfolio-percent-scale-switch", label="% Scale"
                             ),
                             html.Div(
                                 [

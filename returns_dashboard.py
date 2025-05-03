@@ -191,11 +191,14 @@ def transform_data(
     series: pd.Series,
     interval: str,
     y_var: str,
+    percent_scale: bool,
     return_duration: str,
     return_interval: str,
     return_type: str,
 ) -> pd.Series:
     if y_var == "price":
+        if percent_scale:
+            series = series.div(series.loc[series.first_valid_index()])
         return series
     if y_var == "drawdown":
         return series.div(series.cummax()).sub(1)
@@ -261,6 +264,7 @@ def load_df(
     adjust_for_inflation: str,
     yf_security: str | None,
     y_var: str,
+    percent_scale: bool,
     return_duration: str,
     return_interval: str,
     return_type: str,
@@ -276,6 +280,7 @@ def load_df(
         series,
         interval,
         y_var,
+        percent_scale,
         return_duration,
         return_interval,
         return_type,
@@ -376,8 +381,7 @@ def update_msci_index_options(index_type: str):
 def update_others_tax_treatment_selection_visibility(others_index: str):
     if others_index in ["STI", "AWORLDS", "SREIT"]:
         return {"display": "none"}
-    else:
-        return {"display": "block"}
+    return {"display": "block"}
 
 
 @app.callback(
@@ -771,12 +775,14 @@ def add_fund(
 @app.callback(
     Output("log-scale-switch", "style"),
     Output("log-scale-switch", "value"),
+    Output("percent-scale-switch", "style"),
+    Output("percent-scale-switch", "value"),
     Input("y-var-selection", "value"),
 )
-def update_log_scale(y_var: str):
+def update_scale_switches(y_var: str):
     if y_var == "price":
-        return {"display": "block"}, no_update
-    return {"display": "none"}, False
+        return {"display": "block"}, no_update, {"display": "block"}, no_update
+    return {"display": "none"}, False, {"display": "none"}, False
 
 
 @app.callback(
@@ -844,6 +850,7 @@ def update_baseline_security_selection_options(
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
     Input("log-scale-switch", "value"),
+    Input("percent-scale-switch", "value"),
     Input("chart-type-selection", "value"),
 )
 def update_graph(
@@ -863,6 +870,7 @@ def update_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     log_scale: bool,
+    percent_scale: bool,
     chart_type: str,
 ):
     securities_colourmap = dict(
@@ -880,6 +888,7 @@ def update_graph(
                 adjust_for_inflation,
                 yf_securities.get(selected_security),
                 y_var,
+                percent_scale,
                 return_duration,
                 return_interval,
                 return_type,
@@ -970,6 +979,10 @@ def update_graph(
                 line=go.scatter.Line(color=securities_colourmap[column], dash="dash")
                 if y_var == "rolling_returns" and column == baseline_security
                 else go.scatter.Line(color=securities_colourmap[column]),
+                hoverinfo="text+name" if log_scale and percent_scale else None,
+                hovertext=df[column].sub(1).apply(lambda x: f"{x:+.2%}")
+                if log_scale and percent_scale
+                else None,
             )
             for column in df.columns
         ]
@@ -1002,8 +1015,17 @@ def update_graph(
         shapes = None
 
     if y_var == "price":
-        title = "Price"
-        ytickformat = ".2f"
+        if percent_scale:
+            title = "% Change"
+            ytickformat = "+.2%"
+        else:
+            title = "Price"
+            ytickformat = ".2f"
+        if log_scale:
+            ytickvals = list(n / 10 for n in range(0, 11)) + [
+                base * 10**exp + 1 for exp in range(0, 6) for base in range(1, 10)
+            ]
+            yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
     elif y_var == "drawdown":
         title = "Drawdown"
         ytickformat = ".2%"
@@ -1032,6 +1054,8 @@ def update_graph(
         yaxis=go.layout.YAxis(
             tickformat=ytickformat,
             type="log" if log_scale else "linear",
+            tickvals=ytickvals if percent_scale and log_scale else None,
+            ticktext=yticktexts if percent_scale and log_scale else None,
         ),
         barmode=barmode,
         showlegend=True,
@@ -1147,12 +1171,14 @@ def add_portfolio(
 @app.callback(
     Output("portfolio-log-scale-switch", "style"),
     Output("portfolio-log-scale-switch", "value"),
+    Output("portfolio-percent-scale-switch", "style"),
+    Output("portfolio-percent-scale-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
 )
-def update_portfolio_log_scale(y_var: str):
+def update_portfolio_scale_switches(y_var: str):
     if y_var == "price":
-        return {"display": "block"}, no_update
-    return {"display": "none"}, False
+        return {"display": "block"}, no_update, {"display": "block"}, no_update
+    return {"display": "none"}, False, {"display": "none"}, False
 
 
 @app.callback(
@@ -1224,6 +1250,7 @@ def update_portfolio_baseline_security_selection_options(
     Input("portfolio-baseline-security-selection", "value"),
     Input("portfolio-baseline-security-selection", "options"),
     Input("portfolio-log-scale-switch", "value"),
+    Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
 )
 def update_portfolio_graph(
@@ -1242,6 +1269,7 @@ def update_portfolio_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     log_scale: bool,
+    percent_scale: bool,
     chart_type: str,
 ):
     if not portfolio_strs:
@@ -1297,6 +1325,7 @@ def update_portfolio_graph(
             portfolio_series,
             "Monthly",
             y_var,
+            percent_scale,
             return_duration,
             return_interval,
             return_type,
@@ -1386,6 +1415,10 @@ def update_portfolio_graph(
                 line=go.scatter.Line(color=portfolios_colourmap[column], dash="dash")
                 if y_var == "rolling_returns" and column == baseline_security
                 else go.scatter.Line(color=portfolios_colourmap[column]),
+                hoverinfo="text+name" if log_scale and percent_scale else None,
+                hovertext=portfolios_df[column].sub(1).apply(lambda x: f"{x:+.2%}")
+                if log_scale and percent_scale
+                else None,
             )
             for column in portfolios_df.columns
         ]
@@ -1418,8 +1451,17 @@ def update_portfolio_graph(
         shapes = None
 
     if y_var == "price":
-        title = "Price"
-        ytickformat = ".2f"
+        if percent_scale:
+            title = "% Change"
+            ytickformat = "+.2%"
+        else:
+            title = "Price"
+            ytickformat = ".2f"
+        if log_scale:
+            ytickvals = list(n / 10 for n in range(0, 11)) + [
+                base * 10**exp + 1 for exp in range(0, 6) for base in range(1, 10)
+            ]
+            yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
     elif y_var == "drawdown":
         title = "Drawdown"
         ytickformat = ".2%"
@@ -1448,6 +1490,8 @@ def update_portfolio_graph(
         yaxis=go.layout.YAxis(
             tickformat=ytickformat,
             type="log" if log_scale else "linear",
+            tickvals=ytickvals if percent_scale and log_scale else None,
+            ticktext=yticktexts if percent_scale and log_scale else None,
         ),
         barmode=barmode,
         showlegend=True,
