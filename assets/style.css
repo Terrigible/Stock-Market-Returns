@@ -3,6 +3,16 @@
     margin-bottom: 0rem;
 }
 
+.form-switch {
+    margin-top: 0.5rem;
+    margin-bottom: 0rem;
+}
+
+.form-check-label {
+    margin-top: 0rem;
+    margin-bottom: 0rem;
+}
+
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none;

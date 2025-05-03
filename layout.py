@@ -306,11 +306,7 @@ app_layout = dbc.Tabs(
                                 value="price",
                                 id="y-var-selection",
                             ),
-                            dbc.Checklist(
-                                {"log": "Logarithmic Scale"},
-                                value=[],
-                                id="log-scale-selection",
-                            ),
+                            dbc.Switch("log-scale-switch", label="Logarithmic Scale"),
                             html.Div(
                                 [
                                     html.Div(
@@ -470,10 +466,9 @@ app_layout = dbc.Tabs(
                                 value="price",
                                 id="portfolio-y-var-selection",
                             ),
-                            dbc.Checklist(
-                                {"log": "Logarithmic Scale"},
-                                value=[],
-                                id="portfolio-log-scale-selection",
+                            dbc.Switch(
+                                "portfolio-log-scale-switch",
+                                label="Logarithmic Scale",
                             ),
                             html.Div(
                                 [

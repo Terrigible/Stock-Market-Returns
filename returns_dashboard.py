@@ -769,15 +769,14 @@ def add_fund(
 
 
 @app.callback(
-    Output("log-scale-selection", "style"),
-    Output("log-scale-selection", "value"),
+    Output("log-scale-switch", "style"),
+    Output("log-scale-switch", "value"),
     Input("y-var-selection", "value"),
-    Input("log-scale-selection", "value"),
 )
-def update_log_scale(y_var: str, log_scale: list[str]):
+def update_log_scale(y_var: str):
     if y_var == "price":
-        return {"display": "block"}, log_scale
-    return {"display": "none"}, []
+        return {"display": "block"}, no_update
+    return {"display": "none"}, False
 
 
 @app.callback(
@@ -844,7 +843,7 @@ def update_baseline_security_selection_options(
     Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
-    Input("log-scale-selection", "value"),
+    Input("log-scale-switch", "value"),
     Input("chart-type-selection", "value"),
 )
 def update_graph(
@@ -863,7 +862,7 @@ def update_graph(
     interval: str,
     baseline_security: str,
     baseline_security_options: dict[str, str],
-    log_scale: list[str],
+    log_scale: bool,
     chart_type: str,
 ):
     securities_colourmap = dict(
@@ -1032,7 +1031,7 @@ def update_graph(
         ),
         yaxis=go.layout.YAxis(
             tickformat=ytickformat,
-            type="log" if "log" in log_scale else "linear",
+            type="log" if log_scale else "linear",
         ),
         barmode=barmode,
         showlegend=True,
@@ -1146,15 +1145,14 @@ def add_portfolio(
 
 
 @app.callback(
-    Output("portfolio-log-scale-selection", "style"),
-    Output("portfolio-log-scale-selection", "value"),
+    Output("portfolio-log-scale-switch", "style"),
+    Output("portfolio-log-scale-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
-    Input("portfolio-log-scale-selection", "value"),
 )
-def update_portfolio_log_scale(y_var: str, log_scale: list[str]):
+def update_portfolio_log_scale(y_var: str):
     if y_var == "price":
-        return {"display": "block"}, log_scale
-    return {"display": "none"}, []
+        return {"display": "block"}, no_update
+    return {"display": "none"}, False
 
 
 @app.callback(
@@ -1225,7 +1223,7 @@ def update_portfolio_baseline_security_selection_options(
     Input("portfolio-return-type-selection", "options"),
     Input("portfolio-baseline-security-selection", "value"),
     Input("portfolio-baseline-security-selection", "options"),
-    Input("portfolio-log-scale-selection", "value"),
+    Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
 )
 def update_portfolio_graph(
@@ -1243,7 +1241,7 @@ def update_portfolio_graph(
     return_type_options: dict[str, str],
     baseline_security: str,
     baseline_security_options: dict[str, str],
-    log_scale: list[str],
+    log_scale: bool,
     chart_type: str,
 ):
     if not portfolio_strs:
@@ -1449,7 +1447,7 @@ def update_portfolio_graph(
         ),
         yaxis=go.layout.YAxis(
             tickformat=ytickformat,
-            type="log" if "log" in log_scale else "linear",
+            type="log" if log_scale else "linear",
         ),
         barmode=barmode,
         showlegend=True,
@@ -1588,8 +1586,8 @@ def update_accumulation_strategies(
         strategy = (
             strategy_str,
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
-            f"{investment_amount} initial capital, "
             f"DCA, "
+            f"{investment_amount} initial capital, "
             f"{monthly_investment} invested monthly for {dca_length} months, "
             f"{dca_interval} months apart, held for {investment_horizon} months, "
             f"{adjust_for_inflation} adjusted for inflation, "
