@@ -198,7 +198,7 @@ def transform_data(
 ) -> pd.Series:
     if y_var == "price":
         if percent_scale:
-            series = series.div(series.loc[series.first_valid_index()])
+            series = series.div(series.loc[series.first_valid_index()]).sub(1)
         return series
     if y_var == "drawdown":
         return series.div(series.cummax()).sub(1)
@@ -925,13 +925,13 @@ def update_graph(
         data = [
             go.Scatter(
                 x=df.index,
-                y=df[column],
+                y=df[column].add(1 if log_scale and percent_scale else 0),
                 name=trace_options[column],
                 line=go.scatter.Line(color=trace_colourmap[column], dash="dash")
                 if y_var == "rolling_returns" and column == baseline_trace
                 else go.scatter.Line(color=trace_colourmap[column]),
                 hoverinfo="text+name" if log_scale and percent_scale else None,
-                hovertext=df[column].sub(1).apply(lambda x: f"{x:+.2%}")
+                hovertext=df[column].apply(lambda x: f"{x:+.2%}")
                 if log_scale and percent_scale
                 else None,
             )
