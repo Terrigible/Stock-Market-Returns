@@ -849,59 +849,191 @@ def update_graph(
     percent_scale: bool,
     chart_type: str,
 ):
-    if y_var in ["rolling_returns", "calendar_returns"] and baseline_trace != "None":
-        non_baseline_securities = df.columns.difference([baseline_trace])
-        df = df.sub(df[baseline_trace], axis=0, level=0).dropna(
-            subset=non_baseline_securities, how="all"
+    layout = go.Layout(
+        hovermode="x",
+        showlegend=True,
+        legend=go.layout.Legend(valign="top"),
+    )
+
+    if y_var == "price":
+        layout.update(
+            title="Price",
+            yaxis_tickformat=".2f",
         )
-        if y_var == "calendar_returns":
-            df = df.drop(columns=baseline_trace)
-    if y_var == "rolling_returns" and chart_type == "hist":
-        data = list(
-            filter(
-                None,
-                [
-                    go.Histogram(
-                        x=[None],
-                        name=trace_options[baseline_trace],
-                        marker=go.histogram.Marker(
+
+        price_adj = 0
+        hoverinfo = None
+
+        if percent_scale:
+            layout.update(title="% Change")
+            layout.update(yaxis_tickformat="+.2%")
+
+        if log_scale:
+            layout.update(yaxis_type="log")
+
+        if percent_scale and log_scale:
+            price_adj = 1
+            hoverinfo = "text+name"
+            ytickvals = list(n / 10 for n in range(0, 11)) + [
+                base * 10**exp + 1 for exp in range(0, 6) for base in range(1, 10)
+            ]
+            yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
+            layout.update(yaxis_tickvals=ytickvals)
+            layout.update(yaxis_ticktext=yticktexts)
+
+        data = [
+            go.Scatter(
+                x=df.index,
+                y=df[column].add(price_adj),
+                name=trace_options[column],
+                line=go.scatter.Line(color=trace_colourmap[column]),
+                hoverinfo=hoverinfo,
+                hovertext=df[column].apply(lambda x: f"{x:+.2%}")
+                if log_scale and percent_scale
+                else None,
+            )
+            for column in df.columns
+        ]
+
+    elif y_var == "drawdown":
+        layout = layout.update(
+            title="Drawdown",
+            yaxis_tickformat=".2%",
+        )
+
+        data = [
+            go.Scatter(
+                x=df.index,
+                y=df[column],
+                name=trace_options[column],
+                line=go.scatter.Line(color=trace_colourmap[column]),
+            )
+            for column in df.columns
+        ]
+
+    elif y_var == "rolling_returns":
+        layout.update(yaxis_tickformat=".2%")
+
+        title = (
+            f"{return_duration_options[return_duration]}"
+            f"{return_type_options[return_type]} Rolling Returns"
+        )
+
+        if baseline_trace != "None":
+            df = df.sub(df[baseline_trace], axis=0, level=0).dropna(
+                subset=df.columns.difference([baseline_trace]), how="all"
+            )
+            title += f" vs {baseline_trace_options[baseline_trace]}"
+
+        layout = layout.update(
+            title=title,
+        )
+
+        if chart_type == "line":
+            data = [
+                go.Scatter(
+                    x=df.index,
+                    y=df[column],
+                    name=trace_options[column],
+                    line=go.scatter.Line(
+                        color=trace_colourmap[column],
+                        dash=("dash" if column == baseline_trace else None),
+                    ),
+                )
+                for column in df.columns
+            ]
+
+        elif chart_type == "hist":
+            layout.update(
+                barmode="overlay",
+                shapes=[
+                    go.layout.Shape(
+                        type="line",
+                        x0=0,
+                        x1=0,
+                        y0=0,
+                        y1=1,
+                        yref="paper",
+                        line=go.layout.shape.Line(
                             color=trace_colourmap[baseline_trace]
+                            if baseline_trace != "None"
+                            else "grey",
+                            width=1,
+                            dash="dash",
                         ),
-                        histnorm="probability",
                         opacity=0.7,
-                        showlegend=True,
                     )
-                    if baseline_trace != "None"
-                    else None,
-                    *[
+                ],
+            )
+
+            data = list(
+                filter(
+                    None,
+                    [
                         go.Histogram(
-                            x=df[column],
-                            name=trace_options[column],
-                            marker=go.histogram.Marker(color=trace_colourmap[column]),
+                            x=[None],
+                            name=trace_options[baseline_trace],
+                            marker=go.histogram.Marker(
+                                color=trace_colourmap[baseline_trace]
+                            ),
                             histnorm="probability",
                             opacity=0.7,
                             showlegend=True,
                         )
-                        for column in df.columns
-                        if column != baseline_trace
+                        if baseline_trace != "None"
+                        else None,
+                        *[
+                            go.Histogram(
+                                x=df[column],
+                                name=trace_options[column],
+                                marker=go.histogram.Marker(
+                                    color=trace_colourmap[column]
+                                ),
+                                histnorm="probability",
+                                opacity=0.7,
+                                showlegend=True,
+                            )
+                            for column in df.columns
+                            if column != baseline_trace
+                        ],
                     ],
-                ],
+                )
             )
-        )
+
+        else:
+            raise ValueError("Invalid chart_type")
 
     elif y_var == "calendar_returns":
+        layout.update(
+            xaxis_ticklabelmode="period",
+            yaxis_tickformat=".2%",
+            barmode="group",
+        )
+
+        title = f"{return_interval_options[return_interval]} Returns"
+
+        if baseline_trace != "None":
+            df = (
+                df.sub(df[baseline_trace], axis=0, level=0)
+                .dropna(subset=df.columns.difference([baseline_trace]), how="all")
+                .drop(columns=baseline_trace)
+            )
+            title += f" vs {baseline_trace_options[baseline_trace]}"
+
+        layout.update(title=title)
+
         if return_interval == "1mo":
             index_offset = pd.offsets.BMonthEnd(0)
             xperiod = "M1"
-            xtickformat = "%b %Y"
+            layout.update(xaxis_tickformat="%b %Y")
         elif return_interval == "3mo":
             index_offset = pd.offsets.BQuarterEnd(0)
             xperiod = "M3"
-            xtickformat = "Q%q %Y"
+            layout.update(xaxis_tickformat="Q%q %Y")
         elif return_interval == "1y":
             index_offset = pd.offsets.BYearEnd(0)
             xperiod = "M12"
-            xtickformat = "%Y"
+            layout.update(xaxis_tickformat="%Y")
         else:
             raise ValueError("Invalid return_interval")
 
@@ -922,97 +1054,7 @@ def update_graph(
             if column != baseline_trace
         ]
     else:
-        data = [
-            go.Scatter(
-                x=df.index,
-                y=df[column].add(1 if log_scale and percent_scale else 0),
-                name=trace_options[column],
-                line=go.scatter.Line(color=trace_colourmap[column], dash="dash")
-                if y_var == "rolling_returns" and column == baseline_trace
-                else go.scatter.Line(color=trace_colourmap[column]),
-                hoverinfo="text+name" if log_scale and percent_scale else None,
-                hovertext=df[column].apply(lambda x: f"{x:+.2%}")
-                if log_scale and percent_scale
-                else None,
-            )
-            for column in df.columns
-        ]
-
-    if y_var == "rolling_returns" and chart_type == "hist":
-        barmode = "overlay"
-        shapes = [
-            go.layout.Shape(
-                type="line",
-                x0=0,
-                x1=0,
-                y0=0,
-                y1=1,
-                yref="paper",
-                line=go.layout.shape.Line(
-                    color=trace_colourmap[baseline_trace]
-                    if baseline_trace != "None"
-                    else "grey",
-                    width=1,
-                    dash="dash",
-                ),
-                opacity=0.7,
-            )
-        ]
-    elif y_var == "calendar_returns":
-        barmode = "group"
-        shapes = None
-    else:
-        barmode = None
-        shapes = None
-
-    if y_var == "price":
-        if percent_scale:
-            title = "% Change"
-            ytickformat = "+.2%"
-        else:
-            title = "Price"
-            ytickformat = ".2f"
-        if log_scale:
-            ytickvals = list(n / 10 for n in range(0, 11)) + [
-                base * 10**exp + 1 for exp in range(0, 6) for base in range(1, 10)
-            ]
-            yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
-    elif y_var == "drawdown":
-        title = "Drawdown"
-        ytickformat = ".2%"
-    elif y_var == "rolling_returns":
-        title = f"{return_duration_options[return_duration]} {return_type_options[return_type]} Rolling Returns"
-        ytickformat = ".2%"
-    elif y_var == "calendar_returns":
-        title = f"{return_interval_options[return_interval]} Returns"
-        ytickformat = ".2%"
-    else:
         raise ValueError("Invalid y_var")
-    if baseline_trace != "None":
-        title += f" vs {baseline_trace_options[baseline_trace]}"
-
-    layout = go.Layout(
-        title=title,
-        hovermode="x",
-        xaxis=(
-            go.layout.XAxis(
-                ticklabelmode="period",
-                tickformat=xtickformat,
-            )
-            if y_var == "calendar_returns"
-            else None
-        ),
-        yaxis=go.layout.YAxis(
-            tickformat=ytickformat,
-            type="log" if log_scale else "linear",
-            tickvals=ytickvals if percent_scale and log_scale else None,
-            ticktext=yticktexts if percent_scale and log_scale else None,
-        ),
-        barmode=barmode,
-        showlegend=True,
-        legend=go.layout.Legend(valign="top"),
-        shapes=shapes,
-    )
     return data, layout
 
 
