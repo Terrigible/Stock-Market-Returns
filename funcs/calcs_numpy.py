@@ -154,13 +154,14 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         share_value = initial_portfolio_value
         funds_to_invest = 0
         monthly_amounts = (
-            cpi[i - investment_horizon : i - investment_horizon + dca_length]
-            / cpi[i - investment_horizon]
+            cpi[i - investment_horizon + 1 : i - investment_horizon + dca_length + 1]
+            / cpi[i - investment_horizon + 1]
             * initial_monthly_amount
         )
         for index, j in enumerate(
             range(i - investment_horizon, i - investment_horizon + dca_length)
         ):
+            share_value *= monthly_returns_with_fees[j + 1]
             funds_to_invest += monthly_amounts[index]
             if ((index + 1) % dca_interval == 0) or (index + 1 == dca_length):
                 share_value += (
@@ -170,7 +171,6 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 funds_to_invest = 0
             else:
                 funds_to_invest *= cash_returns[j + 1]
-            share_value *= monthly_returns_with_fees[j + 1]
         for j in range(i - investment_horizon + dca_length, i):
             share_value *= monthly_returns_with_fees[j + 1]
         res[i] = share_value
