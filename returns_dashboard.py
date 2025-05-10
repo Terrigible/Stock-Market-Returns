@@ -1,4 +1,5 @@
 import json
+import time
 from functools import cache, reduce
 from glob import glob
 from io import StringIO
@@ -1311,6 +1312,47 @@ def update_portfolio_baseline_security_selection_options(
     )
 
 
+def load_portfolio(
+    portfolio_str: str,
+    currency: str,
+    adjust_for_inflation: str,
+    yf_securities: dict[str, str],
+):
+    portfolio_allocation_strs: list[str] = json.loads(portfolio_str)
+    portfolio_allocations: dict[str, int | float] = reduce(
+        dict.__or__, map(json.loads, portfolio_allocation_strs)
+    )
+    securities = portfolio_allocations.keys()
+    weights = list(portfolio_allocations.values())
+    portfolio_df = pd.concat(
+        [
+            load_data(
+                security,
+                "Monthly",
+                currency,
+                adjust_for_inflation,
+                yf_securities.get(security),
+            )
+            for security in securities
+        ],
+        axis=1,
+    )
+    portfolio_series = (
+        portfolio_df.pct_change()
+        .mul(weights)
+        .div(100)
+        .sum(axis=1, skipna=False)
+        .add(1)
+        .cumprod()
+        .rename("price")
+    )
+    portfolio_series.iloc[
+        portfolio_series.index.get_indexer([portfolio_series.first_valid_index()])[0]
+        - 1
+    ] = 1
+    return portfolio_series
+
+
 @app.callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
@@ -1368,40 +1410,9 @@ def update_portfolio_graph(
     }
     data = []
     for portfolio_str in portfolio_strs:
-        portfolio: list[str] = json.loads(portfolio_str)
-        portfolio_allocations: dict[str, int | float] = reduce(
-            dict.__or__, map(json.loads, portfolio)
+        portfolio_series = load_portfolio(
+            portfolio_str, currency, adjust_for_inflation, yf_securities
         )
-        securities = portfolio_allocations.keys()
-        weights = list(portfolio_allocations.values())
-        portfolio_df = pd.concat(
-            [
-                load_data(
-                    security,
-                    "Monthly",
-                    currency,
-                    adjust_for_inflation,
-                    yf_securities.get(security),
-                )
-                for security in securities
-            ],
-            axis=1,
-        )
-        portfolio_series = (
-            portfolio_df.pct_change()
-            .mul(weights)
-            .div(100)
-            .sum(axis=1, skipna=False)
-            .add(1)
-            .cumprod()
-            .rename("price")
-        )
-        portfolio_series.iloc[
-            portfolio_series.index.get_indexer([portfolio_series.first_valid_index()])[
-                0
-            ]
-            - 1
-        ] = 1
         portfolio_series = transform_data(
             portfolio_series,
             "Monthly",
@@ -1615,41 +1626,11 @@ def update_accumulation_strategy_graph(
         fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
         annualised_holding_fees = float(strategy["annualised_holding_fees"])
 
-        portfolio_allocation_strs: list[str] = json.loads(strategy_portfolio)
-        portfolio_allocations: dict[str, int | float] = reduce(
-            dict.__or__, map(json.loads, portfolio_allocation_strs)
-        )
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        securities = portfolio_allocations.keys()
-        weights = list(portfolio_allocations.values())
-        if sum(weights) > 100:
-            return no_update
-        strategy_series = pd.concat(
-            [
-                load_data(
-                    security,
-                    "Monthly",
-                    currency,
-                    "No",
-                    yf_securities.get(security),
-                )
-                for security in securities
-            ],
-            axis=1,
+        strategy_series = load_portfolio(
+            strategy_portfolio, currency, "No", yf_securities
         )
-        strategy_series = (
-            strategy_series.pct_change()
-            .mul(weights)
-            .div(100)
-            .sum(axis=1, skipna=False)
-            .add(1)
-            .cumprod()
-        )
-        strategy_series.iloc[
-            strategy_series.index.get_indexer([strategy_series.first_valid_index()])[0]
-            - 1
-        ] = 1
         interest_rates = (
             load_fed_funds_rate()[1].reindex(strategy_series.index).fillna(0).to_numpy()
             if currency == "USD"
@@ -1716,6 +1697,7 @@ def update_accumulation_strategy_graph(
         ],
         "layout": go.Layout(
             title="Strategy Performance",
+            hovermode="x",
             showlegend=True,
             legend=go.layout.Legend(valign="top"),
         ),
@@ -1849,42 +1831,12 @@ def update_withdrawal_strategy_graph(
         variable_transaction_fees = float(strategy["variable_transaction_fees"])
         fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
         annualised_holding_fees = float(strategy["annualised_holding_fees"])
-
-        portfolio_allocation_strs: list[str] = json.loads(strategy_portfolio)
-        portfolio_allocations: dict[str, int | float] = reduce(
-            dict.__or__, map(json.loads, portfolio_allocation_strs)
-        )
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
-        securities = portfolio_allocations.keys()
-        weights = list(portfolio_allocations.values())
-        if sum(weights) > 100:
-            return no_update
-        strategy_series = pd.concat(
-            [
-                load_data(
-                    security,
-                    "Monthly",
-                    currency,
-                    "No",
-                    yf_securities.get(security),
-                )
-                for security in securities
-            ],
-            axis=1,
+
+        strategy_series = load_portfolio(
+            strategy_portfolio, currency, "No", yf_securities
         )
-        strategy_series = (
-            strategy_series.pct_change()
-            .mul(weights)
-            .div(100)
-            .sum(axis=1, skipna=False)
-            .add(1)
-            .cumprod()
-        )
-        strategy_series.iloc[
-            strategy_series.index.get_indexer([strategy_series.first_valid_index()])[0]
-            - 1
-        ] = 1
         us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
         sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
         cpi = (
@@ -1924,6 +1876,7 @@ def update_withdrawal_strategy_graph(
         ],
         "layout": go.Layout(
             title="Strategy Performance",
+            hovermode="x",
             showlegend=True,
             legend=go.layout.Legend(valign="top"),
         ),
