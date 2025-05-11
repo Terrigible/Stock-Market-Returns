@@ -916,7 +916,7 @@ def update_graph(
         layout.update(yaxis_tickformat=".2%")
 
         title = (
-            f"{return_duration_options[return_duration]}"
+            f"{return_duration_options[return_duration]} "
             f"{return_type_options[return_type]} Rolling Returns"
         )
 
@@ -1476,7 +1476,7 @@ def update_ls_input_visibility(ls_dca: str):
     State("accumulation-ls-dca-selection", "value"),
     State("accumulation-investment-amount-input", "value"),
     State("accumulation-monthly-investment-input", "value"),
-    State("accumulation-inflation-adjustment-selection", "value"),
+    State("accumulation-inflation-adjustment-switch", "value"),
     State("accumulation-investment-horizon-input", "value"),
     State("accumulation-dca-length-input", "value"),
     State("accumulation-dca-interval-input", "value"),
@@ -1495,7 +1495,7 @@ def update_accumulation_strategies(
     ls_dca: str,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
-    adjust_for_inflation: str,
+    adjust_for_inflation: bool,
     investment_horizon: int | None,
     dca_length: int | None,
     dca_interval: int | None,
@@ -1577,7 +1577,7 @@ def update_accumulation_strategies(
             f"{investment_amount} initial capital, "
             f"{monthly_investment} invested monthly for {dca_length} months, "
             f"{dca_interval} months apart, held for {investment_horizon} months, "
-            f"{adjust_for_inflation} adjusted for inflation, "
+            f"Monthly investment {'' if adjust_for_inflation else 'not '}adjusted for inflation, "
             f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
             f"{annualised_holding_fees}% p.a. Holding Fees",
         )
@@ -1619,7 +1619,7 @@ def update_accumulation_strategy_graph(
         investment_amount = float(strategy["investment_amount"])
         investment_horizon = int(strategy["investment_horizon"])
         monthly_investment = float(strategy["monthly_investment"])
-        adjust_for_inflation = str(strategy["adjust_for_inflation"])
+        adjust_for_inflation = bool(strategy["adjust_for_inflation"])
         dca_length = int(strategy["dca_length"])
         dca_interval = int(strategy["dca_interval"])
         variable_transaction_fees = float(strategy["variable_transaction_fees"])
@@ -1643,7 +1643,7 @@ def update_accumulation_strategy_graph(
         sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
         cpi = (
             np.ones(len(strategy_series))
-            if adjust_for_inflation != "Monthly Investment"
+            if not adjust_for_inflation
             else us_cpi
             if currency == "USD"
             else sg_cpi
@@ -1715,7 +1715,7 @@ def update_accumulation_strategy_graph(
     State("withdrawal-strategy-currency-selection", "value"),
     State("withdrawal-initial-capital-input", "value"),
     State("monthly-withdrawal-input", "value"),
-    State("withdrawal-inflation-adjustment-selection", "value"),
+    State("withdrawal-inflation-adjustment-switch", "value"),
     State("withdrawal-horizon-input", "value"),
     State("withdrawal-interval-input", "value"),
     State("withdrawal-variable-transaction-fees-input", "value"),
@@ -1732,7 +1732,7 @@ def update_withdrawal_strategies(
     currency: str,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
-    adjust_for_inflation: str,
+    adjust_for_inflation: bool,
     withdrawal_horizon: int | None,
     withdrawal_interval: int | None,
     variable_transaction_fees: int | float | None,
@@ -1785,7 +1785,7 @@ def update_withdrawal_strategies(
         f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
         f"{monthly_withdrawal} withdrawn monthly, "
         f"{withdrawal_interval} months apart for {withdrawal_horizon} months, "
-        f"{adjust_for_inflation} adjusted for inflation, "
+        f"Monthly withdrawal {'' if adjust_for_inflation else 'not '}adjusted for inflation, "
         f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
         f"{annualised_holding_fees}% p.a. Holding Fees",
     )
@@ -1826,7 +1826,7 @@ def update_withdrawal_strategy_graph(
         initial_capital = float(strategy["initial_capital"])
         withdrawal_horizon = int(strategy["withdrawal_horizon"])
         monthly_withdrawal = float(strategy["monthly_withdrawal"])
-        adjust_for_inflation = str(strategy["adjust_for_inflation"])
+        adjust_for_inflation = bool(strategy["adjust_for_inflation"])
         withdrawal_interval = int(strategy["withdrawal_interval"])
         variable_transaction_fees = float(strategy["variable_transaction_fees"])
         fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
@@ -1841,7 +1841,7 @@ def update_withdrawal_strategy_graph(
         sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
         cpi = (
             np.ones(len(strategy_series))
-            if adjust_for_inflation != "Monthly Withdrawal"
+            if not adjust_for_inflation
             else us_cpi
             if currency == "USD"
             else sg_cpi

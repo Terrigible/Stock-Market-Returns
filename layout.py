@@ -399,7 +399,7 @@ app_layout = dbc.Tabs(
                 style={
                     "display": "flex",
                     "height": "95vh",
-                    "box-sizing": "border-box",
+                    "boxSizing": "border-box",
                 },
             ),
         ),
@@ -570,7 +570,7 @@ app_layout = dbc.Tabs(
                 style={
                     "display": "flex",
                     "height": "95vh",
-                    "box-sizing": "border-box",
+                    "boxSizing": "border-box",
                 },
             ),
         ),
@@ -617,14 +617,10 @@ app_layout = dbc.Tabs(
                                         type="number",
                                         min=0.01,
                                     ),
-                                    dbc.Label("Adjust for Inflation"),
-                                    dbc.Select(
-                                        {
-                                            "Not": "No",
-                                            "Monthly Investment": "Adjust Monthly Investment",
-                                        },
-                                        value="Not",
-                                        id="accumulation-inflation-adjustment-selection",
+                                    dbc.Switch(
+                                        "accumulation-inflation-adjustment-switch",
+                                        label="Adjust for Inflation",
+                                        style={"marginTop": "0"},
                                     ),
                                 ],
                                 id="accumulation-dca-input-container",
@@ -705,7 +701,7 @@ app_layout = dbc.Tabs(
                 style={
                     "display": "flex",
                     "height": "95vh",
-                    "box-sizing": "border-box",
+                    "boxSizing": "border-box",
                 },
             ),
         ),
@@ -741,14 +737,10 @@ app_layout = dbc.Tabs(
                                 type="number",
                                 min=0.01,
                             ),
-                            dbc.Label("Adjust for Inflation"),
-                            dbc.Select(
-                                {
-                                    "Not": "No",
-                                    "Monthly Withdrawal": "Adjust Monthly Withdrawal",
-                                },
-                                value="Not",
-                                id="withdrawal-inflation-adjustment-selection",
+                            dbc.Switch(
+                                "withdrawal-inflation-adjustment-switch",
+                                label="Adjust for Inflation",
+                                style={"marginTop": "0"},
                             ),
                             dbc.Label("Withdrawal Horizon (Months)"),
                             dbc.Input(
@@ -819,7 +811,7 @@ app_layout = dbc.Tabs(
                 style={
                     "display": "flex",
                     "height": "95vh",
-                    "box-sizing": "border-box",
+                    "boxSizing": "border-box",
                 },
             ),
         ),
