@@ -306,8 +306,14 @@ app_layout = dbc.Tabs(
                                 value="price",
                                 id="y-var-selection",
                             ),
-                            dbc.Switch("log-scale-switch", label="Logarithmic Scale"),
-                            dbc.Switch("percent-scale-switch", label="% Scale"),
+                            dbc.Switch(
+                                "log-scale-switch",
+                                value=False,
+                                label="Logarithmic Scale",
+                            ),
+                            dbc.Switch(
+                                "percent-scale-switch", value=False, label="% Scale"
+                            ),
                             html.Div(
                                 [
                                     html.Div(
@@ -469,10 +475,13 @@ app_layout = dbc.Tabs(
                             ),
                             dbc.Switch(
                                 "portfolio-log-scale-switch",
+                                value=False,
                                 label="Logarithmic Scale",
                             ),
                             dbc.Switch(
-                                "portfolio-percent-scale-switch", label="% Scale"
+                                "portfolio-percent-scale-switch",
+                                value=False,
+                                label="% Scale",
                             ),
                             html.Div(
                                 [
@@ -619,6 +628,7 @@ app_layout = dbc.Tabs(
                                     ),
                                     dbc.Switch(
                                         "accumulation-inflation-adjustment-switch",
+                                        value=False,
                                         label="Adjust for Inflation",
                                         style={"marginTop": "0"},
                                     ),
@@ -739,6 +749,7 @@ app_layout = dbc.Tabs(
                             ),
                             dbc.Switch(
                                 "withdrawal-inflation-adjustment-switch",
+                                value=False,
                                 label="Adjust for Inflation",
                                 style={"marginTop": "0"},
                             ),
