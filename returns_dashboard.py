@@ -1350,6 +1350,7 @@ def load_portfolio(
         portfolio_series.index.get_indexer([portfolio_series.first_valid_index()])[0]
         - 1
     ] = 1
+    portfolio_series = portfolio_series.dropna()
     return portfolio_series
 
 
@@ -1476,13 +1477,14 @@ def update_ls_input_visibility(ls_dca: str):
     State("accumulation-ls-dca-selection", "value"),
     State("accumulation-investment-amount-input", "value"),
     State("accumulation-monthly-investment-input", "value"),
-    State("accumulation-inflation-adjustment-switch", "value"),
+    State("accumulation-monthly-investment-inflation-adjustment-switch", "value"),
     State("accumulation-investment-horizon-input", "value"),
     State("accumulation-dca-length-input", "value"),
     State("accumulation-dca-interval-input", "value"),
     State("accumulation-variable-transaction-fees-input", "value"),
     State("accumulation-fixed-transaction-fees-input", "value"),
     State("accumulation-annualised-holding-fees-input", "value"),
+    State("accumulation-ending-value-inflation-adjustment-switch", "value"),
     prevent_initial_call=True,
 )
 def update_accumulation_strategies(
@@ -1495,13 +1497,14 @@ def update_accumulation_strategies(
     ls_dca: str,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
-    adjust_for_inflation: bool,
+    adjust_monthly_investment_for_inflation: bool,
     investment_horizon: int | None,
     dca_length: int | None,
     dca_interval: int | None,
     variable_transaction_fees: int | float | None,
     fixed_transaction_fees: int | float | None,
     annualised_holding_fees: int | float | None,
+    adjust_ending_value_for_inflation: bool,
 ):
     if strategy_portfolio is None:
         return no_update
@@ -1551,12 +1554,13 @@ def update_accumulation_strategies(
             "investment_amount": investment_amount,
             "investment_horizon": investment_horizon,
             "monthly_investment": monthly_investment,
-            "adjust_for_inflation": adjust_for_inflation,
+            "adjust_monthly_investment_for_inflation": adjust_monthly_investment_for_inflation,
             "dca_length": dca_length,
             "dca_interval": dca_interval,
             "variable_transaction_fees": variable_transaction_fees,
             "fixed_transaction_fees": fixed_transaction_fees,
             "annualised_holding_fees": annualised_holding_fees,
+            "adjust_ending_value_for_inflation": adjust_ending_value_for_inflation,
         }
     )
     if ls_dca == "LS":
@@ -1567,7 +1571,8 @@ def update_accumulation_strategies(
             f"{investment_amount} invested for {investment_horizon} months, "
             f"DCA over {dca_length} months every {dca_interval} months, "
             f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
-            f"{annualised_holding_fees}% p.a. Holding Fees",
+            f"{annualised_holding_fees}% p.a. Holding Fees, "
+            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation",
         )
     else:
         strategy = (
@@ -1577,9 +1582,10 @@ def update_accumulation_strategies(
             f"{investment_amount} initial capital, "
             f"{monthly_investment} invested monthly for {dca_length} months, "
             f"{dca_interval} months apart, held for {investment_horizon} months, "
-            f"Monthly investment {'' if adjust_for_inflation else 'not '}adjusted for inflation, "
+            f"Monthly investment {'' if adjust_monthly_investment_for_inflation else 'not '}adjusted for inflation, "
             f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
-            f"{annualised_holding_fees}% p.a. Holding Fees",
+            f"{annualised_holding_fees}% p.a. Holding Fees, "
+            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation",
         )
 
     if strategies is None:
@@ -1619,12 +1625,17 @@ def update_accumulation_strategy_graph(
         investment_amount = float(strategy["investment_amount"])
         investment_horizon = int(strategy["investment_horizon"])
         monthly_investment = float(strategy["monthly_investment"])
-        adjust_for_inflation = bool(strategy["adjust_for_inflation"])
+        adjust_monthly_investment_for_inflation = bool(
+            strategy["adjust_monthly_investment_for_inflation"]
+        )
         dca_length = int(strategy["dca_length"])
         dca_interval = int(strategy["dca_interval"])
         variable_transaction_fees = float(strategy["variable_transaction_fees"])
         fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
         annualised_holding_fees = float(strategy["annualised_holding_fees"])
+        adjust_ending_value_for_inflation = bool(
+            strategy["adjust_ending_value_for_inflation"]
+        )
 
         variable_transaction_fees /= 100
         annualised_holding_fees /= 100
@@ -1641,13 +1652,9 @@ def update_accumulation_strategy_graph(
         )
         us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
         sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
-        cpi = (
-            np.ones(len(strategy_series))
-            if not adjust_for_inflation
-            else us_cpi
-            if currency == "USD"
-            else sg_cpi
-        )
+        cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
+        if cpi is None:
+            raise ValueError("Invalid currency")
 
         if ls_dca == "LS":
             ending_values = pd.Series(
@@ -1660,6 +1667,8 @@ def update_accumulation_strategy_graph(
                     variable_transaction_fees,
                     fixed_transaction_fees,
                     annualised_holding_fees,
+                    adjust_ending_value_for_inflation,
+                    cpi,
                     interest_rates,
                 ),
                 index=strategy_series.index,
@@ -1674,10 +1683,12 @@ def update_accumulation_strategy_graph(
                     investment_horizon,
                     investment_amount,
                     monthly_investment,
-                    cpi,
+                    adjust_monthly_investment_for_inflation,
                     variable_transaction_fees,
                     fixed_transaction_fees,
                     annualised_holding_fees,
+                    adjust_ending_value_for_inflation,
+                    cpi,
                     interest_rates,
                 ),
                 index=strategy_series.index,
@@ -1715,7 +1726,7 @@ def update_accumulation_strategy_graph(
     State("withdrawal-strategy-currency-selection", "value"),
     State("withdrawal-initial-capital-input", "value"),
     State("monthly-withdrawal-input", "value"),
-    State("withdrawal-inflation-adjustment-switch", "value"),
+    State("withdrawal-monthly-inflation-adjustment-switch", "value"),
     State("withdrawal-horizon-input", "value"),
     State("withdrawal-interval-input", "value"),
     State("withdrawal-variable-transaction-fees-input", "value"),

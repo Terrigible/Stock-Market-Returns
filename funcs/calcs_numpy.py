@@ -65,6 +65,8 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
+    adjust_ending_value_for_inflation: bool,
+    cpi: np.ndarray,
     interest_rates: np.ndarray,
 ):
     if investment_horizon < dca_length:
@@ -117,6 +119,8 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
         cash = 0
         for j in range(i - investment_horizon + dca_length, i):
             share_value *= monthly_returns_with_fees[j + 1]
+        if adjust_ending_value_for_inflation:
+            share_value /= cpi[i] / cpi[i - investment_horizon]
         res[i] = share_value
     return res
 
@@ -128,10 +132,12 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     investment_horizon: int,
     initial_portfolio_value: float,
     initial_monthly_amount: float,
-    cpi: np.ndarray,
+    adjust_monthly_investment_for_inflation: bool,
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
+    adjust_ending_value_for_inflation: bool,
+    cpi: np.ndarray,
     interest_rates: np.ndarray,
 ):
     dca_amount = initial_monthly_amount * dca_interval
@@ -153,11 +159,17 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             continue
         share_value = initial_portfolio_value
         funds_to_invest = 0
-        monthly_amounts = (
-            cpi[i - investment_horizon + 1 : i - investment_horizon + dca_length + 1]
-            / cpi[i - investment_horizon + 1]
-            * initial_monthly_amount
-        )
+
+        if not adjust_monthly_investment_for_inflation:
+            monthly_amounts = np.full(dca_length, initial_monthly_amount)
+        else:
+            monthly_amounts = (
+                cpi[
+                    i - investment_horizon + 1 : i - investment_horizon + dca_length + 1
+                ]
+                / cpi[i - investment_horizon + 1]
+                * initial_monthly_amount
+            )
         for index, j in enumerate(
             range(i - investment_horizon, i - investment_horizon + dca_length)
         ):
@@ -173,6 +185,8 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 funds_to_invest *= cash_returns[j + 1]
         for j in range(i - investment_horizon + dca_length, i):
             share_value *= monthly_returns_with_fees[j + 1]
+        if adjust_ending_value_for_inflation:
+            share_value /= cpi[i] / cpi[i - investment_horizon]
         res[i] = share_value
     return res
 

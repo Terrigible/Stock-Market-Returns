@@ -627,7 +627,7 @@ app_layout = dbc.Tabs(
                                         min=0.01,
                                     ),
                                     dbc.Switch(
-                                        "accumulation-inflation-adjustment-switch",
+                                        "accumulation-monthly-investment-inflation-adjustment-switch",
                                         value=False,
                                         label="Adjust for Inflation",
                                         style={"marginTop": "0"},
@@ -673,6 +673,11 @@ app_layout = dbc.Tabs(
                                 id="accumulation-annualised-holding-fees-input",
                                 type="number",
                                 min=0,
+                            ),
+                            dbc.Switch(
+                                "accumulation-ending-value-inflation-adjustment-switch",
+                                value=False,
+                                label="Adjust Ending Value for Inflation",
                             ),
                             html.P(),
                             dbc.Button(
@@ -748,7 +753,7 @@ app_layout = dbc.Tabs(
                                 min=0.01,
                             ),
                             dbc.Switch(
-                                "withdrawal-inflation-adjustment-switch",
+                                "withdrawal-monthly-inflation-adjustment-switch",
                                 value=False,
                                 label="Adjust for Inflation",
                                 style={"marginTop": "0"},
