@@ -1409,22 +1409,23 @@ def update_portfolio_graph(
     portfolio_options = {
         k: v.replace(", ", "<br>") for k, v in portfolio_options.items()
     }
-    data = []
-    for portfolio_str in portfolio_strs:
-        portfolio_series = load_portfolio(
-            portfolio_str, currency, adjust_for_inflation, yf_securities
-        )
-        portfolio_series = transform_data(
-            portfolio_series,
-            "Monthly",
-            y_var,
-            percent_scale,
-            return_duration,
-            return_interval,
-            return_type,
-        ).rename(portfolio_str)
-        data.append(portfolio_series)
-    portfolios_df = pd.concat(data, axis=1)
+    portfolios_df = pd.concat(
+        [
+            transform_data(
+                load_portfolio(
+                    portfolio_str, currency, adjust_for_inflation, yf_securities
+                ),
+                "Monthly",
+                y_var,
+                percent_scale,
+                return_duration,
+                return_interval,
+                return_type,
+            ).rename(portfolio_str)
+            for portfolio_str in portfolio_strs
+        ],
+        axis=1,
+    )
     data, layout = update_graph(
         portfolios_df,
         portfolios_colourmap,
@@ -1609,7 +1610,6 @@ def update_accumulation_strategy_graph(
     strategy_options: dict[str, str],
     yf_securities: dict[str, str],
 ):
-    series = []
     if not strategy_strs:
         return {
             "data": [],
@@ -1617,6 +1617,13 @@ def update_accumulation_strategy_graph(
                 "title": "Strategy Performance",
             },
         }
+    strategies_colourmap = dict(
+        zip(
+            strategy_options.keys(),
+            cycle(DEFAULT_PLOTLY_COLORS),
+        )
+    )
+    series = []
     for strategy_str in strategy_strs:
         strategy: dict[str, str | int | float] = json.loads(strategy_str)
         strategy_portfolio = str(strategy["strategy_portfolio"])
@@ -1702,6 +1709,7 @@ def update_accumulation_strategy_graph(
                 x=ending_values.index,
                 y=ending_values[strategy],
                 mode="lines",
+                line=go.scatter.Line(color=strategies_colourmap[strategy]),
                 name=strategy_options[strategy].replace(", ", "<br>"),
             )
             for strategy in ending_values.columns
@@ -1822,7 +1830,6 @@ def update_withdrawal_strategy_graph(
     strategy_options: dict[str, str],
     yf_securities: dict[str, str],
 ):
-    series = []
     if not strategy_strs:
         return {
             "data": [],
@@ -1830,6 +1837,13 @@ def update_withdrawal_strategy_graph(
                 "title": "Strategy Performance",
             },
         }
+    strategies_colourmap = dict(
+        zip(
+            strategy_options.keys(),
+            cycle(DEFAULT_PLOTLY_COLORS),
+        )
+    )
+    series = []
     for strategy_str in strategy_strs:
         strategy: dict[str, str | int | float] = json.loads(strategy_str)
         strategy_portfolio = str(strategy["strategy_portfolio"])
@@ -1881,6 +1895,7 @@ def update_withdrawal_strategy_graph(
                 x=ending_values.index,
                 y=ending_values[strategy],
                 mode="lines",
+                line=go.scatter.Line(color=strategies_colourmap[strategy]),
                 name=strategy_options[strategy].replace(", ", "<br>"),
             )
             for strategy in ending_values.columns
