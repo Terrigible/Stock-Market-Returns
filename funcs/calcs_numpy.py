@@ -37,13 +37,9 @@ def calculate_return_vector(
         raise ValueError(
             "Investment horizon must be greater than or equal to DCA length"
         )
-    res = np.empty_like(monthly_returns)
-    res.fill(np.nan)
+    res = np.full_like(monthly_returns, np.nan)
     monthly_returns = 1 + monthly_returns
-    for i in range(len(monthly_returns)):
-        if i < investment_horizon:
-            res[i] = np.nan
-            continue
+    for i in range(investment_horizon, len(monthly_returns)):
         share_value = 0
         cash = 1
         for j in range(i - investment_horizon, i - investment_horizon + dca_length):
@@ -91,16 +87,12 @@ def calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
             f"is large relative to investment horizon ({investment_horizon}). "
             f"Figures might not be representative of market returns"
         )
-    res = np.empty_like(monthly_returns)
-    res.fill(np.nan)
+    res = np.full_like(monthly_returns, np.nan)
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
     cash_returns = (1 + interest_rates / 100) ** (1 / 12)
-    for i in range(len(monthly_returns)):
-        if i < investment_horizon:
-            res[i] = np.nan
-            continue
+    for i in range(investment_horizon, len(monthly_returns)):
         share_value = 0
         dca_amount = total_investment / np.ceil(dca_length / dca_interval)
         cash = total_investment
@@ -147,16 +139,12 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         raise ValueError(
             f"DCA interval ({dca_interval}) must be less than or equal to DCA length ({dca_length})"
         )
-    res = np.empty_like(monthly_returns)
-    res.fill(np.nan)
+    res = np.full_like(monthly_returns, np.nan)
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
     cash_returns = (1 + interest_rates / 100) ** (1 / 12)
-    for i in range(len(monthly_returns)):
-        if i < investment_horizon:
-            res[i] = np.nan
-            continue
+    for i in range(investment_horizon, len(monthly_returns)):
         share_value = initial_portfolio_value
         funds_to_invest = 0
 
@@ -206,11 +194,8 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
-    res = np.zeros(len(monthly_returns))
-    for i in range(len(monthly_returns)):
-        if i < withdrawal_horizon:
-            res[i] = np.nan
-            continue
+    res = np.full_like(monthly_returns, np.nan)
+    for i in range(withdrawal_horizon, len(monthly_returns)):
         share_value = initial_portfolio_value
         withdrawal_amounts = (
             cpi[i - withdrawal_horizon : i]
