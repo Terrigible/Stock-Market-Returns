@@ -773,35 +773,47 @@ def add_fund(
     return selected_securities, selected_securities_options
 
 
+def update_selection_visibility(y_var: str):
+    log_scale_style = {"display": "block"} if y_var == "price" else {"display": "none"}
+    log_scale = False if y_var == "price" else no_update
+    percent_scale_style = (
+        {"display": "block"} if y_var == "price" else {"display": "none"}
+    )
+    percent_scale = False if y_var == "price" else no_update
+    return_selection_style = (
+        {"display": "block"}
+        if y_var in ["rolling_returns", "calendar_returns"]
+        else {"display": "none"}
+    )
+    rolling_return_selection_style = (
+        {"display": "block"} if y_var == "rolling_returns" else {"display": "none"}
+    )
+    calendar_return_selection_style = (
+        {"display": "block"} if y_var == "calendar_returns" else {"display": "none"}
+    )
+    return (
+        log_scale_style,
+        log_scale,
+        percent_scale_style,
+        percent_scale,
+        return_selection_style,
+        rolling_return_selection_style,
+        calendar_return_selection_style,
+    )
+
+
 @app.callback(
     Output("log-scale-switch", "style"),
     Output("log-scale-switch", "value"),
     Output("percent-scale-switch", "style"),
     Output("percent-scale-switch", "value"),
-    Input("y-var-selection", "value"),
-)
-def update_scale_switches(y_var: str):
-    if y_var == "price":
-        return {"display": "block"}, no_update, {"display": "block"}, no_update
-    return {"display": "none"}, False, {"display": "none"}, False
-
-
-@app.callback(
+    Output("return-selection", "style"),
     Output("rolling-return-selection-container", "style"),
     Output("calendar-return-selection-container", "style"),
     Input("y-var-selection", "value"),
 )
-def update_return_duration_visibility(y_var: str):
-    if y_var == "rolling_returns":
-        return {"display": "block"}, {"display": "none"}
-    return {"display": "none"}, {"display": "block"}
-
-
-@app.callback(Output("return-selection", "style"), Input("y-var-selection", "value"))
-def update_return_selection_visibility(y_var: str):
-    if y_var in ["rolling_returns", "calendar_returns"]:
-        return {"display": "block"}
-    return {"display": "none"}
+def update_returns_dashboard_selection_visibility(y_var: str):
+    return update_selection_visibility(y_var)
 
 
 @app.callback(
@@ -1252,33 +1264,13 @@ def add_portfolio(
     Output("portfolio-log-scale-switch", "value"),
     Output("portfolio-percent-scale-switch", "style"),
     Output("portfolio-percent-scale-switch", "value"),
-    Input("portfolio-y-var-selection", "value"),
-)
-def update_portfolio_scale_switches(y_var: str):
-    if y_var == "price":
-        return {"display": "block"}, no_update, {"display": "block"}, no_update
-    return {"display": "none"}, False, {"display": "none"}, False
-
-
-@app.callback(
+    Output("portfolio-return-selection", "style"),
     Output("portfolio-rolling-return-selection-container", "style"),
     Output("portfolio-calendar-return-selection-container", "style"),
     Input("portfolio-y-var-selection", "value"),
 )
-def update_portfolio_return_duration_visibility(y_var: str):
-    if y_var == "rolling_returns":
-        return {"display": "block"}, {"display": "none"}
-    return {"display": "none"}, {"display": "block"}
-
-
-@app.callback(
-    Output("portfolio-return-selection", "style"),
-    Input("portfolio-y-var-selection", "value"),
-)
-def update_portfolio_return_selection_visibility(y_var: str):
-    if y_var in ["rolling_returns", "calendar_returns"]:
-        return {"display": "block"}
-    return {"display": "none"}
+def update_portfolio_selection_visibility(y_var: str):
+    return update_selection_visibility(y_var)
 
 
 @app.callback(
