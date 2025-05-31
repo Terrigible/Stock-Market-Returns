@@ -5,16 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "dash-bootstrap-components>=2.0.2",
+    "dash-bootstrap-components>=2.0.3",
     "dash>=3.0.4",
     "httpx>=0.28.1",
     "pandas>=2.2.3",
-    "plotly>=6.0.1",
+    "plotly>=6.1.2",
     "python-calamine>=0.3.2",
     "requests>=2.32.3",
     "scipy>=1.15.3",
     "yfinance>=0.2.61",
-    "polars>=1.29.0",
+    "polars>=1.30.0",
     "pyarrow>=20.0.0",
     "fastexcel>=0.14.0",
 ]
@@ -26,7 +26,7 @@ dev = [
     "matplotlib>=3.10.3",
     "nbformat>=5.10.4",
     "seaborn>=0.13.2",
-    "selenium>=4.32.0",
+    "selenium>=4.33.0",
     "snakeviz>=2.2.2",
 ]
 prod = ["gunicorn>=23.0.0"]
