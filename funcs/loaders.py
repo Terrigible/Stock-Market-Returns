@@ -325,34 +325,25 @@ def load_fred_usdsgd():
     return usdsgd
 
 
-def download_worldbank_exchange_rates():
-    res = requests.get(
-        "https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF",
-        params={"downloadformat": "csv"},
-        timeout=20,
+def read_worldbank_usdsgd():
+    series = (
+        pd.read_csv("data/World Bank USDSGD.csv")
+        .T.iloc[4:]
+        .rename_axis("date")
+        .rename({0: "usd_sgd"}, axis=1)["usd_sgd"]
+        .astype(float)
     )
-    res.raise_for_status()
-    with ZipFile(BytesIO(res.content)) as zf:
-        for filename in zf.namelist():
-            if not filename.startswith("API"):
-                continue
-            with zf.open(filename) as f:
-                df = pd.read_csv(f, skiprows=4)
-            break
-        else:
-            raise FileNotFoundError("No file found in zip file")
-    series = df.T.loc["1960":"2022", 208].astype(float)
+    series.index = pd.to_datetime(series.index.str[:4])
     return series
 
 
 def load_worldbank_usdsgd():
-    series = download_worldbank_exchange_rates()
+    series = read_worldbank_usdsgd()
+    series = series.set_axis(series.index + pd.DateOffset(months=6))
     return (
         pd.concat(
             [
-                series.set_axis(
-                    pd.to_datetime(series.index, format="%Y") + pd.DateOffset(months=6)
-                ).loc[: load_fred_usdsgd().index[0]],
+                series.loc[: load_fred_usdsgd().index[0]],
                 load_fred_usdsgd().iloc[0:1],
             ],
         )
