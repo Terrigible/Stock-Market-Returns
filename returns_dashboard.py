@@ -222,14 +222,10 @@ def transform_data(
         elif interval == "Daily":
             series = series.div(
                 series.reindex(
-                    (
-                        series.index
-                        - pd.offsets.DateOffset(
-                            months=return_durations[return_duration]
-                        )
-                        + pd.offsets.Day(1)
-                        - pd.offsets.BDay(1)
-                    )
+                    series.index
+                    - pd.offsets.DateOffset(months=return_durations[return_duration])
+                    + pd.offsets.Day(1)
+                    - pd.offsets.BDay(1)
                 ).set_axis(series.index, axis=0)
             ).sub(1)
         else:
@@ -773,23 +769,21 @@ def add_fund(
 
 
 def update_selection_visibility(y_var: str):
-    log_scale_style = {"display": "block"} if y_var == "price" else {"display": "none"}
+    show = {"display": "block"}
+    hide = {"display": "none"}
+
+    log_scale_style = show if y_var == "price" else hide
     log_scale = False if y_var == "price" else no_update
-    percent_scale_style = (
-        {"display": "block"} if y_var == "price" else {"display": "none"}
-    )
+
+    percent_scale_style = show if y_var == "price" else hide
     percent_scale = False if y_var == "price" else no_update
+
     return_selection_style = (
-        {"display": "block"}
-        if y_var in ["rolling_returns", "calendar_returns"]
-        else {"display": "none"}
+        show if y_var in ["rolling_returns", "calendar_returns"] else hide
     )
-    rolling_return_selection_style = (
-        {"display": "block"} if y_var == "rolling_returns" else {"display": "none"}
-    )
-    calendar_return_selection_style = (
-        {"display": "block"} if y_var == "calendar_returns" else {"display": "none"}
-    )
+    rolling_return_selection_style = show if y_var == "rolling_returns" else hide
+    calendar_return_selection_style = show if y_var == "calendar_returns" else hide
+
     return (
         log_scale_style,
         log_scale,
@@ -956,61 +950,52 @@ def update_graph(
             ]
 
         elif chart_type == "hist":
+            vertical_line = go.layout.Shape(
+                type="line",
+                x0=0,
+                x1=0,
+                y0=0,
+                y1=1,
+                yref="paper",
+                line=go.layout.shape.Line(
+                    color=trace_colourmap[baseline_trace]
+                    if baseline_trace != "None"
+                    else "grey",
+                    width=1,
+                    dash="dash",
+                ),
+                opacity=0.7,
+            )
             layout.update(
                 barmode="overlay",
-                shapes=[
-                    go.layout.Shape(
-                        type="line",
-                        x0=0,
-                        x1=0,
-                        y0=0,
-                        y1=1,
-                        yref="paper",
-                        line=go.layout.shape.Line(
-                            color=trace_colourmap[baseline_trace]
-                            if baseline_trace != "None"
-                            else "grey",
-                            width=1,
-                            dash="dash",
-                        ),
-                        opacity=0.7,
-                    )
-                ],
+                shapes=[vertical_line],
             )
 
-            data = list(
-                filter(
-                    None,
-                    [
-                        go.Histogram(
-                            x=[None],
-                            name=trace_options[baseline_trace],
-                            marker=go.histogram.Marker(
-                                color=trace_colourmap[baseline_trace]
-                            ),
-                            histnorm="probability",
-                            opacity=0.7,
-                            showlegend=True,
-                        )
-                        if baseline_trace != "None"
-                        else None,
-                        *[
-                            go.Histogram(
-                                x=df[column],
-                                name=trace_options[column],
-                                marker=go.histogram.Marker(
-                                    color=trace_colourmap[column]
-                                ),
-                                histnorm="probability",
-                                opacity=0.7,
-                                showlegend=True,
-                            )
-                            for column in df.columns
-                            if column != baseline_trace
-                        ],
-                    ],
+            data = [
+                go.Histogram(
+                    x=[None],
+                    name=trace_options[baseline_trace],
+                    marker=go.histogram.Marker(color=trace_colourmap[baseline_trace]),
+                    histnorm="probability",
+                    opacity=0.7,
+                    showlegend=True,
                 )
-            )
+                if baseline_trace != "None"
+                else None,
+                *[
+                    go.Histogram(
+                        x=df[column],
+                        name=trace_options[column],
+                        marker=go.histogram.Marker(color=trace_colourmap[column]),
+                        histnorm="probability",
+                        opacity=0.7,
+                        showlegend=True,
+                    )
+                    for column in df.columns
+                    if column != baseline_trace
+                ],
+            ]
+            data = [trace for trace in data if trace is not None]
 
         else:
             raise ValueError("Invalid chart_type")
