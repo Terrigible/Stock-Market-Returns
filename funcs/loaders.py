@@ -1,9 +1,7 @@
 import asyncio
 import os
 from glob import glob
-from io import BytesIO
 from itertools import chain
-from zipfile import ZipFile
 
 import httpx
 import numpy as np
@@ -412,7 +410,7 @@ def read_sgd_neer():
         .assign(
             date=lambda df: df["Average for Week Ending"]
             - pd.DateOffset(days=0, normalize=True),
-            neer=lambda df: df["Index (Year 1999=100)"],
+            neer=lambda df: df["Index (Jan 1999 = 100)"],
         )
         .set_index("date")
         .loc[:, ["neer"]]
