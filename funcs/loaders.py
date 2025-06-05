@@ -34,15 +34,11 @@ def read_msci_data(filename_pattern):
 
 
 def read_ft_data(filename):
-    df = (
-        pd.read_csv(
-            f"data/{filename}.csv",
-            parse_dates=["Date"],
-            index_col="Date",
-        )
-        .rename_axis("date")[["Close"]]
-        .set_axis(["price"], axis=1)
-    )
+    df = pd.read_csv(
+        f"data/{filename}.csv",
+        parse_dates=["date"],
+        index_col="date",
+    )[["close"]].set_axis(["price"], axis=1)
 
     if filename == "S&P 500 USD Gross":
         df.update(
