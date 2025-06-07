@@ -91,7 +91,7 @@ def load_data(
             f"{security['msci_base_index']}/"
             f"{security['msci_size']}/"
             f"{security['msci_style']}/"
-            f"*{security['msci_tax_treatment']} {interval}*.xls"
+            f"*{security['msci_tax_treatment']} {interval}.csv"
         ).iloc[:, 0]
     elif source == "FRED":
         if security["fred_index"] == "US-T":
@@ -440,7 +440,7 @@ def add_index(
             f"{msci_base_index}/"
             f"{msci_size}/"
             f"{msci_style}/"
-            f"* {msci_tax_treatment}*.xls"
+            f"* {msci_tax_treatment}*.csv"
         ):
             return True, no_update, no_update
         index = (

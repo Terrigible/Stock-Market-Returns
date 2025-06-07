@@ -11,24 +11,12 @@ from pandas.tseries.offsets import BMonthEnd
 from requests.exceptions import JSONDecodeError
 
 
-def read_msci_source(filename):
-    df = pd.read_excel(
-        filename,
-        engine="calamine",
-        skiprows=6,
-        skipfooter=19,
-        parse_dates=["Date"],
-        date_format="%b %d, %Y",
-        thousands=",",
-        index_col="Date",
+def read_msci_data(filename_pattern: str):
+    return (
+        pd.read_csv(glob(filename_pattern)[0], index_col="Date", parse_dates=["Date"])
+        .rename_axis("date")
+        .set_axis(["price"], axis=1)
     )
-    df = df.set_axis(["price"], axis=1)
-    df = df.rename_axis("date")
-    return df
-
-
-def read_msci_data(filename_pattern):
-    return pd.concat(map(read_msci_source, sorted(glob(filename_pattern))))
 
 
 def read_ft_data(filename):
