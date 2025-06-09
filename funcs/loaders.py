@@ -370,46 +370,63 @@ def load_usdsgd():
     return usdsgd
 
 
-def read_mas_swap_points():
-    swap_points = (
-        pd.read_excel(
-            "data/US$_S$ Forward Swap Points.xlsx", engine="calamine", skipfooter=1
-        )
-        .assign(date=lambda df: df["Date"] - pd.DateOffset(days=0, normalize=True))
-        .drop(columns=["Date"])
-        .set_index("date")
-        .sort_index()
-        .dropna(how="all")
-    )
-    return swap_points
-
-
 def load_mas_swap_points():
-    swap_points = read_mas_swap_points()
-    return swap_points
-
-
-def read_sgd_neer():
-    sgd_neer = (
-        pd.read_excel(
-            "data/S$ Nominal Effective Exchange Rate Index.xlsx", engine="calamine"
-        )
-        .dropna(how="all")
-        .assign(
-            date=lambda df: df["Average for Week Ending"]
-            - pd.DateOffset(days=0, normalize=True),
-            neer=lambda df: df["Index (Jan 1999 = 100)"],
-        )
-        .set_index("date")
-        .loc[:, ["neer"]]
-        .sort_index()
+    df = pd.read_csv(
+        "data/sgd_swap_points.csv",
+        parse_dates=["date"],
+        index_col="date",
     )
-    return sgd_neer
+    if df.index[-1] < pd.Timestamp.now() - BMonthEnd(1, True):
+        try:
+            res = httpx.get(
+                "https://www.mas.gov.sg/api/v1/MAS/chart/swappoint",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
+                },
+            )
+            res.raise_for_status()
+            df = (
+                pd.DataFrame(res.json()["elements"])
+                .loc[::-1, ["dy", "month1", "month3", "month6"]]
+                .assign(dy=lambda x: pd.to_datetime(x["dy"]))
+                .set_index("dy")
+                .rename_axis("date")
+            )
+            df.to_csv("data/sgd_swap_points.csv")
+        except httpx.HTTPError as e:
+            print(f"Error fetching new swap points data: {e}")
+    return df
 
 
 def load_sgd_neer():
-    sgd_neer = read_sgd_neer()
-    return sgd_neer
+    df = pd.read_csv(
+        "data/sgd_neer.csv",
+        parse_dates=["date"],
+        index_col="date",
+    )
+    if df.index[-1] < pd.Timestamp.now() - BMonthEnd(1, True):
+        try:
+            res = httpx.get(
+                "https://www.mas.gov.sg/api/v1/MAS/chart/sneer",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
+                },
+            )
+            res.raise_for_status()
+            df = (
+                pd.DataFrame(res.json()["elements"])
+                .loc[::-1, ["date", "value"]]
+                .assign(
+                    date=lambda x: x["date"].astype("datetime64[ns]"),
+                    value=lambda x: x["value"].astype(float),
+                )
+                .set_index("date")
+                .rename(columns={"value": "sgd_neer"})
+            )
+            df.to_csv("data/sgd_neer.csv")
+        except httpx.HTTPError as e:
+            print(f"Error fetching new NEER data: {e}")
+    return df
 
 
 def download_sgd_interest_rates():
