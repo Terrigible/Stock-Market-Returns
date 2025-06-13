@@ -2,9 +2,7 @@ import asyncio
 import datetime
 import os
 from glob import glob
-from io import BytesIO
 from itertools import chain
-from zipfile import ZipFile
 
 import httpx
 import pandas as pd
@@ -12,25 +10,16 @@ import polars as pl
 
 
 def read_msci_data(filename_pattern: str):
-    return (
-        pl.read_excel(
-            sorted(glob(filename_pattern)),
-            read_options=dict(
-                skip_rows=7,
-                column_names=["date", "price"],
-            ),
-        )
-        .drop_nulls("price")
-        .with_columns(
-            pl.col("date").str.to_date("%b %d, %Y"),
-            pl.col("price").str.replace_all(",", "").cast(pl.Float64),
-        )
-    )
+    return pl.read_csv(
+        filename_pattern,
+        try_parse_dates=True,
+        new_columns=["date", "price"],
+    ).with_columns(pl.col("date").cast(pl.Date))
 
 
 def read_ft_data(filename: str):
-    df = pl.read_csv(f"data/{filename}.csv", try_parse_dates=True).select(
-        pl.col("Date").alias("date"), pl.col("Close").alias("price")
+    df = pl.read_csv("data/{filename}.csv", try_parse_dates=True).select(
+        pl.col("date"), pl.col("close").alias("price")
     )
     if filename == "S&P 500 USD Gross":
         df = df.with_columns(
@@ -384,42 +373,30 @@ def load_fred_usdsgd():
     return usdsgd
 
 
-def download_worldbank_exchange_rates():
-    res = httpx.get(
-        "https://api.worldbank.org/v2/en/indicator/PA.NUS.FCRF",
-        params={"downloadformat": "csv"},
-        timeout=20,
+def read_worldbank_usdsgd() -> pl.DataFrame:
+    return (
+        pl.read_csv("data/World Bank USDSGD.csv")
+        .transpose(include_header=True)
+        .slice(4)
+        .rename({"column": "date", "column_0": "usd_sgd"})
+        .with_columns(
+            pl.col("date").str.slice(0, 4).str.to_date("%Y"),
+            pl.col("usd_sgd").cast(pl.Float64),
+        )
     )
-    res.raise_for_status()
-    with ZipFile(BytesIO(res.content)) as zf:
-        for filename in zf.namelist():
-            if not filename.startswith("API"):
-                continue
-            with zf.open(filename) as f:
-                df = pl.read_csv(f, skip_rows=4)
-            break
-        else:
-            raise FileNotFoundError("No file found in zip file")
-    return df
 
 
 def load_worldbank_usdsgd():
-    df = download_worldbank_exchange_rates()
+    fred_usdsgd = load_fred_usdsgd()
     return pl.from_pandas(
         pl.concat(
             [
-                df.filter(pl.col("Country Name") == "Singapore")
-                .select(pl.col(r"^\d{4}$"))
-                .transpose(include_header=True)
-                .select(
-                    pl.col("column")
-                    .str.to_date("%Y")
-                    .dt.offset_by("6mo")
-                    .alias("date"),
-                    pl.col("column_0").cast(pl.Float64).alias("usd_sgd"),
+                read_worldbank_usdsgd()
+                .with_columns(
+                    pl.col("date").dt.offset_by("6mo"),
                 )
-                .filter(pl.col("date") <= get_fred_series("DEXSIUS")["date"].first()),
-                load_fred_usdsgd()[0:1],
+                .filter(pl.col("date").lt(fred_usdsgd.get_column("date").first())),
+                fred_usdsgd[0],
             ]
         )
         .to_pandas()
@@ -462,39 +439,74 @@ def load_usdsgd():
     return usdsgd
 
 
-def read_mas_swap_points():
-    return (
-        pl.read_excel(
-            "data/US$_S$ Forward Swap Points.xlsx",
-            engine="calamine",
-        )
-        .with_columns(pl.col("Date").dt.truncate("1d"))
-        .rename({"Date": "date"})
-        .sort("date")
-    )
-
-
 def load_mas_swap_points():
-    swap_points = read_mas_swap_points()
-    return swap_points
-
-
-def read_sgd_neer():
-    return (
-        pl.read_excel(
-            "data/S$ Nominal Effective Exchange Rate Index.xlsx", engine="calamine"
-        )
-        .select(
-            pl.col("Average for Week Ending").dt.truncate("1d").alias("date"),
-            pl.col("Index (Year 1999=100)").alias("neer"),
-        )
-        .sort("date")
-    )
+    df = pl.read_csv("data/sgd_swap_points.csv", try_parse_dates=True)
+    if (
+        df.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .lt(datetime.date.today())
+        .last()
+    ):
+        try:
+            res = httpx.get(
+                "https://www.mas.gov.sg/api/v1/MAS/chart/swappoint",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
+                },
+            )
+            res.raise_for_status()
+            df = (
+                pl.DataFrame(
+                    res.json()["elements"],
+                    ["dy", "month1", "month3", "month6"],
+                )
+                .select(
+                    pl.col("dy").cast(pl.Date).alias("date"),
+                    pl.all().exclude("dy"),
+                )
+                .reverse()
+            )
+            df.write_csv("data/sgd_swap_points.csv")
+        except httpx.HTTPError as e:
+            print(f"Failed to fetch data: {e}")
+    return df
 
 
 def load_sgd_neer():
-    neer = read_sgd_neer()
-    return neer
+    df = pl.read_csv("data/sgd_neer.csv", try_parse_dates=True)
+    if (
+        df.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .lt(datetime.date.today())
+        .last()
+    ):
+        try:
+            res = httpx.get(
+                "https://www.mas.gov.sg/api/v1/MAS/chart/sneer",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
+                },
+            )
+            res.raise_for_status()
+            df = (
+                pl.DataFrame(
+                    res.json()["elements"],
+                    ["date", "value"],
+                )
+                .select(
+                    pl.col("date").cast(pl.Date),
+                    pl.col("value").cast(pl.Float64).alias("sgd_neer"),
+                )
+                .reverse()
+            )
+            df.write_csv("data/sgd_neer.csv")
+        except httpx.HTTPError as e:
+            print(f"Failed to fetch data: {e}")
+    return df
 
 
 def download_sgd_interest_rates():
