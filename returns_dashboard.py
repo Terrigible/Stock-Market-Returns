@@ -443,93 +443,85 @@ def add_index(
             f"* {msci_tax_treatment}*.csv"
         ):
             return True, no_update, no_update
-        index = (
-            json.dumps(
-                {
-                    "source": "MSCI",
-                    "msci_base_index": msci_base_index,
-                    "msci_size": msci_size,
-                    "msci_style": msci_style,
-                    "msci_tax_treatment": msci_tax_treatment,
-                }
-            ),
-            " ".join(
-                filter(
-                    None,
-                    [
-                        index_provider_options[index_provider],
-                        msci_base_index_options[msci_base_index],
-                        (
-                            None
-                            if msci_size == "STANDARD"
-                            else msci_size_options[msci_size]
-                        ),
-                        (
-                            "Cap"
-                            if msci_size in ["SMALL", "SMID", "MID", "LARGE"]
-                            and msci_style == "BLEND"
-                            else None
-                        ),
-                        (
-                            None
-                            if msci_style == "BLEND"
-                            else msci_style_options[msci_style]
-                        ),
-                        msci_tax_treatment,
-                    ],
-                )
-            ),
+
+        index_json = json.dumps(
+            {
+                "source": "MSCI",
+                "msci_base_index": msci_base_index,
+                "msci_size": msci_size,
+                "msci_style": msci_style,
+                "msci_tax_treatment": msci_tax_treatment,
+            }
         )
+        index_name_template = [
+            index_provider_options[index_provider],
+            msci_base_index_options[msci_base_index],
+            (None if msci_size == "STANDARD" else msci_size_options[msci_size]),
+            (
+                "Cap"
+                if msci_size in ["SMALL", "SMID", "MID", "LARGE"]
+                and msci_style == "BLEND"
+                else None
+            ),
+            (None if msci_style == "BLEND" else msci_style_options[msci_style]),
+            msci_tax_treatment,
+        ]
+        index_name = " ".join(
+            field for field in index_name_template if field is not None
+        )
+
     elif index_provider == "FRED":
         if fred_index == "US-T":
-            index = (
-                json.dumps(
-                    {
-                        "source": "FRED",
-                        "fred_index": fred_index,
-                        "us_treasury_duration": us_treasury_duration,
-                    }
-                ),
-                f"{us_treasury_duration_options[us_treasury_duration]} {fred_index_options[fred_index]}",
+            index_json = json.dumps(
+                {
+                    "source": "FRED",
+                    "fred_index": fred_index,
+                    "us_treasury_duration": us_treasury_duration,
+                }
+            )
+            index_name = (
+                f"{us_treasury_duration_options[us_treasury_duration]}"
+                f"{fred_index_options[fred_index]}"
             )
         else:
             return True, no_update, no_update
+
     elif index_provider == "MAS":
         if mas_index == "SGS":
-            index = (
-                json.dumps(
-                    {
-                        "source": "MAS",
-                        "mas_index": mas_index,
-                        "sgs_duration": sgs_duration,
-                    }
-                ),
-                f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}",
+            index_json = json.dumps(
+                {
+                    "source": "MAS",
+                    "mas_index": mas_index,
+                    "sgs_duration": sgs_duration,
+                }
+            )
+            index_name = (
+                f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}"
             )
         else:
             return True, no_update, no_update
+
     else:
         others_tax_treatment = (
             "Gross"
             if others_index in ["STI", "AWORLDS", "SREIT"]
             else others_tax_treatment
         )
-        index = (
-            json.dumps(
-                {
-                    "source": "Others",
-                    "others_index": others_index,
-                    "others_tax_treatment": others_tax_treatment,
-                }
-            ),
-            f"{others_index_options[others_index]} {others_tax_treatment}",
+        index_json = json.dumps(
+            {
+                "source": "Others",
+                "others_index": others_index,
+                "others_tax_treatment": others_tax_treatment,
+            }
         )
+        index_name = f"{others_index_options[others_index]} {others_tax_treatment}"
+
     if selected_securities is None:
-        return False, [index[0]], {index[0]: index[1]}
-    if index[0] in selected_securities:
+        return False, [index_json], {index_json: index_name}
+    if index_json in selected_securities:
         return no_update
-    selected_securities.append(index[0])
-    selected_securities_options.update({index[0]: index[1]})
+    selected_securities.append(index_json)
+    selected_securities_options.update({index_json: index_name})
     return False, selected_securities, selected_securities_options
 
 
@@ -750,21 +742,21 @@ def add_fund(
         currency = "GBP"
     else:
         return no_update
-    security = (
-        json.dumps(
-            {
-                "source": "Fund",
-                "fund_company": fund_company,
-                "fund": fund,
-                "currency": currency,
-            }
-        ),
-        f"{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}",
+    security_json = json.dumps(
+        {
+            "source": "Fund",
+            "fund_company": fund_company,
+            "fund": fund,
+            "currency": currency,
+        }
     )
-    if security[0] in selected_securities:
+    security_name = (
+        f"{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}"
+    )
+    if security_json in selected_securities:
         return no_update
-    selected_securities.append(security[0])
-    selected_securities_options.update({security[0]: security[1]})
+    selected_securities.append(security_json)
+    selected_securities_options.update({security_json: security_name})
     return selected_securities, selected_securities_options
 
 
@@ -1541,19 +1533,17 @@ def update_accumulation_strategies(
         }
     )
     if ls_dca == "LS":
-        strategy = (
-            strategy_str,
+        strategy_name = (
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
             f"Lump Sum, "
             f"{investment_amount} invested for {investment_horizon} months, "
             f"DCA over {dca_length} months every {dca_interval} months, "
             f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
             f"{annualised_holding_fees}% p.a. Holding Fees, "
-            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation",
+            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation"
         )
     else:
-        strategy = (
-            strategy_str,
+        strategy_name = (
             f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
             f"DCA, "
             f"{investment_amount} initial capital, "
@@ -1562,15 +1552,15 @@ def update_accumulation_strategies(
             f"Monthly investment {'' if adjust_monthly_investment_for_inflation else 'not '}adjusted for inflation, "
             f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
             f"{annualised_holding_fees}% p.a. Holding Fees, "
-            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation",
+            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation"
         )
 
     if strategies is None:
-        return [strategy[0]], {strategy[0]: strategy[1]}
-    if strategy[0] in strategies:
+        return [strategy_str], {strategy_str: strategy_name}
+    if strategy_str in strategies:
         return no_update
-    strategies.append(strategy[0])
-    strategy_options.update({strategy[0]: strategy[1]})
+    strategies.append(strategy_str)
+    strategy_options.update({strategy_str: strategy_name})
     return strategies, strategy_options
 
 
@@ -1775,22 +1765,21 @@ def update_withdrawal_strategies(
         }
     )
 
-    strategy = (
-        strategy_str,
+    strategy_name = (
         f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
         f"{monthly_withdrawal} withdrawn monthly, "
         f"{withdrawal_interval} months apart for {withdrawal_horizon} months, "
         f"Monthly withdrawal {'' if adjust_for_inflation else 'not '}adjusted for inflation, "
         f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
-        f"{annualised_holding_fees}% p.a. Holding Fees",
+        f"{annualised_holding_fees}% p.a. Holding Fees"
     )
 
     if strategies is None:
-        return [strategy[0]], {strategy[0]: strategy[1]}
-    if strategy[0] in strategies:
+        return [strategy_str], {strategy_str: strategy_name}
+    if strategy_str in strategies:
         return no_update
-    strategies.append(strategy[0])
-    strategy_options.update({strategy[0]: strategy[1]})
+    strategies.append(strategy_str)
+    strategy_options.update({strategy_str: strategy_name})
     return strategies, strategy_options
 
 
