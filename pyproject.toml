@@ -3,7 +3,7 @@ name = "stock-market-returns"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12.11"
 dependencies = [
     "dash-bootstrap-components>=2.0.3",
     "dash>=3.0.4",
@@ -11,10 +11,10 @@ dependencies = [
     "pandas>=2.3.0",
     "plotly>=6.1.2",
     "python-calamine>=0.3.2",
-    "requests>=2.32.3",
+    "requests>=2.32.4",
     "scipy>=1.15.3",
-    "yfinance>=0.2.61",
-    "polars>=1.30.0",
+    "yfinance>=0.2.63",
+    "polars>=1.31.0",
     "pyarrow>=20.0.0",
     "fastexcel>=0.14.0",
     "lxml>=5.4.0",
