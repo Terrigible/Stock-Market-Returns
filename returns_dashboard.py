@@ -261,36 +261,6 @@ def transform_data(
     raise ValueError("Invalid y_var")
 
 
-def load_df(
-    security_str: str,
-    interval: str,
-    currency: str,
-    adjust_for_inflation: str,
-    yf_security: str | None,
-    y_var: str,
-    percent_scale: bool,
-    return_duration: str,
-    return_interval: str,
-    return_type: str,
-) -> pd.Series:
-    series = load_data(
-        security_str,
-        "Monthly" if y_var == "calendar_returns" else interval,
-        currency,
-        adjust_for_inflation,
-        yf_security,
-    )
-    return transform_data(
-        series,
-        interval,
-        y_var,
-        percent_scale,
-        return_duration,
-        return_interval,
-        return_type,
-    )
-
-
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = app.server
@@ -1181,7 +1151,7 @@ def update_graph(
 def update_security_graph(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
-    yf_securities: dict[str, str],
+    cached_securities: dict[str, str],
     currency: str,
     adjust_for_inflation: str,
     y_var: str,
@@ -1206,12 +1176,15 @@ def update_security_graph(
     )
     df = pd.DataFrame(
         {
-            selected_security: load_df(
-                selected_security,
+            selected_security: transform_data(
+                load_data(
+                    selected_security,
+                    "Monthly" if y_var == "calendar_returns" else interval,
+                    currency,
+                    adjust_for_inflation,
+                    cached_securities.get(selected_security),
+                ),
                 interval,
-                currency,
-                adjust_for_inflation,
-                yf_securities.get(selected_security),
                 y_var,
                 percent_scale,
                 return_duration,
