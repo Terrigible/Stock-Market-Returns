@@ -20,6 +20,8 @@ from funcs.calcs_numpy import (
     calculate_withdrawal_portfolio_value_with_fees_vector,
 )
 from funcs.loaders import (
+    download_ft_data,
+    get_ft_api_key,
     load_fed_funds_rate,
     load_fred_usd_fx,
     load_mas_sgd_fx,
@@ -80,7 +82,7 @@ def load_data(
     interval: str,
     currency: str,
     adjust_for_inflation: str,
-    yf_security: str | None,
+    cached_security: str | None,
 ):
     security: dict[str, str] = json.loads(security_str)
     source = security["source"]
@@ -136,7 +138,13 @@ def load_data(
             series = series.pipe(resample_bme)
     elif source == "YF":
         ticker_currency = security["currency"]
-        series = pd.read_json(StringIO(yf_security), orient="index", typ="series")
+        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
+        series = convert_price_to_usd(series, ticker_currency)
+        if interval == "Monthly":
+            series = series.pipe(resample_bme)
+    elif source == "FT":
+        ticker_currency = security["currency"]
+        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
         series = convert_price_to_usd(series, ticker_currency)
         if interval == "Monthly":
             series = series.pipe(resample_bme)
@@ -294,6 +302,7 @@ app.layout = app_layout
     Output("index-selection-container", "style"),
     Output("stock-etf-selection-container", "style"),
     Output("fund-selection-container", "style"),
+    Output("fund-index-selection-container", "style"),
     Input("security-type-selection", "value"),
     Input("security-type-selection", "options"),
 )
@@ -531,14 +540,14 @@ def add_index(
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
     Output("yf-invalid-securities-store", "data"),
-    Output("yf-securities-store", "data"),
+    Output("cached-securities-store", "data"),
     Input("add-stock-etf-button", "n_clicks"),
     State("selected-securities", "value"),
     State("selected-securities", "options"),
     State("stock-etf-input", "value"),
     State("stock-etf-tax-treatment-selection", "value"),
     State("yf-invalid-securities-store", "data"),
-    State("yf-securities-store", "data"),
+    State("cached-securities-store", "data"),
     prevent_initial_call=True,
     running=[(Output("add-stock-etf-button", "disabled"), True, False)],
 )
@@ -613,7 +622,9 @@ def add_stock_etf(
         }
     )
     selected_securities.append(new_yf_security)
-    selected_securities_options[new_yf_security] = f"{ticker_symbol} {tax_treatment}"
+    selected_securities_options[new_yf_security] = (
+        f"yfinance: {ticker_symbol} {tax_treatment}"
+    )
 
     df = ticker.history(period="max", auto_adjust=False)
     df = df.set_index(df.index.tz_localize(None))
@@ -638,6 +649,105 @@ def add_stock_etf(
         selected_securities_options,
         no_update,
         yf_securities_store,
+    )
+
+
+@app.callback(
+    Output("fund-index-toast", "children"),
+    Output("fund-index-toast", "is_open"),
+    Output("selected-securities", "value", allow_duplicate=True),
+    Output("selected-securities", "options", allow_duplicate=True),
+    Output("ft-invalid-securities-store", "data"),
+    Output("cached-securities-store", "data", allow_duplicate=True),
+    Output("ft-api-key-store", "data"),
+    Input("add-fund-index-button", "n_clicks"),
+    State("selected-securities", "value"),
+    State("selected-securities", "options"),
+    State("fund-index-input", "value"),
+    State("ft-invalid-securities-store", "data"),
+    State("cached-securities-store", "data"),
+    State("ft-api-key-store", "data"),
+    prevent_initial_call=True,
+    running=[(Output("add-fund-index-button", "disabled"), True, False)],
+)
+def add_fund_index(
+    _,
+    selected_securities: list[str],
+    selected_securities_options: dict,
+    fund_index: str,
+    ft_invalid_securities_store: list[str],
+    ft_securities_store: dict,
+    stored_ft_api_key: str | None,
+):
+    if not fund_index:
+        return no_update
+    if ";" in fund_index:
+        return "Invalid character: ;", True, no_update, no_update, no_update, no_update
+    if fund_index in ft_invalid_securities_store:
+        return (
+            "The selected ticker is not available",
+            True,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+        )
+    for ft_security_str in ft_securities_store:
+        ft_security = json.loads(ft_security_str)
+        if fund_index != ft_security["ticker"]:
+            continue
+        if ft_security_str in selected_securities:
+            return no_update
+        if ft_security_str in selected_securities_options:
+            selected_securities.append(ft_security_str)
+            return (
+                no_update,
+                no_update,
+                selected_securities,
+                selected_securities_options,
+                no_update,
+                ft_securities_store,
+                no_update,
+            )
+    if stored_ft_api_key is not None:
+        ft_api_key = stored_ft_api_key
+    else:
+        ft_api_key = get_ft_api_key()
+    try:
+        df, ticker, currency = download_ft_data(fund_index, ft_api_key)
+    except ValueError as e:
+        ft_invalid_securities_store.append(fund_index)
+        return (
+            str(e),
+            True,
+            no_update,
+            no_update,
+            ft_invalid_securities_store,
+            no_update,
+            ft_api_key,
+        )
+
+    new_ft_security = json.dumps(
+        {
+            "source": "FT",
+            "ticker": ticker,
+            "currency": currency,
+        }
+    )
+    selected_securities.append(new_ft_security)
+    selected_securities_options[new_ft_security] = f"FT: {ticker}"
+
+    ft_securities_store[new_ft_security] = df["price"].to_json(orient="index")
+
+    return (
+        no_update,
+        no_update,
+        selected_securities,
+        selected_securities_options,
+        no_update,
+        ft_securities_store,
+        ft_api_key,
     )
 
 
@@ -1051,7 +1161,7 @@ def update_graph(
     Output("graph", "figure"),
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
-    Input("yf-securities-store", "data"),
+    Input("cached-securities-store", "data"),
     Input("currency-selection", "value"),
     Input("inflation-adjustment-selection", "value"),
     Input("y-var-selection", "value"),
@@ -1326,7 +1436,7 @@ def load_portfolio(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     State("portfolios", "options"),
-    State("yf-securities-store", "data"),
+    State("cached-securities-store", "data"),
     Input("portfolio-currency-selection", "value"),
     Input("portfolio-inflation-adjustment-selection", "value"),
     Input("portfolio-y-var-selection", "value"),
@@ -1568,7 +1678,7 @@ def update_accumulation_strategies(
     Output("accumulation-strategy-graph", "figure"),
     Input("accumulation-strategies", "value"),
     State("accumulation-strategies", "options"),
-    State("yf-securities-store", "data"),
+    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_accumulation_strategy_graph(
@@ -1787,7 +1897,7 @@ def update_withdrawal_strategies(
     Output("withdrawal-strategy-graph", "figure"),
     Input("withdrawal-strategies", "value"),
     State("withdrawal-strategies", "options"),
-    State("yf-securities-store", "data"),
+    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_withdrawal_strategy_graph(

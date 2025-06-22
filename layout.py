@@ -15,7 +15,8 @@ app_layout = dbc.Tabs(
                                 [
                                     "Index",
                                     "Stock/ETF",
-                                    "Fund",
+                                    "Preset Fund",
+                                    "Custom Fund/Index",
                                 ],
                                 value="Index",
                                 id="security-type-selection",
@@ -233,7 +234,9 @@ app_layout = dbc.Tabs(
                                 data=[],
                             ),
                             dcc.Store(
-                                id="yf-securities-store", storage_type="memory", data={}
+                                id="cached-securities-store",
+                                storage_type="memory",
+                                data={},
                             ),
                             html.Div(
                                 [
@@ -257,6 +260,39 @@ app_layout = dbc.Tabs(
                                     dbc.Button("Add Fund", id="add-fund-button"),
                                 ],
                                 id="fund-selection-container",
+                            ),
+                            html.Div(
+                                [
+                                    html.P(),
+                                    dbc.Label("Fund/Index (FT Ticker)"),
+                                    html.Br(),
+                                    dbc.Input(id="fund-index-input", type="text"),
+                                    html.P(),
+                                    dbc.Button(
+                                        "Add Fund/Index", id="add-fund-index-button"
+                                    ),
+                                    html.P(),
+                                    dbc.Toast(
+                                        "The selected ticker is not available",
+                                        id="fund-index-toast",
+                                        header="Info",
+                                        is_open=False,
+                                        dismissable=True,
+                                        duration=2000,
+                                        color="info",
+                                    ),
+                                ],
+                                id="fund-index-selection-container",
+                            ),
+                            dcc.Store(
+                                id="ft-api-key-store",
+                                storage_type="memory",
+                                data=None,
+                            ),
+                            dcc.Store(
+                                id="ft-invalid-securities-store",
+                                storage_type="memory",
+                                data=[],
                             ),
                             html.P(),
                             dbc.Label("Selected Securities"),

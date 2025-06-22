@@ -1,5 +1,7 @@
 import asyncio
+import json
 import os
+import re
 from glob import glob
 from itertools import chain
 
@@ -7,6 +9,7 @@ import httpx
 import numpy as np
 import pandas as pd
 import requests
+from bs4 import BeautifulSoup
 from pandas.tseries.offsets import BMonthEnd
 from requests.exceptions import JSONDecodeError
 
@@ -680,6 +683,80 @@ def read_greatlink_data(fund_name):
     return df
 
 
+def get_ft_api_key():
+    res = httpx.get("https://markets.ft.com/research/webservices/securities/v1/docs")
+    source = re.search("source=([0-9a-f]*)", res.content.decode())
+    if not source:
+        raise ValueError("API key not found in page")
+    api_key = source.group(1)
+    return api_key
+
+
+def download_ft_data(symbol: str, api_key: str):
+    with httpx.Client() as client:
+        details_response = client.get(
+            "https://markets.ft.com/research/webservices/securities/v1/details",
+            params={
+                "source": api_key,
+                "symbols": symbol,
+            },
+        )
+        if details_response.is_client_error:
+            raise ValueError(details_response.json()["error"]["errors"][0]["message"])
+        else:
+            details_response.raise_for_status()
+        item = details_response.json()["data"]["items"][0]
+        ticker = item["basic"]["symbol"]
+        currency = item["basic"]["currency"]
+        if item["details"]["issueType"] == "IN":
+            start_date = pd.Timestamp(item["details"]["inceptionDate"])
+        elif item["details"]["issueType"] == "OF":
+            historical_tearsheet_response = client.get(
+                "https://markets.ft.com/data/funds/tearsheet/historical",
+                params={"s": ticker},
+                headers={},
+            )
+            historical_prices_mod = BeautifulSoup(
+                historical_tearsheet_response.content, "lxml"
+            ).select_one(".mod-tearsheet-historical-prices")
+
+            if historical_prices_mod is None:
+                raise ValueError("Unable to retrive inception date")
+            data_mod_config = historical_prices_mod.get("data-mod-config")
+            start_date = pd.Timestamp(
+                json.loads(data_mod_config)["inception"]
+            ).tz_convert(None)
+        else:
+            raise ValueError("Please enter the symbol of a fund or index.")
+        response = client.get(
+            "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
+            params={
+                "source": api_key,
+                "symbols": symbol,
+                "dayCount": (pd.Timestamp.today() - pd.Timestamp(start_date)).days,
+            },
+        )
+        if (
+            response.json()["data"]["items"][0]["historicalSeries"].get(
+                "historicalQuoteData"
+            )
+            is None
+        ):
+            raise ValueError("No data for this fund or index.")
+        df = (
+            pd.DataFrame(
+                response.json()["data"]["items"][0]["historicalSeries"][
+                    "historicalQuoteData"
+                ]
+            )
+            .assign(date=lambda df: df["date"].pipe(pd.to_datetime))
+            .set_index("date")[::-1]
+        )
+        df = df[["close"]].set_axis(["price"], axis=1)
+
+        return df, ticker, currency
+
+
 __all__ = [
     "read_msci_data",
     "load_fed_funds_rate",
@@ -703,4 +780,6 @@ __all__ = [
     "add_return_columns",
     "read_greatlink_data",
     "read_ft_data",
+    "get_ft_api_key",
+    "download_ft_data",
 ]
