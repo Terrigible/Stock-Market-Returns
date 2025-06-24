@@ -199,14 +199,11 @@ def transform_data(
     series: pd.Series,
     interval: str,
     y_var: str,
-    percent_scale: bool,
     return_duration: str,
     return_interval: str,
     return_type: str,
 ) -> pd.Series:
     if y_var == "price":
-        if percent_scale:
-            series = series.div(series.loc[series.first_valid_index()]).sub(1)
         return series
     if y_var == "drawdown":
         return series.div(series.cummax()).sub(1)
@@ -943,6 +940,10 @@ def update_graph(
         hoverinfo = None
 
         if percent_scale:
+            for column in df.columns:
+                df[column] = (
+                    df[column].div(df.at[df[column].first_valid_index(), column]).sub(1)
+                )
             layout.update(title="% Change")
             layout.update(yaxis_tickformat="+.2%")
 
@@ -1186,7 +1187,6 @@ def update_security_graph(
                 ),
                 interval,
                 y_var,
-                percent_scale,
                 return_duration,
                 return_interval,
                 return_type,
@@ -1468,7 +1468,6 @@ def update_portfolio_graph(
                 ),
                 "Monthly",
                 y_var,
-                percent_scale,
                 return_duration,
                 return_interval,
                 return_type,
