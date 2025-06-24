@@ -915,6 +915,8 @@ def update_graph(
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
     y_var: str,
+    log_scale: bool,
+    percent_scale: bool,
     return_duration: str,
     return_duration_options: dict[str, str],
     return_interval: str,
@@ -923,8 +925,6 @@ def update_graph(
     return_type_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
-    log_scale: bool,
-    percent_scale: bool,
     chart_type: str,
 ):
     layout = go.Layout(
@@ -1199,6 +1199,8 @@ def update_security_graph(
         securities_colourmap,
         selected_securities_options,
         y_var,
+        log_scale,
+        percent_scale,
         return_duration,
         return_duration_options,
         return_interval,
@@ -1207,8 +1209,6 @@ def update_security_graph(
         return_type_options,
         baseline_security,
         baseline_security_options,
-        log_scale,
-        percent_scale,
         chart_type,
     )
     return dict(data=data, layout=layout)
@@ -1482,6 +1482,8 @@ def update_portfolio_graph(
         portfolios_colourmap,
         portfolio_options,
         y_var,
+        log_scale,
+        percent_scale,
         return_duration,
         return_duration_options,
         return_interval,
@@ -1490,8 +1492,6 @@ def update_portfolio_graph(
         return_type_options,
         baseline_portfolio,
         baseline_portfolio_options,
-        log_scale,
-        percent_scale,
         chart_type,
     )
     return dict(data=data, layout=layout)
