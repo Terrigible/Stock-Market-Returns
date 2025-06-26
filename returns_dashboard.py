@@ -1136,6 +1136,8 @@ def update_graph(
     Input("currency-selection", "value"),
     Input("inflation-adjustment-selection", "value"),
     Input("y-var-selection", "value"),
+    Input("log-scale-switch", "value"),
+    Input("percent-scale-switch", "value"),
     Input("return-duration-selection", "value"),
     Input("return-duration-selection", "options"),
     Input("return-interval-selection", "value"),
@@ -1145,8 +1147,6 @@ def update_graph(
     Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
-    Input("log-scale-switch", "value"),
-    Input("percent-scale-switch", "value"),
     Input("chart-type-selection", "value"),
 )
 def update_security_graph(
@@ -1156,6 +1156,8 @@ def update_security_graph(
     currency: str,
     adjust_for_inflation: str,
     y_var: str,
+    log_scale: bool,
+    percent_scale: bool,
     return_duration: str,
     return_duration_options: dict[str, str],
     return_interval: str,
@@ -1165,8 +1167,6 @@ def update_security_graph(
     interval: str,
     baseline_security: str,
     baseline_security_options: dict[str, str],
-    log_scale: bool,
-    percent_scale: bool,
     chart_type: str,
 ):
     securities_colourmap = dict(
