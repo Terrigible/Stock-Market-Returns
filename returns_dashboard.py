@@ -929,7 +929,8 @@ def update_graph(
         hovermode="x",
         showlegend=True,
         legend=go.layout.Legend(valign="top"),
-        uirevision=True,
+        uirevision=y_var,
+        yaxis_uirevision=y_var + str(log_scale) + str(percent_scale),
     )
 
     if y_var == "price":
@@ -951,8 +952,15 @@ def update_graph(
         price_adj = 0
         hoverinfo = None
 
+        if not percent_scale and not log_scale:
+            layout.update(
+                yaxis_autorangeoptions_minallowed=df.loc[start_date:].min().min()
+            )
+            layout.update(
+                yaxis_autorangeoptions_maxallowed=df.loc[:end_date].max().max()
+            )
         if percent_scale:
-            layout.update(uirevision=False, xaxis_uirevision=True, yaxis_autorange=True)
+            layout.update(yaxis_uirevision=False)
             for column in df.columns:
                 series = df[column].dropna()
                 if series.empty:
@@ -981,6 +989,11 @@ def update_graph(
 
         if log_scale:
             layout.update(yaxis_type="log")
+            yaxis_range = [
+                np.log10(df.loc[start_date:].min().min() + 1),
+                np.log10(df.loc[:end_date].max().max() + 1),
+            ]
+            layout.update(yaxis_range=yaxis_range)
 
         if percent_scale and log_scale:
             layout.update(yaxis_autorange=False)
@@ -992,12 +1005,6 @@ def update_graph(
                 + [base * 10**exp + 1 for exp in range(6) for base in range(1, 10)]
             )
             yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
-            layout.update(
-                yaxis_range=[
-                    np.log10(df.loc[start_date:].min().min() + 1),
-                    np.log10(df.loc[:end_date].max().max() + 1),
-                ]
-            )
             layout.update(yaxis_tickvals=ytickvals)
             layout.update(yaxis_ticktext=yticktexts)
 
