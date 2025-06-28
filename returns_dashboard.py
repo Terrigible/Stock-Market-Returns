@@ -842,10 +842,8 @@ def update_selection_visibility(y_var: str):
     hide = {"display": "none"}
 
     log_scale_style = show if y_var == "price" else hide
-    log_scale = False if y_var == "price" else no_update
 
     percent_scale_style = show if y_var == "price" else hide
-    percent_scale = False if y_var == "price" else no_update
 
     return_selection_style = (
         show if y_var in ["rolling_returns", "calendar_returns"] else hide
@@ -855,9 +853,7 @@ def update_selection_visibility(y_var: str):
 
     return (
         log_scale_style,
-        log_scale,
         percent_scale_style,
-        percent_scale,
         return_selection_style,
         rolling_return_selection_style,
         calendar_return_selection_style,
@@ -866,9 +862,7 @@ def update_selection_visibility(y_var: str):
 
 @app.callback(
     Output("log-scale-switch", "style"),
-    Output("log-scale-switch", "value"),
     Output("percent-scale-switch", "style"),
-    Output("percent-scale-switch", "value"),
     Output("return-selection", "style"),
     Output("rolling-return-selection-container", "style"),
     Output("calendar-return-selection-container", "style"),
@@ -1371,9 +1365,7 @@ def add_portfolio(
 
 @app.callback(
     Output("portfolio-log-scale-switch", "style"),
-    Output("portfolio-log-scale-switch", "value"),
     Output("portfolio-percent-scale-switch", "style"),
-    Output("portfolio-percent-scale-switch", "value"),
     Output("portfolio-return-selection", "style"),
     Output("portfolio-rolling-return-selection-container", "style"),
     Output("portfolio-calendar-return-selection-container", "style"),
