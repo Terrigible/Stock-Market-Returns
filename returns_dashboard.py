@@ -923,11 +923,13 @@ def update_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
+    relayout_data: dict | None = None,
 ):
     layout = go.Layout(
         hovermode="x",
         showlegend=True,
         legend=go.layout.Legend(valign="top"),
+        uirevision=True,
     )
 
     if y_var == "price":
@@ -936,13 +938,43 @@ def update_graph(
             yaxis_tickformat=".2f",
         )
 
+        start_date = None
+        end_date = None
+        if relayout_data and "xaxis.range[0]" in relayout_data:
+            try:
+                start_date = pd.to_datetime(relayout_data["xaxis.range[0]"])
+                end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
+            except (ValueError, TypeError):
+                start_date = None
+                end_date = None
+
         price_adj = 0
         hoverinfo = None
 
         if percent_scale:
+            layout.update(uirevision=False, xaxis_uirevision=True, yaxis_autorange=True)
             for column in df.columns:
-                df[column] = (
-                    df[column].div(df.at[df[column].first_valid_index(), column]).sub(1)
+                series = df[column].dropna()
+                if series.empty:
+                    df[column] = np.nan
+                    continue
+                baseline_value = None
+                if start_date:
+                    visible_series = series[series.index >= start_date]
+                    if not visible_series.empty:
+                        baseline_value = visible_series.iloc[0]
+                if baseline_value is None:
+                    baseline_value = series.iloc[0]
+                if baseline_value != 0:
+                    df[column] = df[column].div(baseline_value).sub(1)
+                else:
+                    df[column] = np.nan
+            if not log_scale:
+                layout.update(
+                    yaxis_autorangeoptions_minallowed=df.loc[start_date:].min().min()
+                )
+                layout.update(
+                    yaxis_autorangeoptions_maxallowed=df.loc[:end_date].max().max()
                 )
             layout.update(title="% Change")
             layout.update(yaxis_tickformat="+.2%")
@@ -951,12 +983,21 @@ def update_graph(
             layout.update(yaxis_type="log")
 
         if percent_scale and log_scale:
+            layout.update(yaxis_autorange=False)
             price_adj = 1
             hoverinfo = "text+name"
-            ytickvals = list(n / 10 for n in range(0, 11)) + [
-                base * 10**exp + 1 for exp in range(0, 6) for base in range(1, 10)
-            ]
+            ytickvals = (
+                list(n / 10 for n in range(0, 11))
+                + list(n / 10 + 1 for n in range(1, 11))
+                + [base * 10**exp + 1 for exp in range(6) for base in range(1, 10)]
+            )
             yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
+            layout.update(
+                yaxis_range=[
+                    np.log10(df.loc[start_date:].min().min() + 1),
+                    np.log10(df.loc[:end_date].max().max() + 1),
+                ]
+            )
             layout.update(yaxis_tickvals=ytickvals)
             layout.update(yaxis_ticktext=yticktexts)
 
@@ -1148,6 +1189,7 @@ def update_graph(
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
     Input("chart-type-selection", "value"),
+    Input("graph", "relayoutData"),
 )
 def update_security_graph(
     selected_securities: list[str],
@@ -1168,6 +1210,7 @@ def update_security_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     chart_type: str,
+    relayout_data: dict | None,
 ):
     securities_colourmap = dict(
         zip(
@@ -1210,6 +1253,7 @@ def update_security_graph(
         baseline_security,
         baseline_security_options,
         chart_type,
+        relayout_data,
     )
     return dict(data=data, layout=layout)
 
@@ -1424,6 +1468,7 @@ def load_portfolio(
     Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
+    Input("portfolio-graph", "relayoutData"),
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
@@ -1443,6 +1488,7 @@ def update_portfolio_graph(
     log_scale: bool,
     percent_scale: bool,
     chart_type: str,
+    relayout_data: dict | None,
 ):
     if not portfolio_strs:
         return {
@@ -1492,6 +1538,7 @@ def update_portfolio_graph(
         baseline_portfolio,
         baseline_portfolio_options,
         chart_type,
+        relayout_data,
     )
     return dict(data=data, layout=layout)
 
