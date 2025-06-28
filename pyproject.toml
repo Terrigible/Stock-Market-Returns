@@ -6,18 +6,18 @@ readme = "README.md"
 requires-python = ">=3.12.11"
 dependencies = [
     "dash-bootstrap-components>=2.0.3",
-    "dash>=3.0.4",
+    "dash>=3.1.0",
     "httpx>=0.28.1",
     "pandas>=2.3.0",
-    "plotly>=6.1.2",
+    "plotly>=6.2.0",
     "python-calamine>=0.3.2",
     "requests>=2.32.4",
-    "scipy>=1.15.3",
-    "yfinance>=0.2.63",
+    "scipy>=1.16.0",
+    "yfinance>=0.2.64",
     "polars>=1.31.0",
     "pyarrow>=20.0.0",
     "fastexcel>=0.14.0",
-    "lxml>=5.4.0",
+    "lxml>=6.0.0",
 ]
 
 [dependency-groups]
