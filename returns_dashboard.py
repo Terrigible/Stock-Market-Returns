@@ -241,7 +241,8 @@ def transform_data(
     if y_var == "calendar_returns":
         df_pl = pl.from_pandas(series.reset_index())
         df_pl = (
-            df_pl.set_sorted("date")
+            df_pl.sort("date")
+            .set_sorted("date")
             .group_by_dynamic("date", every=return_interval)
             .agg(
                 pl.col("date").last().alias("date_end"),
