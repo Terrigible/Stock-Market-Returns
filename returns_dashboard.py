@@ -935,13 +935,30 @@ def update_graph(
 
         start_date = None
         end_date = None
-        if relayout_data and "xaxis.range[0]" in relayout_data:
-            try:
-                start_date = pd.to_datetime(relayout_data["xaxis.range[0]"])
-                end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
-            except (ValueError, TypeError):
-                start_date = None
-                end_date = None
+        if relayout_data:
+            if relayout_data.get("price", None):
+                if (
+                    ctx.triggered_id != ["graph", "portfolio-graph"]
+                    and "xaxis.range[0]" in relayout_data["price"]
+                ):
+                    layout.update(
+                        xaxis_range=(
+                            relayout_data["price"]["xaxis.range[0]"],
+                            relayout_data["price"]["xaxis.range[1]"],
+                        )
+                    )
+                if relayout_data.get(y_var, None):
+                    if "xaxis.range[0]" in relayout_data["price"]:
+                        try:
+                            start_date = pd.to_datetime(
+                                relayout_data["price"]["xaxis.range[0]"]
+                            )
+                            end_date = pd.to_datetime(
+                                relayout_data["price"]["xaxis.range[1]"]
+                            )
+                        except (ValueError, TypeError):
+                            start_date = None
+                            end_date = None
 
         price_adj = 0
         hoverinfo = None
@@ -983,14 +1000,14 @@ def update_graph(
 
         if log_scale:
             layout.update(yaxis_type="log")
-            yaxis_range = [
-                np.log10(df.loc[start_date:].min().min() + 1),
-                np.log10(df.loc[:end_date].max().max() + 1),
-            ]
-            layout.update(yaxis_range=yaxis_range)
+            if ctx.triggered_id not in ["graph", "portfolio-graph"]:
+                yaxis_range = [
+                    np.log10(df.loc[start_date:].min().min() + 1),
+                    np.log10(df.loc[:end_date].max().max() + 1),
+                ]
+                layout.update(yaxis_range=yaxis_range)
 
         if percent_scale and log_scale:
-            layout.update(yaxis_autorange=False)
             price_adj = 1
             hoverinfo = "text+name"
             ytickvals = (
@@ -1173,6 +1190,26 @@ def update_graph(
 
 
 @app.callback(
+    Output("graph-xaxis-relayout-store", "data"),
+    State("graph-xaxis-relayout-store", "data"),
+    State("y-var-selection", "value"),
+    Input("graph", "relayoutData"),
+)
+def update_xaxis_relayout_store(
+    current_data: dict | None,
+    y_var: str,
+    relayout_data: dict,
+):
+    if current_data is None:
+        return {y_var: relayout_data}
+    for key in relayout_data:
+        if "xaxis" in key:
+            current_data.update({y_var: relayout_data})
+            break
+    return current_data
+
+
+@app.callback(
     Output("graph", "figure"),
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
@@ -1192,7 +1229,7 @@ def update_graph(
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
     Input("chart-type-selection", "value"),
-    Input("graph", "relayoutData"),
+    Input("graph-xaxis-relayout-store", "data"),
 )
 def update_security_graph(
     selected_securities: list[str],
@@ -1448,6 +1485,26 @@ def load_portfolio(
 
 
 @app.callback(
+    Output("portfolio-graph-xaxis-relayout-store", "data"),
+    State("portfolio-graph-xaxis-relayout-store", "data"),
+    State("portfolio-y-var-selection", "value"),
+    Input("portfolio-graph", "relayoutData"),
+)
+def update_portfolio_xaxis_relayout_store(
+    current_data: dict | None,
+    y_var: str,
+    relayout_data: dict,
+):
+    if current_data is None:
+        return {y_var: relayout_data}
+    for key in relayout_data:
+        if "xaxis" in key:
+            current_data.update({y_var: relayout_data})
+            break
+    return current_data
+
+
+@app.callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     State("portfolios", "options"),
@@ -1466,7 +1523,7 @@ def load_portfolio(
     Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
-    Input("portfolio-graph", "relayoutData"),
+    Input("portfolio-graph-xaxis-relayout-store", "data"),
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
