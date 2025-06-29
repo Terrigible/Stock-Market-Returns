@@ -1015,8 +1015,9 @@ def update_graph(
             )
             for column in df.columns
         ]
+        return data, layout
 
-    elif y_var == "drawdown":
+    if y_var == "drawdown":
         layout = layout.update(
             title="Drawdown",
             yaxis_tickformat=".2%",
@@ -1031,8 +1032,9 @@ def update_graph(
             )
             for column in df.columns
         ]
+        return data, layout
 
-    elif y_var == "rolling_returns":
+    if y_var == "rolling_returns":
         layout.update(yaxis_tickformat=".2%")
 
         title = (
@@ -1114,8 +1116,9 @@ def update_graph(
 
         else:
             raise ValueError("Invalid chart_type")
+        return data, layout
 
-    elif y_var == "calendar_returns":
+    if y_var == "calendar_returns":
         layout.update(
             xaxis_ticklabelmode="period",
             yaxis_tickformat=".2%",
@@ -1165,9 +1168,8 @@ def update_graph(
             for column in df.columns
             if column != baseline_trace
         ]
-    else:
-        raise ValueError("Invalid y_var")
-    return data, layout
+        return data, layout
+    raise ValueError("Invalid y_var")
 
 
 @app.callback(
@@ -1286,10 +1288,7 @@ def add_allocation(
     security_options: dict[str, str],
     weight: float | int | None,
 ):
-    trigger = ctx.triggered_id
-    if trigger is None:
-        return no_update
-    if trigger == "add-security-button":
+    if ctx.triggered_id == "add-security-button":
         if weight is None:
             return no_update
         new_allocation = json.dumps({security: weight})
@@ -1312,7 +1311,7 @@ def add_allocation(
             {new_allocation: f"{weight}% {security_options[security]}"}
         )
         return portfolio_allocation_strs, portfolio_allocation_options
-    if trigger == "portfolio-allocations":
+    if ctx.triggered_id == "portfolio-allocations":
         if portfolio_allocation_strs is None:
             raise ValueError("This should not happen")
         return portfolio_allocation_strs, {
