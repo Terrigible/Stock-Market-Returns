@@ -1010,7 +1010,7 @@ def update_graph(
 
         if percent_scale and log_scale:
             price_adj = 1
-            hoverinfo = "text+name"
+            hoverinfo = "text+name+x"
             ytickvals = (
                 list(n / 10 for n in range(0, 11))
                 + list(n / 10 + 1 for n in range(1, 11))
@@ -1104,6 +1104,7 @@ def update_graph(
             layout.update(
                 barmode="overlay",
                 shapes=[vertical_line],
+                xaxis_tickformat="+.2%",
             )
 
             data = [
