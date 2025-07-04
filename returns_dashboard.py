@@ -1070,7 +1070,7 @@ def update_graph(
             title=title,
         )
 
-        if chart_type == "line":
+        if chart_type == "timeseries":
             data = [
                 go.Scatter(
                     x=df.index,
@@ -1084,7 +1084,7 @@ def update_graph(
                 for column in df.columns
             ]
 
-        elif chart_type == "hist":
+        elif chart_type == "dist":
             vertical_line = go.layout.Shape(
                 type="line",
                 x0=0,

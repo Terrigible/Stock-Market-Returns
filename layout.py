@@ -400,10 +400,10 @@ app_layout = dbc.Tabs(
                                             dbc.Label("Chart Type"),
                                             dbc.Select(
                                                 {
-                                                    "line": "Line",
-                                                    "hist": "Histogram",
+                                                    "timeseries": "Time Series",
+                                                    "dist": "Distribution",
                                                 },
-                                                value="line",
+                                                value="timeseries",
                                                 id="chart-type-selection",
                                             ),
                                         ],
@@ -570,10 +570,10 @@ app_layout = dbc.Tabs(
                                             dbc.Label("Chart Type"),
                                             dbc.Select(
                                                 {
-                                                    "line": "Line",
-                                                    "hist": "Histogram",
+                                                    "timeseries": "Time Series",
+                                                    "dist": "Distribution",
                                                 },
-                                                value="line",
+                                                value="timeseries",
                                                 id="portfolio-chart-type-selection",
                                             ),
                                         ],
