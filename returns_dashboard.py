@@ -918,14 +918,15 @@ def update_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict | None = None,
+    relayout_data: dict | None,
+    uirevision: str,
 ):
     layout = go.Layout(
         hovermode="x",
         showlegend=True,
         legend=go.layout.Legend(valign="top"),
         uirevision=y_var,
-        yaxis_uirevision=y_var + str(log_scale) + str(percent_scale),
+        yaxis_uirevision=uirevision,
     )
 
     if y_var == "price":
@@ -939,7 +940,7 @@ def update_graph(
         if relayout_data:
             if relayout_data.get("price", None):
                 if (
-                    ctx.triggered_id != ["graph", "portfolio-graph"]
+                    ctx.triggered_id not in ["graph", "portfolio-graph"]
                     and "xaxis.range[0]" in relayout_data["price"]
                 ):
                     layout.update(
@@ -960,19 +961,19 @@ def update_graph(
                         except (ValueError, TypeError):
                             start_date = None
                             end_date = None
-
         price_adj = 0
         hoverinfo = None
 
         if not percent_scale and not log_scale:
+            min_val = df.loc[start_date:].min().min()
+            max_val = df.loc[:end_date].max().max()
             layout.update(
-                yaxis_autorangeoptions_minallowed=df.loc[start_date:].min().min()
-            )
-            layout.update(
-                yaxis_autorangeoptions_maxallowed=df.loc[:end_date].max().max()
+                yaxis_range=[
+                    min_val - max_val * 0.055,
+                    max_val * 1.055,
+                ]
             )
         if percent_scale:
-            layout.update(yaxis_uirevision=False)
             for column in df.columns:
                 series = df[column].dropna()
                 if series.empty:
@@ -990,23 +991,16 @@ def update_graph(
                 else:
                     df[column] = np.nan
             if not log_scale:
+                min_val = df.loc[start_date:].min().min()
+                max_val = df.loc[:end_date].max().max()
                 layout.update(
-                    yaxis_autorangeoptions_minallowed=df.loc[start_date:].min().min()
-                )
-                layout.update(
-                    yaxis_autorangeoptions_maxallowed=df.loc[:end_date].max().max()
+                    yaxis_range=[
+                        min_val - max_val * 0.055,
+                        max_val * 1.055,
+                    ]
                 )
             layout.update(title="% Change")
             layout.update(yaxis_tickformat="+.2%")
-
-        if log_scale:
-            layout.update(yaxis_type="log")
-            if ctx.triggered_id not in ["graph", "portfolio-graph"]:
-                yaxis_range = [
-                    np.log10(df.loc[start_date:].min().min() + 1),
-                    np.log10(df.loc[:end_date].max().max() + 1),
-                ]
-                layout.update(yaxis_range=yaxis_range)
 
         if percent_scale and log_scale:
             price_adj = 1
@@ -1019,6 +1013,17 @@ def update_graph(
             yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
             layout.update(yaxis_tickvals=ytickvals)
             layout.update(yaxis_ticktext=yticktexts)
+
+        if log_scale:
+            layout.update(yaxis_type="log")
+            if ctx.triggered_id not in ["graph", "portfolio-graph"]:
+                min_val = np.log10(df.loc[start_date:].min().min() + price_adj)
+                max_val = np.log10(df.loc[:end_date].max().max() + price_adj)
+                yaxis_range = [
+                    min_val - max_val * np.log10(1.055),
+                    max_val * (1 + np.log10(1.055)),
+                ]
+                layout.update(yaxis_range=yaxis_range)
 
         data = [
             go.Scatter(
@@ -1279,6 +1284,20 @@ def update_security_graph(
             for selected_security in selected_securities
         }
     )
+
+    uirevision = (
+        currency
+        + adjust_for_inflation
+        + y_var
+        + str(log_scale)
+        + str(percent_scale)
+        + return_duration
+        + return_interval
+        + return_type
+        + baseline_security
+        + chart_type
+    )
+
     data, layout = update_graph(
         df,
         securities_colourmap,
@@ -1296,6 +1315,7 @@ def update_security_graph(
         baseline_security_options,
         chart_type,
         relayout_data,
+        uirevision,
     )
     return dict(data=data, layout=layout)
 
@@ -1579,6 +1599,20 @@ def update_portfolio_graph(
         ],
         axis=1,
     )
+
+    uirevision = (
+        currency
+        + adjust_for_inflation
+        + y_var
+        + str(log_scale)
+        + str(percent_scale)
+        + return_duration
+        + return_interval
+        + return_type
+        + baseline_portfolio
+        + chart_type
+    )
+
     data, layout = update_graph(
         portfolios_df,
         portfolios_colourmap,
@@ -1596,6 +1630,7 @@ def update_portfolio_graph(
         baseline_portfolio_options,
         chart_type,
         relayout_data,
+        uirevision,
     )
     return dict(data=data, layout=layout)
 
