@@ -274,7 +274,7 @@ app.layout = app_layout
     Input("security-type-selection", "value"),
     Input("security-type-selection", "options"),
 )
-def update_index_selection_visibility(
+def update_security_selection_visibility(
     security_type: str, security_type_options: list[str]
 ):
     return tuple(
@@ -293,7 +293,7 @@ def update_index_selection_visibility(
     Input("index-provider-selection", "value"),
     Input("index-provider-selection", "options"),
 )
-def update_msci_index_selection_visibility(
+def update_index_selection_visibility(
     index_provider: str, index_provider_options: dict[str, str]
 ):
     return tuple(
