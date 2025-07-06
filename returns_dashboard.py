@@ -937,30 +937,22 @@ def update_graph(
 
         start_date = None
         end_date = None
-        if relayout_data:
-            if relayout_data.get("price", None):
-                if (
-                    ctx.triggered_id not in ["graph", "portfolio-graph"]
-                    and "xaxis.range[0]" in relayout_data["price"]
-                ):
-                    layout.update(
-                        xaxis_range=(
-                            relayout_data["price"]["xaxis.range[0]"],
-                            relayout_data["price"]["xaxis.range[1]"],
-                        )
-                    )
-                if relayout_data.get(y_var, None):
-                    if "xaxis.range[0]" in relayout_data["price"]:
-                        try:
-                            start_date = pd.to_datetime(
-                                relayout_data["price"]["xaxis.range[0]"]
-                            )
-                            end_date = pd.to_datetime(
-                                relayout_data["price"]["xaxis.range[1]"]
-                            )
-                        except (ValueError, TypeError):
-                            start_date = None
-                            end_date = None
+        if (
+            relayout_data
+            and relayout_data.get("price", None)
+            and "xaxis.range[0]" in relayout_data["price"]
+        ):
+            try:
+                start_date = pd.to_datetime(relayout_data["price"]["xaxis.range[0]"])
+            except (ValueError, TypeError):
+                start_date = None
+            try:
+                end_date = pd.to_datetime(relayout_data["price"]["xaxis.range[1]"])
+            except (ValueError, TypeError):
+                end_date = None
+            if ctx.triggered_id not in ["graph", "portfolio-graph"]:
+                layout.update(xaxis_range=(start_date, end_date))
+
         price_adj = 0
         hoverinfo = None
 
