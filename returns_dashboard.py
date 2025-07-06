@@ -97,14 +97,18 @@ def load_data(
         ).iloc[:, 0]
     elif source == "FRED":
         if security["fred_index"] == "US-T":
-            series = load_us_treasury_returns()[security["us_treasury_duration"]]
+            series = (
+                load_us_treasury_returns()[security["us_treasury_duration"]]
+                .resample("B")
+                .last()
+            )
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
         else:
             raise ValueError(f"Invalid index: {security}")
     elif source == "MAS":
         if security["mas_index"] == "SGS":
-            series = load_sgs_returns()[security["sgs_duration"]]
+            series = load_sgs_returns()[security["sgs_duration"]].resample("B").last()
             series = series.div(
                 load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
             )
@@ -457,7 +461,7 @@ def add_index(
                 }
             )
             index_name = (
-                f"{us_treasury_duration_options[us_treasury_duration]}"
+                f"{us_treasury_duration_options[us_treasury_duration]} "
                 f"{fred_index_options[fred_index]}"
             )
         else:
