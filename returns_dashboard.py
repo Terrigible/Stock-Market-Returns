@@ -1381,6 +1381,19 @@ def add_allocation(
 
 
 @app.callback(
+    Output("portfolio-weights-sum", "children"),
+    Input("portfolio-allocations", "value"),
+)
+def portfolio_weights_sum(portfolio_allocation_strs: list[str]):
+    if not portfolio_allocation_strs:
+        return "Sum of Weights: "
+    portfolio_allocations: dict[str, int | float] = reduce(
+        dict.__or__, map(json.loads, portfolio_allocation_strs)
+    )
+    return f"Sum of Weights: {sum(portfolio_allocations.values())}%"
+
+
+@app.callback(
     Output("portfolios", "value"),
     Output("portfolios", "options"),
     Output("portfolio-allocations", "value", allow_duplicate=True),

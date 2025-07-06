@@ -473,6 +473,10 @@ app_layout = dbc.Tabs(
                                 id="portfolio-allocations",
                                 multi=True,
                             ),
+                            html.P(
+                                "Sum of Weights: ",
+                                id="portfolio-weights-sum",
+                            ),
                             html.P(),
                             dbc.Button("Add Portfolio", id="add-portfolio-button"),
                             html.P(),
