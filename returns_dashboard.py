@@ -954,8 +954,7 @@ def update_graph(
                 end_date = pd.to_datetime(relayout_data["price"]["xaxis.range[1]"])
             except (ValueError, TypeError):
                 end_date = None
-            if ctx.triggered_id not in ["graph", "portfolio-graph"]:
-                layout.update(xaxis_range=(start_date, end_date))
+            layout.update(xaxis_range=(start_date, end_date))
 
         price_adj = 0
         hoverinfo = None
@@ -1012,14 +1011,13 @@ def update_graph(
 
         if log_scale:
             layout.update(yaxis_type="log")
-            if ctx.triggered_id not in ["graph", "portfolio-graph"]:
-                min_val = np.log10(df.loc[start_date:].min().min() + price_adj)
-                max_val = np.log10(df.loc[:end_date].max().max() + price_adj)
-                yaxis_range = [
-                    min_val - max_val * np.log10(1.055),
-                    max_val * (1 + np.log10(1.055)),
-                ]
-                layout.update(yaxis_range=yaxis_range)
+            min_val = np.log10(df.loc[start_date:].min().min() + price_adj)
+            max_val = np.log10(df.loc[:end_date].max().max() + price_adj)
+            yaxis_range = [
+                min_val - max_val * np.log10(1.055),
+                max_val * (1 + np.log10(1.055)),
+            ]
+            layout.update(yaxis_range=yaxis_range)
 
         data = [
             go.Scatter(
