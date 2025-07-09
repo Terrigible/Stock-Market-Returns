@@ -362,7 +362,16 @@ def update_others_tax_treatment_selection_visibility(others_index: str):
 
 
 @app.callback(
-    Output("index-toast", "is_open"),
+    Output("toast", "children"),
+    Output("toast", "is_open"),
+    Input("toast-store", "data"),
+)
+def update_toast(toast):
+    return toast, True if toast else False
+
+
+@app.callback(
+    Output("toast-store", "data"),
     Output("selected-securities", "value"),
     Output("selected-securities", "options"),
     Input("add-index-button", "n_clicks"),
@@ -423,7 +432,7 @@ def add_index(
             f"{msci_style}/"
             f"* {msci_tax_treatment}*.csv"
         ):
-            return True, no_update, no_update
+            return "The constructed index is not available", no_update, no_update
 
         index_json = json.dumps(
             {
@@ -465,7 +474,7 @@ def add_index(
                 f"{fred_index_options[fred_index]}"
             )
         else:
-            return True, no_update, no_update
+            return "The constructed index is not available", no_update, no_update
 
     elif index_provider == "MAS":
         if mas_index == "SGS":
@@ -480,7 +489,7 @@ def add_index(
                 f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}"
             )
         else:
-            return True, no_update, no_update
+            return "The constructed index is not available", no_update, no_update
 
     else:
         others_tax_treatment = (
@@ -498,17 +507,16 @@ def add_index(
         index_name = f"{others_index_options[others_index]} {others_tax_treatment}"
 
     if selected_securities is None:
-        return False, [index_json], {index_json: index_name}
+        return no_update, [index_json], {index_json: index_name}
     if index_json in selected_securities:
         return no_update
     selected_securities.append(index_json)
     selected_securities_options.update({index_json: index_name})
-    return False, selected_securities, selected_securities_options
+    return no_update, selected_securities, selected_securities_options
 
 
 @app.callback(
-    Output("stock-etf-toast", "children"),
-    Output("stock-etf-toast", "is_open"),
+    Output("toast-store", "data", allow_duplicate=True),
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
     Output("yf-invalid-securities-store", "data"),
@@ -535,11 +543,10 @@ def add_stock_etf(
     if not stock_etf:
         return no_update
     if ";" in stock_etf:
-        return "Invalid character: ;", True, no_update, no_update, no_update, no_update
+        return "Invalid character: ;", no_update, no_update, no_update, no_update
     if stock_etf in yf_invalid_securities_store:
         return (
             "The selected ticker is not available",
-            True,
             no_update,
             no_update,
             no_update,
@@ -557,7 +564,6 @@ def add_stock_etf(
             selected_securities.append(yf_security_str)
             return (
                 no_update,
-                no_update,
                 selected_securities,
                 selected_securities_options,
                 no_update,
@@ -568,7 +574,6 @@ def add_stock_etf(
         yf_invalid_securities_store.append(stock_etf)
         return (
             "The selected ticker is not available",
-            True,
             no_update,
             no_update,
             yf_invalid_securities_store,
@@ -580,11 +585,9 @@ def add_stock_etf(
         toast = (
             "The selected ticker does not have currency information. Defaulting to USD."
         )
-        show_toast = True
     else:
         currency = ticker.history_metadata["currency"]
         toast = no_update
-        show_toast = no_update
     new_yf_security = json.dumps(
         {
             "source": "YF",
@@ -616,7 +619,6 @@ def add_stock_etf(
 
     return (
         toast,
-        show_toast,
         selected_securities,
         selected_securities_options,
         no_update,
@@ -625,8 +627,7 @@ def add_stock_etf(
 
 
 @app.callback(
-    Output("fund-index-toast", "children"),
-    Output("fund-index-toast", "is_open"),
+    Output("toast-store", "data", allow_duplicate=True),
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
     Output("ft-invalid-securities-store", "data"),
@@ -654,11 +655,10 @@ def add_fund_index(
     if not fund_index:
         return no_update
     if ";" in fund_index:
-        return "Invalid character: ;", True, no_update, no_update, no_update, no_update
+        return "Invalid character: ;", no_update, no_update, no_update, no_update
     if fund_index in ft_invalid_securities_store:
         return (
             "The selected ticker is not available",
-            True,
             no_update,
             no_update,
             no_update,
@@ -674,7 +674,6 @@ def add_fund_index(
         if ft_security_str in selected_securities_options:
             selected_securities.append(ft_security_str)
             return (
-                no_update,
                 no_update,
                 selected_securities,
                 selected_securities_options,
@@ -692,7 +691,6 @@ def add_fund_index(
         ft_invalid_securities_store.append(fund_index)
         return (
             str(e),
-            True,
             no_update,
             no_update,
             ft_invalid_securities_store,
@@ -713,7 +711,6 @@ def add_fund_index(
     ft_securities_store[new_ft_security] = df["price"].to_json(orient="index")
 
     return (
-        no_update,
         no_update,
         selected_securities,
         selected_securities_options,
