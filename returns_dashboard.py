@@ -951,7 +951,6 @@ def update_graph(
                 end_date = pd.to_datetime(relayout_data["price"]["xaxis.range[1]"])
             except (ValueError, TypeError):
                 end_date = None
-            layout.update(xaxis_range=(start_date, end_date))
 
         price_adj = 0
         hoverinfo = None
