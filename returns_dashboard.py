@@ -965,6 +965,9 @@ def update_graph(
                 ]
             )
         if percent_scale:
+            layout.update(title="% Change")
+            layout.update(yaxis_tickformat="+.2%")
+
             for column in df.columns:
                 series = df[column].dropna()
                 if series.empty:
@@ -990,8 +993,6 @@ def update_graph(
                         max_val * 1.055,
                     ]
                 )
-            layout.update(title="% Change")
-            layout.update(yaxis_tickformat="+.2%")
 
         if percent_scale and log_scale:
             price_adj = 1
