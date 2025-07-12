@@ -847,6 +847,8 @@ def update_selection_visibility(y_var: str):
 
     percent_scale_style = show if y_var == "price" else hide
 
+    auto_scale_style = show if y_var == "price" else hide
+
     return_selection_style = (
         show if y_var in ["rolling_returns", "calendar_returns"] else hide
     )
@@ -856,6 +858,7 @@ def update_selection_visibility(y_var: str):
     return (
         log_scale_style,
         percent_scale_style,
+        auto_scale_style,
         return_selection_style,
         rolling_return_selection_style,
         calendar_return_selection_style,
@@ -865,6 +868,7 @@ def update_selection_visibility(y_var: str):
 @app.callback(
     Output("log-scale-switch", "style"),
     Output("percent-scale-switch", "style"),
+    Output("auto-scale-switch", "style"),
     Output("return-selection", "style"),
     Output("rolling-return-selection-container", "style"),
     Output("calendar-return-selection-container", "style"),
@@ -910,6 +914,7 @@ def update_graph(
     y_var: str,
     log_scale: bool,
     percent_scale: bool,
+    auto_scale: bool,
     return_duration: str,
     return_duration_options: dict[str, str],
     return_interval: str,
@@ -955,7 +960,7 @@ def update_graph(
         price_adj = 0
         hoverinfo = None
 
-        if not percent_scale and not log_scale:
+        if not percent_scale and not log_scale and auto_scale:
             min_val = df.loc[start_date:].min().min()
             max_val = df.loc[:end_date].max().max()
             layout.update(
@@ -984,7 +989,7 @@ def update_graph(
                     df[column] = df[column].div(baseline_value).sub(1)
                 else:
                     df[column] = np.nan
-            if not log_scale:
+            if not log_scale and auto_scale:
                 min_val = df.loc[start_date:].min().min()
                 max_val = df.loc[:end_date].max().max()
                 layout.update(
@@ -1008,13 +1013,14 @@ def update_graph(
 
         if log_scale:
             layout.update(yaxis_type="log")
-            min_val = np.log10(df.loc[start_date:].min().min() + price_adj)
-            max_val = np.log10(df.loc[:end_date].max().max() + price_adj)
-            yaxis_range = [
-                min_val - max_val * np.log10(1.055),
-                max_val * (1 + np.log10(1.055)),
-            ]
-            layout.update(yaxis_range=yaxis_range)
+            if auto_scale:
+                min_val = np.log10(df.loc[start_date:].min().min() + price_adj)
+                max_val = np.log10(df.loc[:end_date].max().max() + price_adj)
+                yaxis_range = [
+                    min_val - max_val * np.log10(1.055),
+                    max_val * (1 + np.log10(1.055)),
+                ]
+                layout.update(yaxis_range=yaxis_range)
 
         data = [
             go.Scatter(
@@ -1217,6 +1223,7 @@ def update_xaxis_relayout_store(
     Input("y-var-selection", "value"),
     Input("log-scale-switch", "value"),
     Input("percent-scale-switch", "value"),
+    Input("auto-scale-switch", "value"),
     Input("return-duration-selection", "value"),
     Input("return-duration-selection", "options"),
     Input("return-interval-selection", "value"),
@@ -1238,6 +1245,7 @@ def update_security_graph(
     y_var: str,
     log_scale: bool,
     percent_scale: bool,
+    auto_scale: bool,
     return_duration: str,
     return_duration_options: dict[str, str],
     return_interval: str,
@@ -1296,6 +1304,7 @@ def update_security_graph(
         y_var,
         log_scale,
         percent_scale,
+        auto_scale,
         return_duration,
         return_duration_options,
         return_interval,
@@ -1428,6 +1437,7 @@ def add_portfolio(
 @app.callback(
     Output("portfolio-log-scale-switch", "style"),
     Output("portfolio-percent-scale-switch", "style"),
+    Output("portfolio-auto-scale-switch", "style"),
     Output("portfolio-return-selection", "style"),
     Output("portfolio-rolling-return-selection-container", "style"),
     Output("portfolio-calendar-return-selection-container", "style"),
@@ -1548,6 +1558,7 @@ def update_portfolio_xaxis_relayout_store(
     Input("portfolio-baseline-security-selection", "options"),
     Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-percent-scale-switch", "value"),
+    Input("portfolio-auto-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
     Input("portfolio-graph-xaxis-relayout-store", "data"),
 )
@@ -1568,6 +1579,7 @@ def update_portfolio_graph(
     baseline_portfolio_options: dict[str, str],
     log_scale: bool,
     percent_scale: bool,
+    auto_scale: bool,
     chart_type: str,
     relayout_data: dict | None,
 ):
@@ -1624,6 +1636,7 @@ def update_portfolio_graph(
         y_var,
         log_scale,
         percent_scale,
+        auto_scale,
         return_duration,
         return_duration_options,
         return_interval,

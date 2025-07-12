@@ -332,6 +332,9 @@ app_layout = dbc.Tabs(
                             dbc.Switch(
                                 "percent-scale-switch", value=False, label="% Scale"
                             ),
+                            dbc.Switch(
+                                "auto-scale-switch", value=False, label="Auto Scale"
+                            ),
                             html.Div(
                                 [
                                     html.Div(
@@ -505,6 +508,11 @@ app_layout = dbc.Tabs(
                                 "portfolio-percent-scale-switch",
                                 value=False,
                                 label="% Scale",
+                            ),
+                            dbc.Switch(
+                                "portfolio-auto-scale-switch",
+                                value=False,
+                                label="Auto Scale",
                             ),
                             html.Div(
                                 [
