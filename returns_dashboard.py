@@ -989,8 +989,8 @@ def update_graph(
             max_val = df.loc[start_date:end_date].max().max()
             layout.update(
                 yaxis_range=[
-                    min_val - max_val * 0.055,
-                    max_val * 1.055,
+                    min_val - (max_val - min_val) * 0.055,
+                    max_val + (max_val - min_val) * 0.055,
                 ]
             )
         if percent_scale:
@@ -1041,8 +1041,8 @@ def update_graph(
                     max_val = df.loc[start_date:end_date].max().max()
                     layout.update(
                         yaxis_range=[
-                            min_val - max_val * 0.055,
-                            max_val * 1.055,
+                            min_val - (max_val - min_val) * 0.055,
+                            max_val + (max_val - min_val) * 0.055,
                         ]
                     )
                 elif relayout_data and relayout_data.get("price", None):
@@ -1113,8 +1113,8 @@ def update_graph(
                 min_val = np.log10(df.loc[start_date:end_date].min().min() + price_adj)
                 max_val = np.log10(df.loc[start_date:end_date].max().max() + price_adj)
                 yaxis_range = [
-                    min_val - max_val * np.log10(1.055),
-                    max_val * (1 + np.log10(1.055)),
+                    min_val - (max_val - min_val) * 0.055,
+                    max_val + (max_val - min_val) * 0.055,
                 ]
                 layout.update(yaxis_range=yaxis_range)
 
