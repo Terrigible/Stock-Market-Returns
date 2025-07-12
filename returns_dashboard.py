@@ -1045,27 +1045,28 @@ def update_graph(
                             max_val + (max_val - min_val) * 0.055,
                         ]
                     )
-                elif relayout_data and relayout_data.get("price", None):
-                    if (
-                        relayout_data["price"][0]
-                        and "yaxis.range[0]" in relayout_data["price"][0]
-                    ):
-                        yaxis_min = float(relayout_data["price"][0]["yaxis.range[0]"])
-                        yaxis_max = float(relayout_data["price"][0]["yaxis.range[1]"])
-                        layout.update(
-                            yaxis_range=[
-                                prev_zoom_df.add(1)
-                                .rdiv(yaxis_min + 1)
-                                .sub(1)
-                                .loc[start_date:]
-                                .iloc[0, 0],
-                                prev_zoom_df.add(1)
-                                .rdiv(yaxis_max + 1)
-                                .sub(1)
-                                .loc[start_date:]
-                                .iloc[0, 0],
-                            ]
-                        )
+                elif (
+                    relayout_data
+                    and relayout_data.get("price", None)
+                    and relayout_data["price"][0]
+                    and "yaxis.range[0]" in relayout_data["price"][0]
+                ):
+                    yaxis_min = float(relayout_data["price"][0]["yaxis.range[0]"])
+                    yaxis_max = float(relayout_data["price"][0]["yaxis.range[1]"])
+                    layout.update(
+                        yaxis_range=[
+                            prev_zoom_df.add(1)
+                            .rdiv(yaxis_min + 1)
+                            .sub(1)
+                            .loc[start_date:]
+                            .iloc[0, 0],
+                            prev_zoom_df.add(1)
+                            .rdiv(yaxis_max + 1)
+                            .sub(1)
+                            .loc[start_date:]
+                            .iloc[0, 0],
+                        ]
+                    )
 
             if log_scale:
                 price_adj = 1
@@ -1079,33 +1080,30 @@ def update_graph(
                 layout.update(yaxis_tickvals=ytickvals)
                 layout.update(yaxis_ticktext=yticktexts)
 
-                if relayout_data and relayout_data.get("price", None):
-                    if (
-                        relayout_data["price"][0]
-                        and "yaxis.range[0]" in relayout_data["price"][0]
-                    ):
-                        yaxis_min = 10 ** float(
-                            relayout_data["price"][0]["yaxis.range[0]"]
-                        )
-                        yaxis_max = 10 ** float(
-                            relayout_data["price"][0]["yaxis.range[1]"]
-                        )
-                        layout.update(
-                            yaxis_range=[
-                                prev_zoom_df.add(1)
-                                .rdiv(yaxis_min)
-                                .iloc[:, 0]
-                                .loc[start_date:]
-                                .apply(np.log10)
-                                .iloc[0],
-                                prev_zoom_df.add(1)
-                                .rdiv(yaxis_max)
-                                .iloc[:, 0]
-                                .loc[start_date:]
-                                .apply(np.log10)
-                                .iloc[0],
-                            ]
-                        )
+                if (
+                    relayout_data
+                    and relayout_data.get("price", None)
+                    and relayout_data["price"][0]
+                    and "yaxis.range[0]" in relayout_data["price"][0]
+                ):
+                    yaxis_min = 10 ** float(relayout_data["price"][0]["yaxis.range[0]"])
+                    yaxis_max = 10 ** float(relayout_data["price"][0]["yaxis.range[1]"])
+                    layout.update(
+                        yaxis_range=[
+                            prev_zoom_df.add(1)
+                            .rdiv(yaxis_min)
+                            .iloc[:, 0]
+                            .loc[start_date:]
+                            .apply(np.log10)
+                            .iloc[0],
+                            prev_zoom_df.add(1)
+                            .rdiv(yaxis_max)
+                            .iloc[:, 0]
+                            .loc[start_date:]
+                            .apply(np.log10)
+                            .iloc[0],
+                        ]
+                    )
 
         if log_scale:
             layout.update(yaxis_type="log")
