@@ -1,7 +1,6 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-
 app_layout = dbc.Tabs(
     [
         dbc.Tab(

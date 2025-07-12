@@ -924,7 +924,7 @@ def update_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict | None,
+    relayout_data: dict[str, list[dict[str, str | float] | None]] | None,
     uirevision: str,
 ):
     layout = go.Layout(
@@ -943,26 +943,50 @@ def update_graph(
 
         start_date = None
         end_date = None
-        if (
-            relayout_data
-            and relayout_data.get("price", None)
-            and "xaxis.range[0]" in relayout_data["price"]
-        ):
-            try:
-                start_date = pd.to_datetime(relayout_data["price"]["xaxis.range[0]"])
-            except (ValueError, TypeError):
-                start_date = None
-            try:
-                end_date = pd.to_datetime(relayout_data["price"]["xaxis.range[1]"])
-            except (ValueError, TypeError):
-                end_date = None
+        prev_start_date = None
+        prev_end_date = None
+
+        if relayout_data and relayout_data.get("price", None):
+            if (
+                relayout_data["price"][0]
+                and "xaxis.range[0]" in relayout_data["price"][0]
+            ):
+                try:
+                    start_date = pd.to_datetime(
+                        relayout_data["price"][0]["xaxis.range[0]"]
+                    )
+                except (ValueError, TypeError):
+                    start_date = None
+                try:
+                    end_date = pd.to_datetime(
+                        relayout_data["price"][0]["xaxis.range[1]"]
+                    )
+                except (ValueError, TypeError):
+                    end_date = None
+
+            if (
+                relayout_data["price"][1]
+                and "xaxis.range[0]" in relayout_data["price"][1]
+            ):
+                try:
+                    prev_start_date = pd.to_datetime(
+                        relayout_data["price"][1]["xaxis.range[0]"]
+                    )
+                except (ValueError, TypeError):
+                    prev_start_date = None
+                try:
+                    prev_end_date = pd.to_datetime(
+                        relayout_data["price"][1]["xaxis.range[1]"]
+                    )
+                except (ValueError, TypeError):
+                    prev_end_date = None
 
         price_adj = 0
         hoverinfo = None
 
         if not percent_scale and not log_scale and auto_scale:
-            min_val = df.loc[start_date:].min().min()
-            max_val = df.loc[:end_date].max().max()
+            min_val = df.loc[start_date:end_date].min().min()
+            max_val = df.loc[start_date:end_date].max().max()
             layout.update(
                 yaxis_range=[
                     min_val - max_val * 0.055,
@@ -972,6 +996,8 @@ def update_graph(
         if percent_scale:
             layout.update(title="% Change")
             layout.update(yaxis_tickformat="+.2%")
+
+            prev_zoom_df = df.copy(deep=True)
 
             for column in df.columns:
                 series = df[column].dropna()
@@ -989,33 +1015,103 @@ def update_graph(
                     df[column] = df[column].div(baseline_value).sub(1)
                 else:
                     df[column] = np.nan
-            if not log_scale and auto_scale:
-                min_val = df.loc[start_date:].min().min()
-                max_val = df.loc[:end_date].max().max()
-                layout.update(
-                    yaxis_range=[
-                        min_val - max_val * 0.055,
-                        max_val * 1.055,
-                    ]
-                )
 
-        if percent_scale and log_scale:
-            price_adj = 1
-            hoverinfo = "text+name+x"
-            ytickvals = (
-                list(n / 10 for n in range(0, 11))
-                + list(n / 10 + 1 for n in range(1, 11))
-                + [base * 10**exp + 1 for exp in range(6) for base in range(1, 10)]
-            )
-            yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
-            layout.update(yaxis_tickvals=ytickvals)
-            layout.update(yaxis_ticktext=yticktexts)
+            for column in prev_zoom_df.columns:
+                series = prev_zoom_df[column].dropna()
+                if series.empty:
+                    prev_zoom_df[column] = np.nan
+                    continue
+                baseline_value = None
+                if prev_start_date:
+                    visible_series = series[series.index >= prev_start_date]
+                    if not visible_series.empty:
+                        baseline_value = visible_series.iloc[0]
+                if baseline_value is None:
+                    baseline_value = series.iloc[0]
+                if baseline_value != 0:
+                    prev_zoom_df[column] = (
+                        prev_zoom_df[column].div(baseline_value).sub(1)
+                    )
+                else:
+                    prev_zoom_df[column] = np.nan
+
+            if not log_scale:
+                if auto_scale:
+                    min_val = df.loc[start_date:end_date].min().min()
+                    max_val = df.loc[start_date:end_date].max().max()
+                    layout.update(
+                        yaxis_range=[
+                            min_val - max_val * 0.055,
+                            max_val * 1.055,
+                        ]
+                    )
+                elif relayout_data and relayout_data.get("price", None):
+                    if (
+                        relayout_data["price"][0]
+                        and "yaxis.range[0]" in relayout_data["price"][0]
+                    ):
+                        yaxis_min = float(relayout_data["price"][0]["yaxis.range[0]"])
+                        yaxis_max = float(relayout_data["price"][0]["yaxis.range[1]"])
+                        layout.update(
+                            yaxis_range=[
+                                prev_zoom_df.add(1)
+                                .rdiv(yaxis_min + 1)
+                                .sub(1)
+                                .loc[start_date:]
+                                .iloc[0, 0],
+                                prev_zoom_df.add(1)
+                                .rdiv(yaxis_max + 1)
+                                .sub(1)
+                                .loc[start_date:]
+                                .iloc[0, 0],
+                            ]
+                        )
+
+            if log_scale:
+                price_adj = 1
+                hoverinfo = "text+name+x"
+                ytickvals = (
+                    list(n / 10 for n in range(0, 11))
+                    + list(n / 10 + 1 for n in range(1, 11))
+                    + [base * 10**exp + 1 for exp in range(6) for base in range(1, 10)]
+                )
+                yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
+                layout.update(yaxis_tickvals=ytickvals)
+                layout.update(yaxis_ticktext=yticktexts)
+
+                if relayout_data and relayout_data.get("price", None):
+                    if (
+                        relayout_data["price"][0]
+                        and "yaxis.range[0]" in relayout_data["price"][0]
+                    ):
+                        yaxis_min = 10 ** float(
+                            relayout_data["price"][0]["yaxis.range[0]"]
+                        )
+                        yaxis_max = 10 ** float(
+                            relayout_data["price"][0]["yaxis.range[1]"]
+                        )
+                        layout.update(
+                            yaxis_range=[
+                                prev_zoom_df.add(1)
+                                .rdiv(yaxis_min)
+                                .iloc[:, 0]
+                                .loc[start_date:]
+                                .apply(np.log10)
+                                .iloc[0],
+                                prev_zoom_df.add(1)
+                                .rdiv(yaxis_max)
+                                .iloc[:, 0]
+                                .loc[start_date:]
+                                .apply(np.log10)
+                                .iloc[0],
+                            ]
+                        )
 
         if log_scale:
             layout.update(yaxis_type="log")
             if auto_scale:
-                min_val = np.log10(df.loc[start_date:].min().min() + price_adj)
-                max_val = np.log10(df.loc[:end_date].max().max() + price_adj)
+                min_val = np.log10(df.loc[start_date:end_date].min().min() + price_adj)
+                max_val = np.log10(df.loc[start_date:end_date].max().max() + price_adj)
                 yaxis_range = [
                     min_val - max_val * np.log10(1.055),
                     max_val * (1 + np.log10(1.055)),
@@ -1200,15 +1296,16 @@ def update_graph(
     Input("graph", "relayoutData"),
 )
 def update_xaxis_relayout_store(
-    current_data: dict | None,
+    current_data: dict[str, list[dict[str, str | float] | None]] | None,
     y_var: str,
-    relayout_data: dict,
+    relayout_data: dict[str, str | float],
 ):
     if current_data is None:
-        return {y_var: relayout_data}
+        return {y_var: [relayout_data, None]}
     for key in relayout_data:
         if "xaxis" in key:
-            current_data.update({y_var: relayout_data})
+            current_data.setdefault(y_var, [None, None]).pop()
+            current_data[y_var].insert(0, relayout_data)
             break
     return current_data
 
@@ -1256,7 +1353,7 @@ def update_security_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict | None,
+    relayout_data: dict[str, list[dict[str, str | float] | None]] | None,
 ):
     securities_colourmap = dict(
         zip(
@@ -1527,15 +1624,16 @@ def load_portfolio(
     Input("portfolio-graph", "relayoutData"),
 )
 def update_portfolio_xaxis_relayout_store(
-    current_data: dict | None,
+    current_data: dict[str, list[dict[str, str | float] | None]] | None,
     y_var: str,
-    relayout_data: dict,
+    relayout_data: dict[str, str | float],
 ):
     if current_data is None:
-        return {y_var: relayout_data}
+        return {y_var: [relayout_data, None]}
     for key in relayout_data:
         if "xaxis" in key:
-            current_data.update({y_var: relayout_data})
+            current_data.setdefault(y_var, [None, None]).pop()
+            current_data[y_var].insert(0, relayout_data)
             break
     return current_data
 
@@ -1581,7 +1679,7 @@ def update_portfolio_graph(
     percent_scale: bool,
     auto_scale: bool,
     chart_type: str,
-    relayout_data: dict | None,
+    relayout_data: dict[str, list[dict[str, str | float] | None]] | None,
 ):
     if not portfolio_strs:
         return {
