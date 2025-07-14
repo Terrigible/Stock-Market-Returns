@@ -932,7 +932,7 @@ def update_graph(
         showlegend=True,
         legend=go.layout.Legend(valign="top"),
         uirevision=y_var,
-        yaxis_uirevision=uirevision,
+        yaxis_uirevision=False if auto_scale else uirevision,
     )
 
     if y_var == "price":
