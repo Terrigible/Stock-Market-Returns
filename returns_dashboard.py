@@ -963,6 +963,7 @@ def update_graph(
                     )
                 except (ValueError, TypeError):
                     end_date = None
+            layout.update(xaxis_range=(start_date, end_date))
 
             if (
                 relayout_data["price"][1]
