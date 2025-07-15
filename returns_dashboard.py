@@ -924,8 +924,9 @@ def update_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict[str, dict[str, list[dict[str, str | float] | None]]] | None,
+    relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     uirevision: str,
+    prev_layout: dict | None,
 ):
     layout = go.Layout(
         hovermode="x",
@@ -946,38 +947,38 @@ def update_graph(
         prev_start_date = None
         prev_end_date = None
 
-        if relayout_data:
-            if (
-                relayout_data["price"]["xaxis"][0]
-                and "xaxis.range[0]" in relayout_data["price"]["xaxis"][0]
+        if relayout_data and prev_layout and prev_layout.get("price"):
+            if relayout_data["price"]["xaxis"] and (
+                "xaxis.range[0]" in relayout_data["price"]["xaxis"]
+                or "xaxis.range[1]" in relayout_data["price"]["xaxis"]
             ):
                 try:
                     start_date = pd.to_datetime(
-                        relayout_data["price"]["xaxis"][0]["xaxis.range[0]"]
+                        relayout_data["price"]["xaxis"]["xaxis.range[0]"]
                     )
                 except (ValueError, TypeError):
                     start_date = None
                 try:
                     end_date = pd.to_datetime(
-                        relayout_data["price"]["xaxis"][0]["xaxis.range[1]"]
+                        relayout_data["price"]["xaxis"]["xaxis.range[1]"]
                     )
                 except (ValueError, TypeError):
                     end_date = None
-            layout.update(xaxis_range=(start_date, end_date))
+            layout.update(xaxis_range=[start_date, end_date])
 
             if (
-                relayout_data["price"]["xaxis"][1]
-                and "xaxis.range[0]" in relayout_data["price"]["xaxis"][1]
+                prev_layout["price"]["xaxis"]
+                and "range" in prev_layout["price"]["xaxis"]
             ):
                 try:
                     prev_start_date = pd.to_datetime(
-                        relayout_data["price"]["xaxis"][1]["xaxis.range[0]"]
+                        prev_layout["price"]["xaxis"]["range"][0]
                     )
                 except (ValueError, TypeError):
                     prev_start_date = None
                 try:
                     prev_end_date = pd.to_datetime(
-                        relayout_data["price"]["xaxis"][1]["xaxis.range[1]"]
+                        prev_layout["price"]["xaxis"]["range"][1]
                     )
                 except (ValueError, TypeError):
                     prev_end_date = None
@@ -985,7 +986,11 @@ def update_graph(
         price_adj = 0
         hoverinfo = None
 
-        if not percent_scale and not log_scale and auto_scale:
+        if (
+            not percent_scale
+            and not log_scale
+            and (auto_scale or ctx.triggered_id == "auto-scale-switch")
+        ):
             min_val = df.loc[start_date:end_date].min().min()
             max_val = df.loc[start_date:end_date].max().max()
             layout.update(
@@ -1037,7 +1042,7 @@ def update_graph(
                     prev_zoom_df[column] = np.nan
 
             if not log_scale:
-                if auto_scale:
+                if auto_scale or ctx.triggered_id == "auto-scale-switch":
                     min_val = df.loc[start_date:end_date].min().min()
                     max_val = df.loc[start_date:end_date].max().max()
                     layout.update(
@@ -1048,15 +1053,15 @@ def update_graph(
                     )
                 elif (
                     relayout_data
-                    and relayout_data["price"]["combined"][0]
-                    and "xaxis.range[0]" in relayout_data["price"]["combined"][0]
-                    and "yaxis.range[0]" in relayout_data["price"]["combined"][0]
+                    and relayout_data["price"]["combined"]
+                    and "xaxis.range[0]" in relayout_data["price"]["combined"]
+                    and "yaxis.range[0]" in relayout_data["price"]["combined"]
                 ):
                     yaxis_min = float(
-                        relayout_data["price"]["combined"][0]["yaxis.range[0]"]
+                        relayout_data["price"]["combined"]["yaxis.range[0]"]
                     )
                     yaxis_max = float(
-                        relayout_data["price"]["combined"][0]["yaxis.range[1]"]
+                        relayout_data["price"]["combined"]["yaxis.range[1]"]
                     )
                     layout.update(
                         yaxis_range=[
@@ -1074,18 +1079,14 @@ def update_graph(
                     )
                 elif (
                     relayout_data
-                    and relayout_data["price"]["combined"][0]
-                    and "xaxis.range[0]" in relayout_data["price"]["combined"][0]
-                    and "yaxis.range[0]" not in relayout_data["price"]["combined"][0]
-                    and relayout_data["price"]["yaxis"][0]
-                    and "yaxis.range[0]" in relayout_data["price"]["yaxis"][0]
+                    and relayout_data["price"]["combined"]
+                    and "xaxis.range[0]" in relayout_data["price"]["combined"]
+                    and "yaxis.range[0]" not in relayout_data["price"]["combined"]
+                    and prev_layout
+                    and prev_layout["price"]["yaxis"]["range"]
                 ):
-                    yaxis_min = float(
-                        relayout_data["price"]["yaxis"][0]["yaxis.range[0]"]
-                    )
-                    yaxis_max = float(
-                        relayout_data["price"]["yaxis"][0]["yaxis.range[1]"]
-                    )
+                    yaxis_min = float(prev_layout["price"]["yaxis"]["range"][0])
+                    yaxis_max = float(prev_layout["price"]["yaxis"]["range"][1])
                     layout.update(
                         yaxis_range=[
                             prev_zoom_df.add(1)
@@ -1100,6 +1101,19 @@ def update_graph(
                             .iloc[0, 0],
                         ]
                     )
+                elif (
+                    relayout_data
+                    and relayout_data["price"]["combined"]
+                    and "yaxis.range[0]" in relayout_data["price"]["combined"]
+                    and "xaxis.range[0]" not in relayout_data["price"]["combined"]
+                ):
+                    yaxis_min = float(
+                        relayout_data["price"]["combined"]["yaxis.range[0]"]
+                    )
+                    yaxis_max = float(
+                        relayout_data["price"]["combined"]["yaxis.range[1]"]
+                    )
+                    layout.update(yaxis_range=[yaxis_min, yaxis_max])
 
             if log_scale:
                 price_adj = 1
@@ -1115,15 +1129,15 @@ def update_graph(
 
                 if (
                     relayout_data
-                    and relayout_data["price"]["combined"][0]
-                    and "xaxis.range[0]" in relayout_data["price"]["combined"][0]
-                    and "yaxis.range[0]" in relayout_data["price"]["combined"][0]
+                    and relayout_data["price"]["combined"]
+                    and "xaxis.range[0]" in relayout_data["price"]["combined"]
+                    and "yaxis.range[0]" in relayout_data["price"]["combined"]
                 ):
                     yaxis_min = 10 ** float(
-                        relayout_data["price"]["combined"][0]["yaxis.range[0]"]
+                        relayout_data["price"]["combined"]["yaxis.range[0]"]
                     )
                     yaxis_max = 10 ** float(
-                        relayout_data["price"]["combined"][0]["yaxis.range[1]"]
+                        relayout_data["price"]["combined"]["yaxis.range[1]"]
                     )
                     layout.update(
                         yaxis_range=[
@@ -1143,18 +1157,14 @@ def update_graph(
                     )
                 elif (
                     relayout_data
-                    and relayout_data["price"]["combined"][0]
-                    and "xaxis.range[0]" in relayout_data["price"]["combined"][0]
-                    and "yaxis.range[0]" not in relayout_data["price"]["combined"][0]
-                    and relayout_data["price"]["yaxis"][0]
-                    and "yaxis.range[0]" in relayout_data["price"]["yaxis"][0]
+                    and relayout_data["price"]["combined"]
+                    and "xaxis.range[0]" in relayout_data["price"]["combined"]
+                    and "yaxis.range[0]" not in relayout_data["price"]["combined"]
+                    and prev_layout
+                    and prev_layout["price"]["yaxis"]["range"]
                 ):
-                    yaxis_min = 10 ** float(
-                        relayout_data["price"]["yaxis"][0]["yaxis.range[0]"]
-                    )
-                    yaxis_max = 10 ** float(
-                        relayout_data["price"]["yaxis"][0]["yaxis.range[1]"]
-                    )
+                    yaxis_min = 10 ** float(prev_layout["price"]["yaxis"]["range"][0])
+                    yaxis_max = 10 ** float(prev_layout["price"]["yaxis"]["range"][1])
                     layout.update(
                         yaxis_range=[
                             prev_zoom_df.add(1)
@@ -1171,10 +1181,23 @@ def update_graph(
                             .iloc[0],
                         ]
                     )
+                elif (
+                    relayout_data
+                    and relayout_data["price"]["combined"]
+                    and "yaxis.range[0]" in relayout_data["price"]["combined"]
+                    and "xaxis.range[0]" not in relayout_data["price"]["combined"]
+                ):
+                    yaxis_min = float(
+                        relayout_data["price"]["combined"]["yaxis.range[0]"]
+                    )
+                    yaxis_max = float(
+                        relayout_data["price"]["combined"]["yaxis.range[1]"]
+                    )
+                    layout.update(yaxis_range=[yaxis_min, yaxis_max])
 
         if log_scale:
             layout.update(yaxis_type="log")
-            if auto_scale:
+            if auto_scale or ctx.triggered_id == "auto-scale-switch":
                 min_val = np.log10(df.loc[start_date:end_date].min().min() + price_adj)
                 max_val = np.log10(df.loc[start_date:end_date].max().max() + price_adj)
                 yaxis_range = [
@@ -1196,6 +1219,7 @@ def update_graph(
             )
             for column in df.columns
         ]
+
         return data, layout
 
     if y_var == "drawdown":
@@ -1361,39 +1385,42 @@ def update_graph(
     Input("graph", "relayoutData"),
 )
 def update_xaxis_relayout_store(
-    current_data: dict[str, dict[str, list[dict[str, str | float] | None]]] | None,
+    current_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     y_var: str,
     relayout_data: dict[str, str | float],
 ):
     if current_data is None:
         return {
             y_var: {
-                "combined": [None, None],
-                "xaxis": [None, None],
-                "yaxis": [None, None],
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
             }
         }
     xaxis_relayout = {k: v for k, v in relayout_data.items() if "xaxis" in k}
     yaxis_relayout = {k: v for k, v in relayout_data.items() if "yaxis" in k}
-    current_data.setdefault(y_var, {"combined": [None, None]}).setdefault(
-        "combined", [None, None]
-    ).pop()
-    current_data[y_var]["combined"].insert(0, relayout_data)
+    current_data[y_var]["combined"] = relayout_data
     if xaxis_relayout:
-        (
-            current_data.setdefault(y_var, {"xaxis": [None, None]})
-            .setdefault("xaxis", [None, None])
-            .pop()
-        )
-        current_data[y_var]["xaxis"].insert(0, xaxis_relayout)
+        current_data[y_var]["xaxis"] = xaxis_relayout
     if yaxis_relayout:
-        (
-            current_data.setdefault(y_var, {"yaxis": [None, None]})
-            .setdefault("yaxis", [None, None])
-            .pop()
-        )
-        current_data[y_var]["yaxis"].insert(0, yaxis_relayout)
+        current_data[y_var]["yaxis"] = yaxis_relayout
     return current_data
+
+
+@app.callback(
+    Output("graph-last-layout-state-store", "data"),
+    State("graph-last-layout-state-store", "data"),
+    State("y-var-selection", "value"),
+    Input("graph", "figure"),
+    prevent_initial_call=True,
+)
+def update_last_layout_store(
+    old_data: dict[str, dict] | None, y_var: str, figure: dict
+):
+    if old_data is None:
+        return {y_var: figure["layout"]}
+    old_data[y_var] = figure["layout"]
+    return old_data
 
 
 @app.callback(
@@ -1418,6 +1445,7 @@ def update_xaxis_relayout_store(
     Input("baseline-security-selection", "options"),
     Input("chart-type-selection", "value"),
     Input("graph-xaxis-relayout-store", "data"),
+    State("graph-last-layout-state-store", "data"),
 )
 def update_security_graph(
     selected_securities: list[str],
@@ -1439,7 +1467,8 @@ def update_security_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict[str, dict[str, list[dict[str, str | float] | None]]] | None,
+    relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
+    prev_layout: dict | None,
 ):
     securities_colourmap = dict(
         zip(
@@ -1500,6 +1529,7 @@ def update_security_graph(
         chart_type,
         relayout_data,
         uirevision,
+        prev_layout,
     )
     return dict(data=data, layout=layout)
 
@@ -1711,18 +1741,42 @@ def load_portfolio(
     Input("portfolio-graph", "relayoutData"),
 )
 def update_portfolio_xaxis_relayout_store(
-    current_data: dict[str, list[dict[str, str | float] | None]] | None,
+    current_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     y_var: str,
     relayout_data: dict[str, str | float],
 ):
     if current_data is None:
-        return {y_var: [relayout_data, None]}
-    for key in relayout_data:
-        if "xaxis" in key:
-            current_data.setdefault(y_var, [None, None]).pop()
-            current_data[y_var].insert(0, relayout_data)
-            break
+        return {
+            y_var: {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            }
+        }
+    xaxis_relayout = {k: v for k, v in relayout_data.items() if "xaxis" in k}
+    yaxis_relayout = {k: v for k, v in relayout_data.items() if "yaxis" in k}
+    current_data[y_var]["combined"] = relayout_data
+    if xaxis_relayout:
+        current_data[y_var]["xaxis"] = xaxis_relayout
+    if yaxis_relayout:
+        current_data[y_var]["yaxis"] = yaxis_relayout
     return current_data
+
+
+@app.callback(
+    Output("portfolio-graph-last-layout-state-store", "data"),
+    State("portfolio-graph-last-layout-state-store", "data"),
+    State("portfolio-y-var-selection", "value"),
+    Input("portfolio-graph", "figure"),
+    prevent_initial_call=True,
+)
+def update_portfolio_last_layout_store(
+    old_data: dict[str, dict] | None, y_var: str, figure: dict
+):
+    if old_data is None:
+        return {y_var: figure["layout"]}
+    old_data[y_var] = figure["layout"]
+    return old_data
 
 
 @app.callback(
@@ -1746,6 +1800,7 @@ def update_portfolio_xaxis_relayout_store(
     Input("portfolio-auto-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
     Input("portfolio-graph-xaxis-relayout-store", "data"),
+    State("portfolio-graph-last-layout-state-store", "data"),
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
@@ -1766,7 +1821,8 @@ def update_portfolio_graph(
     percent_scale: bool,
     auto_scale: bool,
     chart_type: str,
-    relayout_data: dict[str, dict[str, list[dict[str, str | float] | None]]] | None,
+    relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
+    prev_layout: dict | None,
 ):
     if not portfolio_strs:
         return {
@@ -1834,6 +1890,7 @@ def update_portfolio_graph(
         chart_type,
         relayout_data,
         uirevision,
+        prev_layout,
     )
     return dict(data=data, layout=layout)
 
