@@ -15,7 +15,7 @@ dependencies = [
     "scipy>=1.16.0",
     "yfinance>=0.2.65",
     "polars>=1.31.0",
-    "pyarrow>=20.0.0",
+    "pyarrow>=21.0.0",
     "fastexcel>=0.14.0",
     "lxml>=6.0.0",
 ]
@@ -23,7 +23,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "geckodriver>=0.0.1",
-    "ipykernel>=6.29.5",
+    "ipykernel>=6.30.0",
     "matplotlib>=3.10.3",
     "nbformat>=5.10.4",
     "seaborn>=0.13.2",
