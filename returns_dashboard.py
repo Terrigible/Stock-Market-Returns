@@ -967,7 +967,8 @@ def update_graph(
             layout.update(xaxis_range=[start_date, end_date])
 
             if (
-                prev_layout["price"]["xaxis"]
+                prev_layout["price"].get("xaxis")
+                and prev_layout["price"]["xaxis"]
                 and "range" in prev_layout["price"]["xaxis"]
             ):
                 try:
