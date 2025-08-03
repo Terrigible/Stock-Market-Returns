@@ -945,44 +945,42 @@ def update_graph(
         start_date = None
         end_date = None
         prev_start_date = None
-        prev_end_date = None
 
-        if relayout_data and prev_layout and prev_layout.get("price"):
-            if relayout_data["price"]["xaxis"] and (
+        if (
+            relayout_data
+            and relayout_data["price"]["xaxis"]
+            and (
                 "xaxis.range[0]" in relayout_data["price"]["xaxis"]
                 or "xaxis.range[1]" in relayout_data["price"]["xaxis"]
-            ):
-                try:
-                    start_date = pd.to_datetime(
-                        relayout_data["price"]["xaxis"]["xaxis.range[0]"]
-                    )
-                except (ValueError, TypeError):
-                    start_date = None
-                try:
-                    end_date = pd.to_datetime(
-                        relayout_data["price"]["xaxis"]["xaxis.range[1]"]
-                    )
-                except (ValueError, TypeError):
-                    end_date = None
+            )
+        ):
+            try:
+                start_date = pd.to_datetime(
+                    relayout_data["price"]["xaxis"]["xaxis.range[0]"]
+                )
+            except (ValueError, TypeError):
+                start_date = None
+            try:
+                end_date = pd.to_datetime(
+                    relayout_data["price"]["xaxis"]["xaxis.range[1]"]
+                )
+            except (ValueError, TypeError):
+                end_date = None
             layout.update(xaxis_range=[start_date, end_date])
 
-            if (
-                prev_layout["price"].get("xaxis")
-                and prev_layout["price"]["xaxis"]
-                and "range" in prev_layout["price"]["xaxis"]
-            ):
-                try:
-                    prev_start_date = pd.to_datetime(
-                        prev_layout["price"]["xaxis"]["range"][0]
-                    )
-                except (ValueError, TypeError):
-                    prev_start_date = None
-                try:
-                    prev_end_date = pd.to_datetime(
-                        prev_layout["price"]["xaxis"]["range"][1]
-                    )
-                except (ValueError, TypeError):
-                    prev_end_date = None
+        if (
+            prev_layout
+            and prev_layout.get("price")
+            and prev_layout["price"].get("xaxis")
+            and prev_layout["price"]["xaxis"]
+            and "range" in prev_layout["price"]["xaxis"]
+        ):
+            try:
+                prev_start_date = pd.to_datetime(
+                    prev_layout["price"]["xaxis"]["range"][0]
+                )
+            except (ValueError, TypeError):
+                prev_start_date = None
 
         price_adj = 0
         hoverinfo = None
@@ -1116,7 +1114,7 @@ def update_graph(
                     )
                     layout.update(yaxis_range=[yaxis_min, yaxis_max])
 
-            if log_scale:
+            else:
                 price_adj = 1
                 hoverinfo = "text+name+x"
                 ytickvals = (
@@ -1392,11 +1390,26 @@ def update_xaxis_relayout_store(
 ):
     if current_data is None:
         return {
-            y_var: {
+            "price": {
                 "combined": None,
                 "xaxis": None,
                 "yaxis": None,
-            }
+            },
+            "drawdown": {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            },
+            "rolling_returns": {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            },
+            "calendar_returns": {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            },
         }
     xaxis_relayout = {k: v for k, v in relayout_data.items() if "xaxis" in k}
     yaxis_relayout = {k: v for k, v in relayout_data.items() if "yaxis" in k}
@@ -1748,11 +1761,26 @@ def update_portfolio_xaxis_relayout_store(
 ):
     if current_data is None:
         return {
-            y_var: {
+            "price": {
                 "combined": None,
                 "xaxis": None,
                 "yaxis": None,
-            }
+            },
+            "drawdown": {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            },
+            "rolling_returns": {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            },
+            "calendar_returns": {
+                "combined": None,
+                "xaxis": None,
+                "yaxis": None,
+            },
         }
     xaxis_relayout = {k: v for k, v in relayout_data.items() if "xaxis" in k}
     yaxis_relayout = {k: v for k, v in relayout_data.items() if "yaxis" in k}
