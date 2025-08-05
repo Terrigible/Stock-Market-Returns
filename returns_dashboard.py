@@ -1379,14 +1379,14 @@ def update_graph(
 
 @app.callback(
     Output("graph-xaxis-relayout-store", "data"),
+    Input("graph", "relayoutData"),
     State("graph-xaxis-relayout-store", "data"),
     State("y-var-selection", "value"),
-    Input("graph", "relayoutData"),
 )
 def update_xaxis_relayout_store(
+    relayout_data: dict[str, str | float],
     current_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     y_var: str,
-    relayout_data: dict[str, str | float],
 ):
     if current_data is None:
         return {
@@ -1423,13 +1423,15 @@ def update_xaxis_relayout_store(
 
 @app.callback(
     Output("graph-last-layout-state-store", "data"),
+    Input("graph", "figure"),
     State("graph-last-layout-state-store", "data"),
     State("y-var-selection", "value"),
-    Input("graph", "figure"),
     prevent_initial_call=True,
 )
 def update_last_layout_store(
-    old_data: dict[str, dict] | None, y_var: str, figure: dict
+    figure: dict,
+    old_data: dict[str, dict] | None,
+    y_var: str,
 ):
     if old_data is None:
         return {y_var: figure["layout"]}
@@ -1750,14 +1752,14 @@ def load_portfolio(
 
 @app.callback(
     Output("portfolio-graph-xaxis-relayout-store", "data"),
+    Input("portfolio-graph", "relayoutData"),
     State("portfolio-graph-xaxis-relayout-store", "data"),
     State("portfolio-y-var-selection", "value"),
-    Input("portfolio-graph", "relayoutData"),
 )
 def update_portfolio_xaxis_relayout_store(
+    relayout_data: dict[str, str | float],
     current_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     y_var: str,
-    relayout_data: dict[str, str | float],
 ):
     if current_data is None:
         return {
@@ -1794,13 +1796,15 @@ def update_portfolio_xaxis_relayout_store(
 
 @app.callback(
     Output("portfolio-graph-last-layout-state-store", "data"),
+    Input("portfolio-graph", "figure"),
     State("portfolio-graph-last-layout-state-store", "data"),
     State("portfolio-y-var-selection", "value"),
-    Input("portfolio-graph", "figure"),
     prevent_initial_call=True,
 )
 def update_portfolio_last_layout_store(
-    old_data: dict[str, dict] | None, y_var: str, figure: dict
+    figure: dict,
+    old_data: dict[str, dict] | None,
+    y_var: str,
 ):
     if old_data is None:
         return {y_var: figure["layout"]}
@@ -1811,8 +1815,6 @@ def update_portfolio_last_layout_store(
 @app.callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
-    State("portfolios", "options"),
-    State("cached-securities-store", "data"),
     Input("portfolio-currency-selection", "value"),
     Input("portfolio-inflation-adjustment-selection", "value"),
     Input("portfolio-y-var-selection", "value"),
@@ -1829,12 +1831,12 @@ def update_portfolio_last_layout_store(
     Input("portfolio-auto-scale-switch", "value"),
     Input("portfolio-chart-type-selection", "value"),
     Input("portfolio-graph-xaxis-relayout-store", "data"),
+    State("portfolios", "options"),
+    State("cached-securities-store", "data"),
     State("portfolio-graph-last-layout-state-store", "data"),
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
-    portfolio_options: dict[str, str],
-    yf_securities: dict[str, str],
     currency: str,
     adjust_for_inflation: str,
     y_var: str,
@@ -1851,6 +1853,8 @@ def update_portfolio_graph(
     auto_scale: bool,
     chart_type: str,
     relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
+    portfolio_options: dict[str, str],
+    yf_securities: dict[str, str],
     prev_layout: dict | None,
 ):
     if not portfolio_strs:
