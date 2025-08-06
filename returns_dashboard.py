@@ -10,7 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
 import yfinance as yf
-from dash import Dash, ctx, no_update
+from dash import ClientsideFunction, Dash, ctx, no_update
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
@@ -1421,22 +1421,14 @@ def update_xaxis_relayout_store(
     return current_data
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(namespace="clientside", function_name="updateLastLayoutStore"),
     Output("graph-last-layout-state-store", "data"),
     Input("graph", "figure"),
     State("graph-last-layout-state-store", "data"),
     State("y-var-selection", "value"),
     prevent_initial_call=True,
 )
-def update_last_layout_store(
-    figure: dict,
-    old_data: dict[str, dict] | None,
-    y_var: str,
-):
-    if old_data is None:
-        return {y_var: figure["layout"]}
-    old_data[y_var] = figure["layout"]
-    return old_data
 
 
 @app.callback(
@@ -1794,22 +1786,14 @@ def update_portfolio_xaxis_relayout_store(
     return current_data
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(namespace="clientside", function_name="updateLastLayoutStore"),
     Output("portfolio-graph-last-layout-state-store", "data"),
     Input("portfolio-graph", "figure"),
     State("portfolio-graph-last-layout-state-store", "data"),
     State("portfolio-y-var-selection", "value"),
     prevent_initial_call=True,
 )
-def update_portfolio_last_layout_store(
-    figure: dict,
-    old_data: dict[str, dict] | None,
-    y_var: str,
-):
-    if old_data is None:
-        return {y_var: figure["layout"]}
-    old_data[y_var] = figure["layout"]
-    return old_data
 
 
 @app.callback(
