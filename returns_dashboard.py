@@ -926,7 +926,7 @@ def update_graph(
     chart_type: str,
     relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     uirevision: str,
-    prev_layout: dict | None,
+    prev_layout: dict[str, dict] | None,
 ):
     layout = go.Layout(
         hovermode="x",
@@ -1476,7 +1476,7 @@ def update_security_graph(
     baseline_security_options: dict[str, str],
     chart_type: str,
     relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
-    prev_layout: dict | None,
+    prev_layout: dict[str, dict] | None,
 ):
     securities_colourmap = dict(
         zip(
@@ -1839,7 +1839,7 @@ def update_portfolio_graph(
     relayout_data: dict[str, dict[str, dict[str, str | float] | None]] | None,
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
-    prev_layout: dict | None,
+    prev_layout: dict[str, dict] | None,
 ):
     if not portfolio_strs:
         return {
