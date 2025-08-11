@@ -1097,14 +1097,11 @@ def update_graph(
             else:
                 price_adj = 1
                 hoverinfo = "text+name+x"
-                ytickvals = (
-                    list(n / 10 for n in range(0, 11))
-                    + list(n / 10 + 1 for n in range(1, 11))
-                    + [base * 10**exp + 1 for exp in range(6) for base in range(1, 10)]
-                )
+                ytickvals = [n / 10 for n in range(0, 20)] + [
+                    base * 10**exp + 1 for exp in range(6) for base in range(1, 10)
+                ]
                 yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
-                layout.update(yaxis_tickvals=ytickvals)
-                layout.update(yaxis_ticktext=yticktexts)
+                layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
                 if (
                     relayout_data["price"]
