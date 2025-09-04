@@ -263,7 +263,7 @@ def transform_data(
     raise ValueError("Invalid y_var")
 
 
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(compress=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 server = app.server
 
@@ -611,10 +611,9 @@ def add_stock_etf(
             .fillna(1)
             .cumprod()
         )
-        manually_adjusted = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
+        df["Adj Close"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
             df["Adj Close"].iloc[-1]
         )
-        df["Adj Close"] = manually_adjusted
     yf_securities_store[new_yf_security] = df["Adj Close"].to_json(orient="index")
 
     return (
