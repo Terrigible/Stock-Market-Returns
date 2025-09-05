@@ -421,7 +421,6 @@ app_layout = dbc.Tabs(
                             "height": "100%",
                         },
                     ),
-                    dcc.Store(id="graph-xaxis-relayout-store", storage_type="memory"),
                     dcc.Store(
                         id="graph-last-layout-state-store", storage_type="memory"
                     ),
@@ -607,9 +606,6 @@ app_layout = dbc.Tabs(
                             "width": "85%",
                             "height": "100%",
                         },
-                    ),
-                    dcc.Store(
-                        id="portfolio-graph-xaxis-relayout-store", storage_type="memory"
                     ),
                     dcc.Store(
                         id="portfolio-graph-last-layout-state-store",
