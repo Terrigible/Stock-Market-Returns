@@ -924,168 +924,20 @@ def update_graph(
         margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
     )
 
-    if ctx.triggered_id not in ["graph", "portfolio-graph"]:
-        relayout_data = {"autosize": True}
-
     if y_var == "price":
         layout.update(
             title="Price",
             yaxis_tickformat="5~g",
         )
 
-        start_date = None
-        end_date = None
-        prev_start_date = None
-
-        if relayout_data and not relayout_data.get("xaxis.autorange"):
-            if "xaxis.range[0]" in relayout_data:
-                start_date = pd.to_datetime(relayout_data["xaxis.range[0]"])
-            elif (
-                prev_layout
-                and "xaxis" in prev_layout["price"]
-                and "range" in prev_layout["price"]["xaxis"]
-            ):
-                start_date = pd.to_datetime(prev_layout["price"]["xaxis"]["range"][0])
-
-            if "xaxis.range[1]" in relayout_data:
-                end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
-            elif (
-                prev_layout
-                and "xaxis" in prev_layout["price"]
-                and "range" in prev_layout["price"]["xaxis"]
-            ):
-                end_date = pd.to_datetime(prev_layout["price"]["xaxis"]["range"][1])
-            layout.update(xaxis_range=[start_date, end_date])
-
-        if (
-            prev_layout
-            and "xaxis" in prev_layout["price"]
-            and "range" in prev_layout["price"]["xaxis"]
-        ):
-            prev_start_date = pd.to_datetime(prev_layout["price"]["xaxis"]["range"][0])
-
         price_adj = 0
         hoverinfo = None
 
-        if (
-            not percent_scale
-            and not log_scale
-            and (auto_scale or ctx.triggered_id == "auto-scale-switch")
-        ):
-            min_val = df.loc[start_date:end_date].min().min()
-            max_val = df.loc[start_date:end_date].max().max()
-            layout.update(
-                yaxis_range=[
-                    min_val - (max_val - min_val) * 0.055,
-                    max_val + (max_val - min_val) * 0.055,
-                ]
-            )
         if percent_scale:
             layout.update(title="% Change")
             layout.update(yaxis_tickformat="+.2~%")
 
-            prev_zoom_df = df.copy(deep=True)
-
-            for column in df.columns:
-                series = df[column].dropna()
-                if series.empty:
-                    df[column] = np.nan
-                    continue
-                baseline_value = None
-                if start_date:
-                    visible_series = series[series.index >= start_date]
-                    if not visible_series.empty:
-                        baseline_value = visible_series.iloc[0]
-                if baseline_value is None:
-                    baseline_value = series.iloc[0]
-                if baseline_value != 0:
-                    df[column] = df[column].div(baseline_value).sub(1)
-                else:
-                    df[column] = np.nan
-
-            for column in prev_zoom_df.columns:
-                series = prev_zoom_df[column].dropna()
-                if series.empty:
-                    prev_zoom_df[column] = np.nan
-                    continue
-                baseline_value = None
-                if prev_start_date:
-                    visible_series = series[series.index >= prev_start_date]
-                    if not visible_series.empty:
-                        baseline_value = visible_series.iloc[0]
-                if baseline_value is None:
-                    baseline_value = series.iloc[0]
-                if baseline_value != 0:
-                    prev_zoom_df[column] = (
-                        prev_zoom_df[column].div(baseline_value).sub(1)
-                    )
-                else:
-                    prev_zoom_df[column] = np.nan
-
-            if not log_scale:
-                if auto_scale or ctx.triggered_id == "auto-scale-switch":
-                    min_val = df.loc[start_date:end_date].min().min()
-                    max_val = df.loc[start_date:end_date].max().max()
-                    layout.update(
-                        yaxis_range=[
-                            min_val - (max_val - min_val) * 0.055,
-                            max_val + (max_val - min_val) * 0.055,
-                        ]
-                    )
-                elif (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
-                    and "yaxis.range[0]" in relayout_data
-                ):
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                    layout.update(
-                        yaxis_range=[
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_min + 1)
-                            .sub(1)
-                            .loc[start_date:]
-                            .iloc[0, 0],
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_max + 1)
-                            .sub(1)
-                            .loc[start_date:]
-                            .iloc[0, 0],
-                        ]
-                    )
-                elif (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
-                    and "yaxis.range[0]" not in relayout_data
-                    and prev_layout
-                    and prev_layout["price"]["yaxis"]["range"]
-                ):
-                    yaxis_min = float(prev_layout["price"]["yaxis"]["range"][0])
-                    yaxis_max = float(prev_layout["price"]["yaxis"]["range"][1])
-                    layout.update(
-                        yaxis_range=[
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_min + 1)
-                            .sub(1)
-                            .loc[start_date:]
-                            .iloc[0, 0],
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_max + 1)
-                            .sub(1)
-                            .loc[start_date:]
-                            .iloc[0, 0],
-                        ]
-                    )
-                elif (
-                    relayout_data
-                    and "yaxis.range[0]" in relayout_data
-                    and "xaxis.range[0]" not in relayout_data
-                ):
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                    layout.update(yaxis_range=[yaxis_min, yaxis_max])
-
-            else:
+            if log_scale:
                 price_adj = 1
                 hoverinfo = "text+name+x"
                 max_val = df.loc[start_date:end_date].max().max()
@@ -1097,73 +949,8 @@ def update_graph(
                 yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
                 layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
-                if (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
-                    and "yaxis.range[0]" in relayout_data
-                ):
-                    yaxis_min = 10 ** float(relayout_data["yaxis.range[0]"])
-                    yaxis_max = 10 ** float(relayout_data["yaxis.range[1]"])
-                    layout.update(
-                        yaxis_range=[
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_min)
-                            .iloc[:, 0]
-                            .loc[start_date:]
-                            .apply(np.log10)
-                            .iloc[0],
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_max)
-                            .iloc[:, 0]
-                            .loc[start_date:]
-                            .apply(np.log10)
-                            .iloc[0],
-                        ]
-                    )
-                elif (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
-                    and "yaxis.range[0]" not in relayout_data
-                    and prev_layout
-                    and prev_layout["price"]["yaxis"]["range"]
-                ):
-                    yaxis_min = 10 ** float(prev_layout["price"]["yaxis"]["range"][0])
-                    yaxis_max = 10 ** float(prev_layout["price"]["yaxis"]["range"][1])
-                    layout.update(
-                        yaxis_range=[
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_min)
-                            .iloc[:, 0]
-                            .loc[start_date:]
-                            .apply(np.log10)
-                            .iloc[0],
-                            prev_zoom_df.add(1)
-                            .rdiv(yaxis_max)
-                            .iloc[:, 0]
-                            .loc[start_date:]
-                            .apply(np.log10)
-                            .iloc[0],
-                        ]
-                    )
-                elif (
-                    relayout_data
-                    and "yaxis.range[0]" in relayout_data
-                    and "xaxis.range[0]" not in relayout_data
-                ):
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                    layout.update(yaxis_range=[yaxis_min, yaxis_max])
-
         if log_scale:
             layout.update(yaxis_type="log")
-            if auto_scale or ctx.triggered_id == "auto-scale-switch":
-                min_val = np.log10(df.loc[start_date:end_date].min().min() + price_adj)
-                max_val = np.log10(df.loc[start_date:end_date].max().max() + price_adj)
-                yaxis_range = [
-                    min_val - (max_val - min_val) * 0.055,
-                    max_val + (max_val - min_val) * 0.055,
-                ]
-                layout.update(yaxis_range=yaxis_range)
 
         data = [
             go.Scatter(
