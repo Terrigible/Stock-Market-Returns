@@ -272,9 +272,9 @@ app.layout = app_layout
 
 @app.callback(
     Output("index-selection-container", "style"),
-    Output("stock-etf-selection-container", "style"),
     Output("fund-selection-container", "style"),
-    Output("fund-index-selection-container", "style"),
+    Output("yf-security-selection-container", "style"),
+    Output("ft-security-selection-container", "style"),
     Input("security-type-selection", "value"),
     Input("security-type-selection", "options"),
 )
@@ -521,30 +521,30 @@ def add_index(
     Output("selected-securities", "options", allow_duplicate=True),
     Output("yf-invalid-securities-store", "data"),
     Output("cached-securities-store", "data"),
-    Input("add-stock-etf-button", "n_clicks"),
+    Input("add-yf-security-button", "n_clicks"),
     State("selected-securities", "value"),
     State("selected-securities", "options"),
-    State("stock-etf-input", "value"),
-    State("stock-etf-tax-treatment-selection", "value"),
+    State("yf-security-input", "value"),
+    State("yf-security-tax-treatment-selection", "value"),
     State("yf-invalid-securities-store", "data"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
-    running=[(Output("add-stock-etf-button", "disabled"), True, False)],
+    running=[(Output("add-yf-security-button", "disabled"), True, False)],
 )
-def add_stock_etf(
+def add_yf_security(
     _,
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
-    stock_etf: str | None,
+    yf_security: str | None,
     tax_treatment: str,
     yf_invalid_securities_store: list[str],
     yf_securities_store: dict[str, str],
 ):
-    if not stock_etf:
+    if not yf_security:
         return no_update
-    if ";" in stock_etf:
+    if ";" in yf_security:
         return "Invalid character: ;", no_update, no_update, no_update, no_update
-    if stock_etf in yf_invalid_securities_store:
+    if yf_security in yf_invalid_securities_store:
         return (
             "The selected ticker is not available",
             no_update,
@@ -552,16 +552,16 @@ def add_stock_etf(
             no_update,
             no_update,
         )
-    for yf_security_str in yf_securities_store:
-        yf_security = json.loads(yf_security_str)
-        if stock_etf != yf_security["ticker"]:
+    for stored_yf_security_str in yf_securities_store:
+        stored_yf_security = json.loads(stored_yf_security_str)
+        if yf_security != stored_yf_security["ticker"]:
             continue
-        if tax_treatment != yf_security["tax_treatment"]:
+        if tax_treatment != stored_yf_security["tax_treatment"]:
             continue
-        if yf_security_str in selected_securities:
+        if stored_yf_security_str in selected_securities:
             return no_update
-        if yf_security_str in selected_securities_options:
-            selected_securities.append(yf_security_str)
+        if stored_yf_security_str in selected_securities_options:
+            selected_securities.append(stored_yf_security_str)
             return (
                 no_update,
                 selected_securities,
@@ -569,9 +569,9 @@ def add_stock_etf(
                 no_update,
                 yf_securities_store,
             )
-    ticker = yf.Ticker(stock_etf)
+    ticker = yf.Ticker(yf_security)
     if ticker.history_metadata == {}:
-        yf_invalid_securities_store.append(stock_etf)
+        yf_invalid_securities_store.append(yf_security)
         return (
             "The selected ticker is not available",
             no_update,
@@ -632,30 +632,30 @@ def add_stock_etf(
     Output("ft-invalid-securities-store", "data"),
     Output("cached-securities-store", "data", allow_duplicate=True),
     Output("ft-api-key-store", "data"),
-    Input("add-fund-index-button", "n_clicks"),
+    Input("add-ft-security-button", "n_clicks"),
     State("selected-securities", "value"),
     State("selected-securities", "options"),
-    State("fund-index-input", "value"),
+    State("ft-security-input", "value"),
     State("ft-invalid-securities-store", "data"),
     State("cached-securities-store", "data"),
     State("ft-api-key-store", "data"),
     prevent_initial_call=True,
-    running=[(Output("add-fund-index-button", "disabled"), True, False)],
+    running=[(Output("add-ft-security-button", "disabled"), True, False)],
 )
-def add_fund_index(
+def add_ft_security(
     _,
     selected_securities: list[str],
     selected_securities_options: dict,
-    fund_index: str,
+    ft_security: str,
     ft_invalid_securities_store: list[str],
     ft_securities_store: dict,
     stored_ft_api_key: str | None,
 ):
-    if not fund_index:
+    if not ft_security:
         return no_update
-    if ";" in fund_index:
+    if ";" in ft_security:
         return "Invalid character: ;", no_update, no_update, no_update, no_update
-    if fund_index in ft_invalid_securities_store:
+    if ft_security in ft_invalid_securities_store:
         return (
             "The selected ticker is not available",
             no_update,
@@ -665,8 +665,8 @@ def add_fund_index(
             no_update,
         )
     for ft_security_str in ft_securities_store:
-        ft_security = json.loads(ft_security_str)
-        if fund_index != ft_security["ticker"]:
+        stored_ft_security = json.loads(ft_security_str)
+        if ft_security != stored_ft_security["ticker"]:
             continue
         if ft_security_str in selected_securities:
             return no_update
@@ -685,9 +685,9 @@ def add_fund_index(
     else:
         ft_api_key = get_ft_api_key()
     try:
-        df, ticker, currency = download_ft_data(fund_index, ft_api_key)
+        df, ticker, currency = download_ft_data(ft_security, ft_api_key)
     except ValueError as e:
-        ft_invalid_securities_store.append(fund_index)
+        ft_invalid_securities_store.append(ft_security)
         return (
             str(e),
             no_update,

@@ -13,9 +13,9 @@ app_layout = dbc.Tabs(
                             dbc.Select(
                                 [
                                     "Index",
-                                    "Stock/ETF",
                                     "Preset Fund",
-                                    "Custom Fund/Index",
+                                    "Yahoo Finance",
+                                    "Financial Times",
                                 ],
                                 value="Index",
                                 id="security-type-selection",
@@ -191,22 +191,22 @@ app_layout = dbc.Tabs(
                             html.Div(
                                 [
                                     html.P(),
-                                    dbc.Label("Stock/ETF (Yahoo Finance Ticker)"),
+                                    dbc.Label("Yahoo Finance Ticker"),
                                     html.Br(),
-                                    dbc.Input(id="stock-etf-input", type="text"),
+                                    dbc.Input(id="yf-security-input", type="text"),
                                     dbc.Label("Tax Treatment"),
                                     dbc.Select(
                                         ["Gross", "Net"],
                                         value="Gross",
-                                        id="stock-etf-tax-treatment-selection",
+                                        id="yf-security-tax-treatment-selection",
                                     ),
                                     html.P(),
                                     dbc.Button(
-                                        "Add Stock/ETF", id="add-stock-etf-button"
+                                        "Add Stock/ETF", id="add-yf-security-button"
                                     ),
                                     html.P(),
                                 ],
-                                id="stock-etf-selection-container",
+                                id="yf-security-selection-container",
                             ),
                             dcc.Store(
                                 id="yf-invalid-securities-store",
@@ -244,16 +244,16 @@ app_layout = dbc.Tabs(
                             html.Div(
                                 [
                                     html.P(),
-                                    dbc.Label("Fund/Index (FT Ticker)"),
+                                    dbc.Label("FT Ticker"),
                                     html.Br(),
-                                    dbc.Input(id="fund-index-input", type="text"),
+                                    dbc.Input(id="ft-security-input", type="text"),
                                     html.P(),
                                     dbc.Button(
-                                        "Add Fund/Index", id="add-fund-index-button"
+                                        "Add FT Security", id="add-ft-security-button"
                                     ),
                                     html.P(),
                                 ],
-                                id="fund-index-selection-container",
+                                id="ft-security-selection-container",
                             ),
                             dcc.Store(
                                 id="ft-api-key-store",

@@ -708,9 +708,7 @@ def download_ft_data(symbol: str, api_key: str):
         item = details_response.json()["data"]["items"][0]
         ticker = item["basic"]["symbol"]
         currency = item["basic"]["currency"]
-        if item["details"]["issueType"] == "IN":
-            start_date = pd.Timestamp(item["details"]["inceptionDate"])
-        elif item["details"]["issueType"] == "OF":
+        if item["details"]["issueType"] == "OF":
             historical_tearsheet_response = client.get(
                 "https://markets.ft.com/data/funds/tearsheet/historical",
                 params={"s": ticker},
@@ -722,12 +720,12 @@ def download_ft_data(symbol: str, api_key: str):
 
             if historical_prices_mod is None:
                 raise ValueError("Unable to retrive inception date")
-            data_mod_config = historical_prices_mod.get("data-mod-config")
+            data_mod_config = historical_prices_mod["data-mod-config"]
             start_date = pd.Timestamp(
                 json.loads(data_mod_config)["inception"]
             ).tz_convert(None)
         else:
-            raise ValueError("Please enter the symbol of a fund or index.")
+            start_date = pd.Timestamp(item["details"]["inceptionDate"])
         response = client.get(
             "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
             params={
