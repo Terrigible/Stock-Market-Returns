@@ -930,9 +930,11 @@ def update_graph(
     layout = go.Layout(
         hovermode="x",
         showlegend=True,
-        legend=go.layout.Legend(valign="top"),
+        legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
         uirevision=y_var,
+        yaxis_side="right",
         yaxis_uirevision=False if auto_scale else uirevision,
+        margin=go.layout.Margin(t=100, b=50, l=10, r=100, autoexpand=True),
     )
 
     if ctx.triggered_id not in ["graph", "portfolio-graph"]:
@@ -2062,7 +2064,9 @@ def update_accumulation_strategy_graph(
             title="Strategy Performance",
             hovermode="x",
             showlegend=True,
-            legend=go.layout.Legend(valign="top"),
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=100, b=50, l=10, r=100, autoexpand=True),
         ),
     }
 
@@ -2247,7 +2251,9 @@ def update_withdrawal_strategy_graph(
             title="Strategy Performance",
             hovermode="x",
             showlegend=True,
-            legend=go.layout.Legend(valign="top"),
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=100, b=50, l=10, r=100, autoexpand=True),
         ),
     }
 
