@@ -1661,7 +1661,9 @@ def load_portfolio(
         .rename("price")
     )
     portfolio_series.iloc[
-        portfolio_series.index.get_indexer([portfolio_series.first_valid_index()])[0]
+        portfolio_series.index.get_indexer(
+            pd.Index([portfolio_series.first_valid_index()])
+        )[0]
         - 1
     ] = 1
     portfolio_series = portfolio_series.dropna()
