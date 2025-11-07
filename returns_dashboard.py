@@ -614,7 +614,9 @@ def add_yf_security(
         df["Adj Close"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
             df["Adj Close"].iloc[-1]
         )
-    yf_securities_store[new_yf_security] = df["Adj Close"].to_json(orient="index")
+    yf_securities_store[new_yf_security] = df["Adj Close"].to_json(
+        orient="index", date_format="iso"
+    )
 
     return (
         toast,
@@ -707,7 +709,9 @@ def add_ft_security(
     selected_securities.append(new_ft_security)
     selected_securities_options[new_ft_security] = f"FT: {ticker}"
 
-    ft_securities_store[new_ft_security] = df["price"].to_json(orient="index")
+    ft_securities_store[new_ft_security] = df["price"].to_json(
+        orient="index", date_format="iso"
+    )
 
     return (
         no_update,
