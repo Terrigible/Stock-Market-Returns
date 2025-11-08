@@ -1,5 +1,4 @@
-FROM python:3.13.9-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+FROM ghcr.io/astral-sh/uv:debian-slim
 ADD . ./app
 WORKDIR /app
 RUN uv sync --no-dev --group prod --frozen
