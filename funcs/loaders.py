@@ -164,7 +164,9 @@ async def load_us_treasury_returns_async():
             )
             .cumprod()
         )
-        price.iloc[price.index.get_indexer([price.first_valid_index()])[0] - 1] = 1
+        price.iloc[
+            price.index.get_indexer(pd.Index([price.first_valid_index()]))[0] - 1
+        ] = 1
         treasury_returns[duration] = price
 
     return treasury_returns
@@ -318,13 +320,12 @@ def read_worldbank_usdsgd():
         .rename({0: "usd_sgd"}, axis=1)["usd_sgd"]
         .astype(float)
     )
-    series.index = pd.to_datetime(series.index.str[:4])
+    series.index = pd.to_datetime(series.index.str[:4]) + pd.DateOffset(months=6)
     return series
 
 
 def load_worldbank_usdsgd():
     series = read_worldbank_usdsgd()
-    series = series.set_axis(series.index + pd.DateOffset(months=6))
     return (
         pd.concat(
             [
@@ -544,7 +545,9 @@ def load_sgs_returns():
             .add(rates.div(2).add(1).pow(-2 * (int(duration) - 1 / 365.25)))
             .cumprod()
         )
-        price.iloc[price.index.get_indexer([price.first_valid_index()])[0] - 1] = 1
+        price.iloc[
+            price.index.get_indexer(pd.Index([price.first_valid_index()]))[0] - 1
+        ] = 1
         sgs_returns[duration] = price
 
     return sgs_returns
@@ -602,9 +605,9 @@ async def download_us_cpi_async():
             [response.json()["Results"]["series"][0]["data"] for response in responses]
         )
     ).iloc[::-1]
-    us_cpi["month"] = us_cpi["period"].str[-2:]
     us_cpi["date"] = (
-        pd.to_datetime(us_cpi["year"] + "-" + us_cpi["month"]) + BMonthEnd()
+        pd.to_datetime(us_cpi["year"].str[:] + us_cpi["period"].str[1:], format="%Y%m")
+        + pd.offsets.BMonthEnd()
     )
     us_cpi["value"] = us_cpi["value"].astype(float)
     us_cpi = us_cpi[["date", "value"]]
@@ -721,9 +724,12 @@ def download_ft_data(symbol: str, api_key: str):
             if historical_prices_mod is None:
                 raise ValueError("Unable to retrive inception date")
             data_mod_config = historical_prices_mod["data-mod-config"]
-            start_date = pd.Timestamp(
-                json.loads(data_mod_config)["inception"]
-            ).tz_convert(None)
+            if isinstance(data_mod_config, str) and "inception" in data_mod_config:
+                start_date = pd.Timestamp(
+                    json.loads(data_mod_config)["inception"]
+                ).tz_convert(None)
+            else:
+                raise ValueError("Unable to retrive inception date")
         else:
             start_date = pd.Timestamp(item["details"]["inceptionDate"])
         response = client.get(
