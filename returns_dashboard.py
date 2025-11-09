@@ -21,7 +21,7 @@ from funcs.calcs_numpy import (
 )
 from funcs.loaders import (
     download_ft_data,
-    get_ft_api_key,
+    get_sgx_dividends,
     load_fed_funds_rate,
     load_fred_usd_fx,
     load_mas_sgd_fx,
@@ -682,12 +682,10 @@ def add_ft_security(
                 ft_securities_store,
                 no_update,
             )
-    if stored_ft_api_key is not None:
-        ft_api_key = stored_ft_api_key
-    else:
-        ft_api_key = get_ft_api_key()
     try:
-        df, ticker, currency = download_ft_data(ft_security, ft_api_key)
+        df, ticker, currency, ft_api_key = download_ft_data(
+            ft_security, stored_ft_api_key
+        )
     except ValueError as e:
         ft_invalid_securities_store.append(ft_security)
         return (
@@ -696,20 +694,38 @@ def add_ft_security(
             no_update,
             ft_invalid_securities_store,
             no_update,
-            ft_api_key,
+            stored_ft_api_key,
         )
 
-    new_ft_security = json.dumps(
-        {
-            "source": "FT",
-            "ticker": ticker,
-            "currency": currency,
-        }
-    )
-    selected_securities.append(new_ft_security)
-    selected_securities_options[new_ft_security] = f"FT: {ticker}"
+    new_ft_security = {
+        "source": "FT",
+        "ticker": ticker,
+        "currency": currency,
+        "dividends": False,
+    }
 
-    ft_securities_store[new_ft_security] = df["price"].to_json(
+    if ft_security.upper().endswith(":SES"):
+        new_ft_security["dividends"] = True
+        dividends = get_sgx_dividends(ticker.removesuffix(":SES"))
+        df.loc[:, "dividends"] = dividends.reindex(df.index, fill_value=0)
+        manually_adjusted = (
+            df["price"]
+            .add(df["dividends"])
+            .div(df["price"].shift(1))
+            .fillna(1)
+            .cumprod()
+        )
+        df["price"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
+            df["price"].iloc[-1]
+        )
+
+    new_ft_security_str = json.dumps(new_ft_security)
+    selected_securities.append(new_ft_security_str)
+    selected_securities_options[new_ft_security_str] = (
+        f"FT: {ticker} {('(With Dividends)') * new_ft_security['dividends']}"
+    )
+
+    ft_securities_store[new_ft_security_str] = df["price"].to_json(
         orient="index", date_format="iso"
     )
 

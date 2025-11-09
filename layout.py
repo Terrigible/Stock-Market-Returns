@@ -257,7 +257,7 @@ app_layout = dbc.Tabs(
                             ),
                             dcc.Store(
                                 id="ft-api-key-store",
-                                storage_type="memory",
+                                storage_type="local",
                                 data=None,
                             ),
                             dcc.Store(

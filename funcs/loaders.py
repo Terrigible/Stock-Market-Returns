@@ -692,11 +692,15 @@ def get_ft_api_key():
     if not source:
         raise ValueError("API key not found in page")
     api_key = source.group(1)
+    if not isinstance(api_key, str) or len(api_key) == 0:
+        raise ValueError("API key not found in page")
     return api_key
 
 
 def download_ft_data(symbol: str, api_key: str):
     with httpx.Client() as client:
+        if api_key is None:
+            api_key = get_ft_api_key()
         details_response = client.get(
             "https://markets.ft.com/research/webservices/securities/v1/details",
             params={
@@ -705,7 +709,15 @@ def download_ft_data(symbol: str, api_key: str):
             },
         )
         if details_response.is_client_error:
-            raise ValueError(details_response.json()["error"]["errors"][0]["message"])
+            if (
+                details_response.json()["error"]["errors"][0]["reason"]
+                == "MissingAPIKey"
+            ):
+                api_key = get_ft_api_key()
+            else:
+                raise ValueError(
+                    details_response.json()["error"]["errors"][0]["message"]
+                )
         else:
             details_response.raise_for_status()
         item = details_response.json()["data"]["items"][0]
@@ -758,7 +770,18 @@ def download_ft_data(symbol: str, api_key: str):
         )
         df = df[["close"]].set_axis(["price"], axis=1)
 
-        return df, ticker, currency
+        return df, ticker, currency, api_key
+
+
+def get_sgx_dividends(ticker: str):
+    df = pd.read_html(f"https://www.dividends.sg/view/{ticker}")[0][
+        ["Ex Date", "Amount"]
+    ].rename(columns={"Ex Date": "date", "Amount": "dividends"})
+    df = df[df["dividends"].str.contains("SGD")]
+    df.loc[:, "dividends"] = df["dividends"].str.replace("SGD", "").astype(float)
+    df.loc[:, "date"] = pd.to_datetime(df["date"])
+    df = df.groupby(df["date"])["dividends"].sum().astype(float)
+    return df
 
 
 __all__ = [
@@ -786,4 +809,5 @@ __all__ = [
     "read_ft_data",
     "get_ft_api_key",
     "download_ft_data",
+    "get_sgx_dividends",
 ]
