@@ -697,7 +697,7 @@ def get_ft_api_key():
     return api_key
 
 
-def download_ft_data(symbol: str, api_key: str):
+def download_ft_data(symbol: str, api_key: str | None = None):
     with httpx.Client() as client:
         if api_key is None:
             api_key = get_ft_api_key()
@@ -714,6 +714,13 @@ def download_ft_data(symbol: str, api_key: str):
                 == "MissingAPIKey"
             ):
                 api_key = get_ft_api_key()
+                details_response = client.get(
+                    "https://markets.ft.com/research/webservices/securities/v1/details",
+                    params={
+                        "source": api_key,
+                        "symbols": symbol,
+                    },
+                )
             else:
                 raise ValueError(
                     details_response.json()["error"]["errors"][0]["message"]
