@@ -601,8 +601,7 @@ def add_yf_security(
         f"yfinance: {ticker_symbol} {tax_treatment}"
     )
 
-    df = ticker.history(period="max", auto_adjust=False)
-    df = df.set_index(df.index.tz_localize(None))
+    df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
     if tax_treatment == "Net" and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
