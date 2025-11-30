@@ -83,7 +83,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
-    adjust_ending_value_for_inflation: bool,
+    adjust_portfolio_value_for_inflation: bool,
     cpi: np.ndarray,
     interest_rates: np.ndarray,
 ):
@@ -94,7 +94,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         raise ValueError(
             f"DCA interval ({dca_interval}) must be less than or equal to DCA length ({dca_length})"
         )
-    res = np.full_like(monthly_returns, np.nan)
+    res = np.full((monthly_returns.shape[0], investment_horizon), np.nan)
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
@@ -126,12 +126,13 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 funds_to_invest = 0
             else:
                 funds_to_invest *= cash_returns[j + 1]
-        for j in range(i - investment_horizon + dca_length, i):
+            res[i, index] = share_value
+        for index, j in enumerate(range(i - investment_horizon + dca_length, i)):
             share_value *= monthly_returns_with_fees[j + 1]
-        if adjust_ending_value_for_inflation:
-            share_value /= cpi[i] / cpi[i - investment_horizon]
-        res[i] = share_value
-    return res
+            res[i, dca_length + index] = share_value
+        if adjust_portfolio_value_for_inflation:
+            res[i] /= cpi[i - investment_horizon : i] / cpi[i - investment_horizon]
+    return res[:, -1]
 
 
 @njit(
