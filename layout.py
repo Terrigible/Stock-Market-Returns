@@ -639,15 +639,8 @@ app_layout = dbc.Tabs(
                                 value="SGD",
                                 id="accumulation-strategy-currency-selection",
                             ),
-                            dbc.Label("Lump Sum / DCA"),
-                            dbc.Select(
-                                {"LS": "Lump Sum", "DCA": "DCA"},
-                                value="LS",
-                                id="accumulation-ls-dca-selection",
-                            ),
                             dbc.Label(
-                                "Total Investment Amount",
-                                id="accumulation-investment-amount-label",
+                                "Initial Portfolio Value",
                             ),
                             dbc.Input(
                                 id="accumulation-investment-amount-input",

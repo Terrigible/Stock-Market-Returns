@@ -16,7 +16,6 @@ from plotly.colors import DEFAULT_PLOTLY_COLORS
 
 from funcs.calcs_numpy import (
     calculate_dca_portfolio_value_with_fees_and_interest_vector,
-    calculate_lumpsum_portfolio_value_with_fees_and_interest_vector,
     calculate_withdrawal_portfolio_value_with_fees_vector,
 )
 from funcs.loaders import (
@@ -1825,17 +1824,6 @@ def update_strategy_portfolios(portfolio_options: dict[str, str]):
 
 
 @app.callback(
-    Output("accumulation-investment-amount-label", "children"),
-    Output("accumulation-dca-input-container", "style"),
-    Input("accumulation-ls-dca-selection", "value"),
-)
-def update_ls_input_visibility(ls_dca: str):
-    if ls_dca == "LS":
-        return "Total Investment Amount", {"display": "none"}
-    return "Initial Portfolio Value", {"display": "block"}
-
-
-@app.callback(
     Output("accumulation-strategies", "value"),
     Output("accumulation-strategies", "options"),
     Input("add-accumulation-strategy-button", "n_clicks"),
@@ -1844,7 +1832,6 @@ def update_ls_input_visibility(ls_dca: str):
     State("accumulation-strategy-portfolio", "value"),
     State("accumulation-strategy-portfolio", "options"),
     State("accumulation-strategy-currency-selection", "value"),
-    State("accumulation-ls-dca-selection", "value"),
     State("accumulation-investment-amount-input", "value"),
     State("accumulation-monthly-investment-input", "value"),
     State("accumulation-monthly-investment-inflation-adjustment-switch", "value"),
@@ -1864,7 +1851,6 @@ def update_accumulation_strategies(
     strategy_portfolio: str | None,
     strategy_portfolio_options: dict[str, str],
     currency: str,
-    ls_dca: str,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
@@ -1881,22 +1867,12 @@ def update_accumulation_strategies(
     if dca_interval is None:
         dca_interval = 1
 
-    if ls_dca == "LS":
-        if investment_amount is None:
-            return no_update
-        if investment_horizon is None:
-            return no_update
-        if dca_length is None:
-            dca_length = 1
-    elif ls_dca == "DCA":
-        if monthly_investment is None:
-            return no_update
-        if dca_length is None:
-            return no_update
-        if investment_horizon is None:
-            investment_horizon = dca_length
-    else:
+    if monthly_investment is None:
         return no_update
+    if dca_length is None:
+        return no_update
+    if investment_horizon is None:
+        investment_horizon = dca_length
 
     if variable_transaction_fees is None:
         variable_transaction_fees = 0
@@ -1920,7 +1896,6 @@ def update_accumulation_strategies(
         {
             "strategy_portfolio": strategy_portfolio,
             "currency": currency,
-            "ls_dca": ls_dca,
             "investment_amount": investment_amount,
             "investment_horizon": investment_horizon,
             "monthly_investment": monthly_investment,
@@ -1933,28 +1908,16 @@ def update_accumulation_strategies(
             "adjust_ending_value_for_inflation": adjust_ending_value_for_inflation,
         }
     )
-    if ls_dca == "LS":
-        strategy_name = (
-            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
-            f"Lump Sum, "
-            f"{investment_amount} invested for {investment_horizon} months, "
-            f"DCA over {dca_length} months every {dca_interval} months, "
-            f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
-            f"{annualised_holding_fees}% p.a. Holding Fees, "
-            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation"
-        )
-    else:
-        strategy_name = (
-            f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
-            f"DCA, "
-            f"{investment_amount} initial capital, "
-            f"{monthly_investment} invested monthly for {dca_length} months, "
-            f"{dca_interval} months apart, held for {investment_horizon} months, "
-            f"Monthly investment {'' if adjust_monthly_investment_for_inflation else 'not '}adjusted for inflation, "
-            f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
-            f"{annualised_holding_fees}% p.a. Holding Fees, "
-            f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation"
-        )
+    strategy_name = (
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
+        f"{investment_amount} initial capital, "
+        f"{monthly_investment} invested monthly for {dca_length} months, "
+        f"{dca_interval} months apart, held for {investment_horizon} months, "
+        f"Monthly investment {'' if adjust_monthly_investment_for_inflation else 'not '}adjusted for inflation, "
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
+        f"{annualised_holding_fees}% p.a. Holding Fees, "
+        f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation"
+    )
 
     if strategies is None:
         return [strategy_str], {strategy_str: strategy_name}
@@ -1995,7 +1958,6 @@ def update_accumulation_strategy_graph(
         strategy: dict[str, str | int | float] = json.loads(strategy_str)
         strategy_portfolio = str(strategy["strategy_portfolio"])
         currency = str(strategy["currency"])
-        ls_dca = str(strategy["ls_dca"])
         investment_amount = float(strategy["investment_amount"])
         investment_horizon = int(strategy["investment_horizon"])
         monthly_investment = float(strategy["monthly_investment"])
@@ -2030,44 +1992,25 @@ def update_accumulation_strategy_graph(
         if cpi is None:
             raise ValueError("Invalid currency")
 
-        if ls_dca == "LS":
-            ending_values = pd.Series(
-                calculate_lumpsum_portfolio_value_with_fees_and_interest_vector(
-                    strategy_series.pct_change().to_numpy(),
-                    dca_length,
-                    dca_interval,
-                    investment_horizon,
-                    investment_amount,
-                    variable_transaction_fees,
-                    fixed_transaction_fees,
-                    annualised_holding_fees,
-                    adjust_ending_value_for_inflation,
-                    cpi,
-                    interest_rates,
-                ),
-                index=strategy_series.index,
-                name=strategy_str,
-            )
-        else:
-            ending_values = pd.Series(
-                calculate_dca_portfolio_value_with_fees_and_interest_vector(
-                    strategy_series.pct_change().to_numpy(),
-                    dca_length,
-                    dca_interval,
-                    investment_horizon,
-                    investment_amount,
-                    monthly_investment,
-                    adjust_monthly_investment_for_inflation,
-                    variable_transaction_fees,
-                    fixed_transaction_fees,
-                    annualised_holding_fees,
-                    adjust_ending_value_for_inflation,
-                    cpi,
-                    interest_rates,
-                ),
-                index=strategy_series.index,
-                name=strategy_str,
-            )
+        ending_values = pd.Series(
+            calculate_dca_portfolio_value_with_fees_and_interest_vector(
+                strategy_series.pct_change().to_numpy(),
+                dca_length,
+                dca_interval,
+                investment_horizon,
+                investment_amount,
+                monthly_investment,
+                adjust_monthly_investment_for_inflation,
+                variable_transaction_fees,
+                fixed_transaction_fees,
+                annualised_holding_fees,
+                adjust_ending_value_for_inflation,
+                cpi,
+                interest_rates,
+            ),
+            index=strategy_series.index,
+            name=strategy_str,
+        )
         series.append(ending_values)
     ending_values = pd.concat(series, axis=1, names=strategy_strs)
     return {
