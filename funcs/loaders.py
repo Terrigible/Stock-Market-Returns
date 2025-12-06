@@ -460,9 +460,13 @@ def load_sgd_interest_rates():
         sgd_interest_rates = pd.read_csv(
             "data/sgd_interest_rates.csv", parse_dates=["date"], index_col="date"
         )
-        if sgd_interest_rates.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1
-        ) and os.environ.get("MAS_INTEREST_RATE_API_KEY", None):
+        if (
+            sgd_interest_rates.index[-1]
+            + pd.tseries.offsets.BMonthEnd()
+            + pd.tseries.offsets.BDay()
+            <= pd.to_datetime("today")
+            and os.environ.get("MAS_INTEREST_RATE_API_KEY", None)
+        ):
             raise FileNotFoundError
 
     except FileNotFoundError:
