@@ -3,7 +3,7 @@ name = "stock-market-returns"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.13.9"
+requires-python = "==3.13.10"
 dependencies = [
     "dash-bootstrap-components>=2.0.4",
     "dash[compress]>=3.3.0",
@@ -31,4 +31,6 @@ dev = [
     "selenium>=4.38.0",
     "snakeviz>=2.2.2",
 ]
-prod = ["gunicorn>=23.0.0"]
+prod = [
+    "gunicorn>=23.0.0",
+]
