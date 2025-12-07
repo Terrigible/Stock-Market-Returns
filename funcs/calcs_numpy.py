@@ -131,7 +131,9 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             share_value *= monthly_returns_with_fees[j + 1]
             res[i, dca_length + index] = share_value
         if adjust_portfolio_value_for_inflation:
-            res[i] /= cpi[i - investment_horizon : i] / cpi[i - investment_horizon]
+            res[i] /= (
+                cpi[i - investment_horizon + 1 : i + 1] / cpi[i - investment_horizon]
+            )
     return res[:, -1]
 
 
