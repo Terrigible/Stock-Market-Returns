@@ -2113,6 +2113,7 @@ def update_withdrawal_strategies(
 
     strategy_name = (
         f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
+        f"{initial_capital} initial capital, "
         f"{monthly_withdrawal} withdrawn monthly, "
         f"{withdrawal_interval} months apart for {withdrawal_horizon} months, "
         f"Monthly withdrawal {'' if adjust_for_inflation else 'not '}adjusted for inflation, "
