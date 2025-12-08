@@ -215,6 +215,7 @@ def download_mas_sgd_fx():
         .set_index("end_of_day")
         .astype(float)
         .rename_axis("date")
+        .sort_index()
     )
     sgd_fx.update(sgd_fx.filter(like="100").div(100))
     sgd_fx.columns = (
@@ -451,6 +452,7 @@ def download_sgd_interest_rates():
         .drop_duplicates(subset="end_of_day")
         .set_index("end_of_day")
         .rename_axis("date")
+        .sort_index()
     )
     return sgd_interest_rates
 
@@ -460,9 +462,13 @@ def load_sgd_interest_rates():
         sgd_interest_rates = pd.read_csv(
             "data/sgd_interest_rates.csv", parse_dates=["date"], index_col="date"
         )
-        if sgd_interest_rates.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1
-        ) and os.environ.get("MAS_INTEREST_RATE_API_KEY", None):
+        if (
+            sgd_interest_rates.index[-1]
+            + pd.tseries.offsets.BMonthEnd()
+            + pd.tseries.offsets.BDay()
+            <= pd.to_datetime("today")
+            and os.environ.get("MAS_INTEREST_RATE_API_KEY", None)
+        ):
             raise FileNotFoundError
 
     except FileNotFoundError:

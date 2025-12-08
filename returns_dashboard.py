@@ -1860,7 +1860,7 @@ def update_accumulation_strategies(
     variable_transaction_fees: int | float | None,
     fixed_transaction_fees: int | float | None,
     annualised_holding_fees: int | float | None,
-    adjust_ending_value_for_inflation: bool,
+    adjust_portfolio_value_for_inflation: bool,
 ):
     if strategy_portfolio is None:
         return no_update
@@ -1905,7 +1905,7 @@ def update_accumulation_strategies(
             "variable_transaction_fees": variable_transaction_fees,
             "fixed_transaction_fees": fixed_transaction_fees,
             "annualised_holding_fees": annualised_holding_fees,
-            "adjust_ending_value_for_inflation": adjust_ending_value_for_inflation,
+            "adjust_portfolio_value_for_inflation": adjust_portfolio_value_for_inflation,
         }
     )
     strategy_name = (
@@ -1916,7 +1916,7 @@ def update_accumulation_strategies(
         f"Monthly investment {'' if adjust_monthly_investment_for_inflation else 'not '}adjusted for inflation, "
         f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
         f"{annualised_holding_fees}% p.a. Holding Fees, "
-        f"Ending value {'' if adjust_ending_value_for_inflation else 'not '}adjusted for inflation"
+        f"Portfolio value {'' if adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
     )
 
     if strategies is None:
@@ -1969,8 +1969,8 @@ def update_accumulation_strategy_graph(
         variable_transaction_fees = float(strategy["variable_transaction_fees"])
         fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
         annualised_holding_fees = float(strategy["annualised_holding_fees"])
-        adjust_ending_value_for_inflation = bool(
-            strategy["adjust_ending_value_for_inflation"]
+        adjust_portfolio_value_for_inflation = bool(
+            strategy["adjust_portfolio_value_for_inflation"]
         )
 
         variable_transaction_fees /= 100
@@ -2004,7 +2004,7 @@ def update_accumulation_strategy_graph(
                 variable_transaction_fees,
                 fixed_transaction_fees,
                 annualised_holding_fees,
-                adjust_ending_value_for_inflation,
+                adjust_portfolio_value_for_inflation,
                 cpi,
                 interest_rates,
             ),
