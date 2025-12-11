@@ -56,7 +56,7 @@ def calculate_return_vector(
 
 
 @njit(
-    float64[:](
+    float64[:, :](
         float64[:],
         int64,
         int64,
@@ -134,7 +134,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             res[i] /= (
                 cpi[i - investment_horizon + 1 : i + 1] / cpi[i - investment_horizon]
             )
-    return res[:, -1]
+    return res
 
 
 @njit(
