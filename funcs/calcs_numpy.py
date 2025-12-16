@@ -56,7 +56,7 @@ def calculate_return_vector(
 
 
 @njit(
-    float64[:](
+    float64[:, :](
         float64[:],
         int64,
         int64,
@@ -134,11 +134,11 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             res[i] /= (
                 cpi[i - investment_horizon + 1 : i + 1] / cpi[i - investment_horizon]
             )
-    return res[:, -1]
+    return res
 
 
 @njit(
-    float64[:](
+    float64[:, :](
         float64[:],
         int64,
         int64,
@@ -165,7 +165,7 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
-    res = np.full_like(monthly_returns, np.nan)
+    res = np.full((monthly_returns.shape[0], withdrawal_horizon), np.nan)
     for i in range(withdrawal_horizon, len(monthly_returns)):
         share_value = initial_portfolio_value
         withdrawal_amounts = (
@@ -182,5 +182,5 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
                     share_value = 0
                     break
             share_value *= monthly_returns_with_fees[j + 1]
-        res[i] = share_value
+            res[i, index] = share_value
     return res

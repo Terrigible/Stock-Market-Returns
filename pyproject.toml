@@ -3,7 +3,7 @@ name = "stock-market-returns"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.13.10"
+requires-python = "==3.13.11"
 dependencies = [
     "dash-bootstrap-components>=2.0.4",
     "dash[compress]>=3.3.0",
@@ -14,21 +14,21 @@ dependencies = [
     "requests>=2.32.5",
     "scipy>=1.16.3",
     "yfinance>=0.2.66",
-    "polars>=1.35.2",
+    "polars>=1.36.1",
     "pyarrow>=22.0.0",
     "fastexcel>=0.18.0",
     "lxml>=6.0.2",
-    "numba>=0.62.1",
+    "numba>=0.63.1",
 ]
 
 [dependency-groups]
 dev = [
     "geckodriver>=0.0.1",
     "ipykernel>=7.1.0",
-    "matplotlib>=3.10.7",
+    "matplotlib>=3.10.8",
     "nbformat>=5.10.4",
     "seaborn>=0.13.2",
-    "selenium>=4.38.0",
+    "selenium>=4.39.0",
     "snakeviz>=2.2.2",
 ]
 prod = [

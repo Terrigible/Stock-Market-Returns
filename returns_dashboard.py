@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 from functools import cache, reduce
 from glob import glob
 from io import StringIO
@@ -1841,7 +1842,7 @@ def update_strategy_portfolios(portfolio_options: dict[str, str]):
     State("accumulation-variable-transaction-fees-input", "value"),
     State("accumulation-fixed-transaction-fees-input", "value"),
     State("accumulation-annualised-holding-fees-input", "value"),
-    State("accumulation-ending-value-inflation-adjustment-switch", "value"),
+    State("accumulation-portfolio-value-inflation-adjustment-switch", "value"),
     prevent_initial_call=True,
 )
 def update_accumulation_strategies(
@@ -1953,7 +1954,7 @@ def update_accumulation_strategy_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
-    series = []
+    dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
     for strategy_str in strategy_strs:
         strategy: dict[str, str | int | float] = json.loads(strategy_str)
         strategy_portfolio = str(strategy["strategy_portfolio"])
@@ -1992,7 +1993,7 @@ def update_accumulation_strategy_graph(
         if cpi is None:
             raise ValueError("Invalid currency")
 
-        ending_values = pd.Series(
+        portfolio_values = pd.DataFrame(
             calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 strategy_series.pct_change().to_numpy(),
                 dca_length,
@@ -2009,10 +2010,14 @@ def update_accumulation_strategy_graph(
                 interest_rates,
             ),
             index=strategy_series.index,
-            name=strategy_str,
+            columns=range(1, investment_horizon + 1),
         )
-        series.append(ending_values)
-    ending_values = pd.concat(series, axis=1, names=strategy_strs)
+        portfolio_values.insert(0, 0, investment_amount)
+        dfs.update({strategy_str: portfolio_values})
+
+    ending_values = pd.concat(
+        [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
+    )
     return {
         "data": [
             go.Scatter(
@@ -2155,7 +2160,7 @@ def update_withdrawal_strategy_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
-    series = []
+    dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
     for strategy_str in strategy_strs:
         strategy: dict[str, str | int | float] = json.loads(strategy_str)
         strategy_portfolio = str(strategy["strategy_portfolio"])
@@ -2184,7 +2189,7 @@ def update_withdrawal_strategy_graph(
             else sg_cpi
         )
 
-        ending_values = pd.Series(
+        portfolio_values = pd.DataFrame(
             calculate_withdrawal_portfolio_value_with_fees_vector(
                 strategy_series.pct_change().to_numpy(),
                 withdrawal_horizon,
@@ -2197,10 +2202,13 @@ def update_withdrawal_strategy_graph(
                 annualised_holding_fees,
             ),
             index=strategy_series.index,
-            name=strategy_str,
+            columns=range(1, withdrawal_horizon + 1),
         )
-        series.append(ending_values)
-    ending_values = pd.concat(series, axis=1, names=strategy_strs)
+        portfolio_values.insert(0, 0, initial_capital)
+        dfs.update({strategy_str: portfolio_values})
+    ending_values = pd.concat(
+        [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
+    )
     return {
         "data": [
             go.Scatter(

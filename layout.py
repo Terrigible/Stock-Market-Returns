@@ -704,9 +704,9 @@ app_layout = dbc.Tabs(
                                 min=0,
                             ),
                             dbc.Switch(
-                                "accumulation-ending-value-inflation-adjustment-switch",
+                                "accumulation-portfolio-value-inflation-adjustment-switch",
                                 value=False,
-                                label="Adjust Ending Value for Inflation",
+                                label="Adjust Portfolio Value for Inflation",
                             ),
                             html.P(),
                             dbc.Button(
