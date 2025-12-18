@@ -22,7 +22,7 @@ def read_msci_data(filename_pattern: str):
     )
 
 
-def read_ft_data(filename):
+def read_ft_data(filename: str):
     df = pd.read_csv(
         f"data/{filename}.csv",
         parse_dates=["date"],
@@ -649,7 +649,7 @@ def add_return_columns(df: pd.DataFrame, periods: list[str], durations: list[int
         ) - 1
 
 
-def read_greatlink_data(fund_name):
+def read_greatlink_data(fund_name: str):
     df = (
         pd.read_excel(
             f"data/GreatLink/{fund_name}.xlsx",
