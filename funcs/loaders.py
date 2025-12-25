@@ -24,7 +24,7 @@ def read_msci_data(filename_pattern: str):
 
 def read_ft_data(filename: str):
     df = pd.read_csv(
-        f"data/{filename}.csv",
+        f"data/FT/{filename}.csv",
         parse_dates=["date"],
         index_col="date",
     )[["close"]].set_axis(["price"], axis=1)

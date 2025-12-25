@@ -18,7 +18,7 @@ def read_msci_data(filename_pattern: str):
 
 
 def read_ft_data(filename: str):
-    df = pl.read_csv("data/{filename}.csv", try_parse_dates=True).select(
+    df = pl.read_csv("data/FT/{filename}.csv", try_parse_dates=True).select(
         pl.col("date"), pl.col("close").alias("price")
     )
     if filename == "S&P 500 USD Gross":
