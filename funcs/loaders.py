@@ -615,7 +615,7 @@ async def download_us_cpi_async():
         pd.to_datetime(us_cpi["year"].str[:] + us_cpi["period"].str[1:], format="%Y%m")
         + pd.offsets.BMonthEnd()
     )
-    us_cpi["value"] = us_cpi["value"].astype(float)
+    us_cpi["value"] = us_cpi["value"].replace("-", np.nan).astype(float)
     us_cpi = us_cpi[["date", "value"]]
     us_cpi = us_cpi.set_axis(["date", "us_cpi"], axis=1)
     us_cpi = us_cpi.set_index("date")
@@ -629,11 +629,11 @@ async def load_us_cpi_async():
             "today"
         ) and os.environ.get("BLS_API_KEY", None):
             raise FileNotFoundError
-        return us_cpi
+        return us_cpi.interpolate()
     except FileNotFoundError:
         us_cpi = await download_us_cpi_async()
         us_cpi.to_csv("data/us_cpi.csv")
-        return us_cpi
+        return us_cpi.interpolate()
 
 
 def load_us_cpi():
