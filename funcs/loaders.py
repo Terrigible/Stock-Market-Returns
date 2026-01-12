@@ -4,14 +4,13 @@ import os
 import re
 from glob import glob
 from itertools import chain
+from json import JSONDecodeError
 
 import httpx
 import numpy as np
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 from pandas.tseries.offsets import BMonthEnd
-from requests.exceptions import JSONDecodeError
 
 
 def read_msci_data(filename_pattern: str):
@@ -201,7 +200,7 @@ def read_shiller_sp500_data(tax_treatment: str):
 
 
 def download_mas_sgd_fx():
-    sgd_fx_response = requests.get(
+    sgd_fx_response = httpx.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily",
         headers={"keyid": os.environ["MAS_EXCHANGE_RATE_API_KEY"]},
         timeout=20,
@@ -435,7 +434,7 @@ def load_sgd_neer():
 
 
 def download_sgd_interest_rates():
-    sgd_interest_rates_response = requests.get(
+    sgd_interest_rates_response = httpx.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily",
         headers={"keyid": os.environ["MAS_INTEREST_RATE_API_KEY"]},
         timeout=20,
@@ -561,7 +560,7 @@ def load_sgs_returns():
 
 def download_sg_cpi():
     try:
-        sg_cpi_response = requests.get(
+        sg_cpi_response = httpx.get(
             "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751",
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
             timeout=20,
