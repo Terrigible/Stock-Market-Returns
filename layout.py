@@ -410,7 +410,6 @@ app_layout = html.Div(
                                     style={"display": "block"},
                                 ),
                             ],
-                            className="dashboard-bootstrap",
                             style={
                                 "width": "15%",
                                 "padding": "1rem",
