@@ -327,16 +327,25 @@ app_layout = html.Div(
                                     value="price",
                                     id="y-var-selection",
                                 ),
-                                dbc.Switch(
-                                    "log-scale-switch",
-                                    value=False,
-                                    label="Logarithmic Scale",
-                                ),
-                                dbc.Switch(
-                                    "percent-scale-switch", value=False, label="% Scale"
-                                ),
-                                dbc.Switch(
-                                    "auto-scale-switch", value=False, label="Auto Scale"
+                                html.Div(
+                                    [
+                                        dbc.Switch(
+                                            "log-scale-switch",
+                                            value=False,
+                                            label="Logarithmic Scale",
+                                        ),
+                                        dbc.Switch(
+                                            "percent-scale-switch",
+                                            value=False,
+                                            label="% Scale",
+                                        ),
+                                        dbc.Switch(
+                                            "auto-scale-switch",
+                                            value=False,
+                                            label="Auto Scale",
+                                        ),
+                                    ],
+                                    id="price-selection-container",
                                 ),
                                 html.Div(
                                     [
@@ -407,32 +416,18 @@ app_layout = html.Div(
                                         ),
                                     ],
                                     id="return-selection",
-                                    style={"display": "block"},
                                 ),
                             ],
-                            style={
-                                "width": "15%",
-                                "padding": "1rem",
-                                "flex": "1",
-                                "overflow": "auto",
-                            },
+                            className="sidebar",
                         ),
                         dcc.Graph(
+                            responsive=True,
                             id="graph",
-                            style={
-                                "width": "85%",
-                                "height": "100%",
-                            },
                         ),
                         dcc.Store(
                             id="graph-last-layout-state-store", storage_type="memory"
                         ),
                     ],
-                    style={
-                        "display": "flex",
-                        "height": "calc(100vh - 42px)",
-                        "boxSizing": "border-box",
-                    },
                 ),
             ),
             dbc.Tab(
@@ -461,6 +456,7 @@ app_layout = html.Div(
                                     {},
                                     id="portfolio-allocations",
                                     multi=True,
+                                    searchable=False,
                                 ),
                                 html.P(
                                     "Sum of Weights: ",
@@ -473,6 +469,7 @@ app_layout = html.Div(
                                     {},
                                     id="portfolios",
                                     multi=True,
+                                    searchable=False,
                                 ),
                                 dbc.Label("Currency"),
                                 dbc.Select(
@@ -503,20 +500,25 @@ app_layout = html.Div(
                                     value="price",
                                     id="portfolio-y-var-selection",
                                 ),
-                                dbc.Switch(
-                                    "portfolio-log-scale-switch",
-                                    value=False,
-                                    label="Logarithmic Scale",
-                                ),
-                                dbc.Switch(
-                                    "portfolio-percent-scale-switch",
-                                    value=False,
-                                    label="% Scale",
-                                ),
-                                dbc.Switch(
-                                    "portfolio-auto-scale-switch",
-                                    value=False,
-                                    label="Auto Scale",
+                                html.Div(
+                                    [
+                                        dbc.Switch(
+                                            "portfolio-log-scale-switch",
+                                            value=False,
+                                            label="Logarithmic Scale",
+                                        ),
+                                        dbc.Switch(
+                                            "portfolio-percent-scale-switch",
+                                            value=False,
+                                            label="% Scale",
+                                        ),
+                                        dbc.Switch(
+                                            "portfolio-auto-scale-switch",
+                                            value=False,
+                                            label="Auto Scale",
+                                        ),
+                                    ],
+                                    id="portfolio-price-selection-container",
                                 ),
                                 html.Div(
                                     [
@@ -587,39 +589,26 @@ app_layout = html.Div(
                                         ),
                                     ],
                                     id="portfolio-return-selection",
-                                    style={"display": "block"},
                                 ),
                             ],
-                            style={
-                                "width": "15%",
-                                "padding": "1rem",
-                                "flex": "1",
-                                "overflow": "auto",
-                            },
+                            className="sidebar",
                         ),
                         dcc.Graph(
+                            responsive=True,
                             figure={
                                 "data": [],
                                 "layout": {
+                                    "autosize": True,
                                     "title": "Portfolio Simulation",
                                 },
                             },
                             id="portfolio-graph",
-                            style={
-                                "width": "85%",
-                                "height": "100%",
-                            },
                         ),
                         dcc.Store(
                             id="portfolio-graph-last-layout-state-store",
                             storage_type="memory",
                         ),
                     ],
-                    style={
-                        "display": "flex",
-                        "height": "calc(100vh - 42px)",
-                        "boxSizing": "border-box",
-                    },
                 ),
             ),
             dbc.Tab(
@@ -629,9 +618,15 @@ app_layout = html.Div(
                         html.Div(
                             [
                                 dbc.Label("Portfolio"),
-                                dbc.Select(
-                                    {},
-                                    id="accumulation-strategy-portfolio",
+                                html.Div(
+                                    [
+                                        dbc.Select(
+                                            {},
+                                            id="accumulation-strategy-portfolio",
+                                            style={"width": 0, "flexGrow": 1},
+                                        ),
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 dbc.Label("Currency"),
                                 dbc.Select(
@@ -721,36 +716,25 @@ app_layout = html.Div(
                                 dcc.Dropdown(
                                     {},
                                     multi=True,
+                                    searchable=False,
                                     id="accumulation-strategies",
-                                    optionHeight=150,
+                                    optionHeight=200,
                                 ),
                             ],
-                            style={
-                                "width": "15%",
-                                "padding": "1rem",
-                                "flex": "1",
-                                "overflow": "auto",
-                            },
+                            className="sidebar",
                         ),
                         dcc.Graph(
+                            responsive=True,
                             figure={
                                 "data": [],
                                 "layout": {
+                                    "autosize": True,
                                     "title": "Strategy Performance",
                                 },
                             },
                             id="accumulation-strategy-graph",
-                            style={
-                                "width": "85%",
-                                "height": "100%",
-                            },
                         ),
                     ],
-                    style={
-                        "display": "flex",
-                        "height": "calc(100vh - 42px)",
-                        "boxSizing": "border-box",
-                    },
                 ),
             ),
             dbc.Tab(
@@ -760,9 +744,15 @@ app_layout = html.Div(
                         html.Div(
                             [
                                 dbc.Label("Portfolio"),
-                                dbc.Select(
-                                    {},
-                                    id="withdrawal-strategy-portfolio",
+                                html.Div(
+                                    [
+                                        dbc.Select(
+                                            {},
+                                            id="withdrawal-strategy-portfolio",
+                                            style={"width": 0, "flexGrow": 1},
+                                        ),
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 dbc.Label("Currency"),
                                 dbc.Select(
@@ -832,36 +822,25 @@ app_layout = html.Div(
                                 dcc.Dropdown(
                                     {},
                                     multi=True,
+                                    searchable=False,
                                     id="withdrawal-strategies",
                                     optionHeight=150,
                                 ),
                             ],
-                            style={
-                                "width": "15%",
-                                "padding": "1rem",
-                                "flex": "1",
-                                "overflow": "auto",
-                            },
+                            className="sidebar",
                         ),
                         dcc.Graph(
+                            responsive=True,
                             figure={
                                 "data": [],
                                 "layout": {
+                                    "autosize": True,
                                     "title": "Strategy Performance",
                                 },
                             },
                             id="withdrawal-strategy-graph",
-                            style={
-                                "width": "85%",
-                                "height": "100%",
-                            },
                         ),
                     ],
-                    style={
-                        "display": "flex",
-                        "height": "calc(100vh - 42px)",
-                        "boxSizing": "border-box",
-                    },
                 ),
             ),
         ],
@@ -872,5 +851,5 @@ app_layout = html.Div(
             "overflow-y": "hidden",
         },
     ),
-    style={"height": "100vh"},
+    style={"height": "100svh"},
 )

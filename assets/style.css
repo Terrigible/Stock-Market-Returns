@@ -6,22 +6,75 @@
 .form-switch {
     margin-top: 0.5rem;
     margin-bottom: 0rem;
+    display: flex;
 }
 
 .form-check-label {
+    padding-left: 5px;
     margin-top: 0rem;
     margin-bottom: 0rem;
+    width: 0;
+    flex-grow: 1;
 }
 
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     appearance: none;
     margin: 0;
 }
 
-input[type=number] {
+input[type="number"] {
     -moz-appearance: textfield;
     box-sizing: border-box;
     /* Firefox */
+}
+
+.tab-content > div > div > div {
+    display: flex;
+    flex-wrap: nowrap;
+    height: calc(100svh - 42px);
+}
+
+.sidebar {
+    flex-grow: 1;
+    flex-shrink: 0;
+    max-width: 100%;
+    padding: 1rem;
+    max-height: 100%;
+    overflow: scroll;
+}
+
+@media (max-width: 600px) {
+    .tab-content > div > div > div {
+        display: block;
+    }
+    .sidebar {
+        max-height: none;
+        overflow: visible;
+    }
+}
+
+.Select--multi .Select-value {
+    margin: 5px;
+    display: block;
+}
+
+.Select--multi:is(.has-value) .Select-input {
+    display: none !important;
+}
+
+.Select-value-label {
+    white-space: pre-line;
+}
+
+.VirtualizedSelectOption {
+    white-space: pre-line;
+}
+
+.dash-graph {
+    flex-grow: 100;
+    flex-shrink: 1;
+    flex-basis: 300px;
+    height: 100%;
 }

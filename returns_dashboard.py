@@ -1,4 +1,5 @@
 import json
+import math
 from collections import OrderedDict
 from functools import cache, reduce
 from glob import glob
@@ -861,11 +862,7 @@ def update_selection_visibility(y_var: str):
     show = {"display": "block"}
     hide = {"display": "none"}
 
-    log_scale_style = show if y_var == "price" else hide
-
-    percent_scale_style = show if y_var == "price" else hide
-
-    auto_scale_style = show if y_var == "price" else hide
+    price_visibility = show if y_var == "price" else hide
 
     return_selection_style = (
         show if y_var in ["rolling_returns", "calendar_returns"] else hide
@@ -874,9 +871,7 @@ def update_selection_visibility(y_var: str):
     calendar_return_selection_style = show if y_var == "calendar_returns" else hide
 
     return (
-        log_scale_style,
-        percent_scale_style,
-        auto_scale_style,
+        price_visibility,
         return_selection_style,
         rolling_return_selection_style,
         calendar_return_selection_style,
@@ -884,9 +879,7 @@ def update_selection_visibility(y_var: str):
 
 
 @app.callback(
-    Output("log-scale-switch", "style"),
-    Output("percent-scale-switch", "style"),
-    Output("auto-scale-switch", "style"),
+    Output("price-selection-container", "style"),
     Output("return-selection", "style"),
     Output("rolling-return-selection-container", "style"),
     Output("calendar-return-selection-container", "style"),
@@ -947,13 +940,14 @@ def update_graph(
     prev_layout: dict[str, dict] | None,
 ):
     layout = go.Layout(
+        autosize=True,
         hovermode="x",
         showlegend=True,
         legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
         uirevision=y_var,
         yaxis_side="right",
         yaxis_uirevision=False if auto_scale else uirevision,
-        margin=go.layout.Margin(t=100, b=50, l=10, r=100, autoexpand=True),
+        margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
     )
 
     if ctx.triggered_id not in ["graph", "portfolio-graph"]:
@@ -962,7 +956,7 @@ def update_graph(
     if y_var == "price":
         layout.update(
             title="Price",
-            yaxis_tickformat=".2f",
+            yaxis_tickformat="5~g",
         )
 
         start_date = None
@@ -1014,7 +1008,7 @@ def update_graph(
             )
         if percent_scale:
             layout.update(title="% Change")
-            layout.update(yaxis_tickformat="+.2%")
+            layout.update(yaxis_tickformat="+.2~%")
 
             prev_zoom_df = df.copy(deep=True)
 
@@ -1120,10 +1114,13 @@ def update_graph(
             else:
                 price_adj = 1
                 hoverinfo = "text+name+x"
+                max_val = df.loc[start_date:end_date].max().max()
                 ytickvals = [n / 10 for n in range(0, 20)] + [
-                    base * 10**exp + 1 for exp in range(6) for base in range(1, 10)
+                    base * 10**exp + 1
+                    for exp in range(math.floor(math.log10(max_val)) + 2)
+                    for base in range(1, 10)
                 ]
-                yticktexts = [f"{tick - 1:+.2%}" for tick in ytickvals]
+                yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
                 layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
                 if (
@@ -1563,6 +1560,7 @@ def portfolio_weights_sum(portfolio_allocation_strs: list[str]):
 @app.callback(
     Output("portfolios", "value"),
     Output("portfolios", "options"),
+    Output("portfolios", "optionHeight"),
     Output("portfolio-allocations", "value", allow_duplicate=True),
     Output("portfolio-allocations", "options", allow_duplicate=True),
     Input("add-portfolio-button", "n_clicks"),
@@ -1588,23 +1586,33 @@ def add_portfolio(
     if sum(weights) != 100:
         return no_update
     portfolio_str = json.dumps(portfolio_allocation_strs)
-    portfolio_title = ", ".join(
+    portfolio_title = ",\n".join(
         portfolio_allocations_options[portfolio_allocation]
         for portfolio_allocation in portfolio_allocation_strs
     )
     if portfolio_strs is None:
-        return [portfolio_str], {portfolio_str: portfolio_title}, [], {}
+        return (
+            [portfolio_str],
+            {portfolio_str: portfolio_title},
+            12 + 24 * (1 + portfolio_title.count("\n")),
+            [],
+            {},
+        )
     if portfolio_str in portfolio_strs:
         return no_update
     portfolio_strs.append(portfolio_str)
     portfolio_options.update({portfolio_str: portfolio_title})
-    return portfolio_strs, portfolio_options, [], {}
+    return (
+        portfolio_strs,
+        portfolio_options,
+        12 + 24 * (1 + max(title.count("\n") for title in portfolio_options.values())),
+        [],
+        {},
+    )
 
 
 @app.callback(
-    Output("portfolio-log-scale-switch", "style"),
-    Output("portfolio-percent-scale-switch", "style"),
-    Output("portfolio-auto-scale-switch", "style"),
+    Output("portfolio-price-selection-container", "style"),
     Output("portfolio-return-selection", "style"),
     Output("portfolio-rolling-return-selection-container", "style"),
     Output("portfolio-calendar-return-selection-container", "style"),
@@ -1758,7 +1766,7 @@ def update_portfolio_graph(
         )
     )
     portfolio_options = {
-        k: v.replace(", ", "<br>") for k, v in portfolio_options.items()
+        k: v.replace("\n", "<br>") for k, v in portfolio_options.items()
     }
     portfolios_df = pd.concat(
         [
@@ -1910,13 +1918,14 @@ def update_accumulation_strategies(
         }
     )
     strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
-        f"{investment_amount} initial capital, "
-        f"{monthly_investment} invested monthly for {dca_length} months, "
-        f"{dca_interval} months apart, held for {investment_horizon} months, "
-        f"Monthly investment {'' if adjust_monthly_investment_for_inflation else 'not '}adjusted for inflation, "
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
-        f"{annualised_holding_fees}% p.a. Holding Fees, "
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
+        f"{investment_amount} initial capital\n"
+        f"{monthly_investment} invested monthly,\n"
+        f"{' inflation adjusted,' if adjust_monthly_investment_for_inflation else ''}\n"
+        f"for {dca_length} months every {dca_interval} months\n"
+        f"held for {investment_horizon} months\n"
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
+        f"{annualised_holding_fees}% p.a. Holding Fees\n"
         f"Portfolio value {'' if adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
     )
 
@@ -2025,7 +2034,7 @@ def update_accumulation_strategy_graph(
                 y=ending_values[strategy],
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy]),
-                name=strategy_options[strategy].replace(", ", "<br>"),
+                name=strategy_options[strategy].replace("\n", "<br>"),
             )
             for strategy in ending_values.columns
         ],
@@ -2035,7 +2044,7 @@ def update_accumulation_strategy_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            margin=go.layout.Margin(t=100, b=50, l=10, r=100, autoexpand=True),
+            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
         ),
     }
 
@@ -2117,12 +2126,12 @@ def update_withdrawal_strategies(
     )
 
     strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}, "
-        f"{initial_capital} initial capital, "
-        f"{monthly_withdrawal} withdrawn monthly, "
-        f"{withdrawal_interval} months apart for {withdrawal_horizon} months, "
-        f"Monthly withdrawal {'' if adjust_for_inflation else 'not '}adjusted for inflation, "
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee, "
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency},\n"
+        f"{initial_capital} initial capital,\n"
+        f"{monthly_withdrawal} withdrawn monthly,\n"
+        f"{' inflation adjusted,' if adjust_for_inflation else ''}\n"
+        f"every {withdrawal_interval} months for {withdrawal_horizon} months,\n"
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee,\n"
         f"{annualised_holding_fees}% p.a. Holding Fees"
     )
 
@@ -2216,7 +2225,7 @@ def update_withdrawal_strategy_graph(
                 y=ending_values[strategy],
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy]),
-                name=strategy_options[strategy].replace(", ", "<br>"),
+                name=strategy_options[strategy].replace("\n", "<br>"),
             )
             for strategy in ending_values.columns
         ],
@@ -2226,10 +2235,10 @@ def update_withdrawal_strategy_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            margin=go.layout.Margin(t=100, b=50, l=10, r=100, autoexpand=True),
+            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
         ),
     }
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run("0.0.0.0", debug=True)
