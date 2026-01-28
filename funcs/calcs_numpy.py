@@ -179,7 +179,7 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             if index % withdrawal_interval == 0:
                 share_value -= withdrawal_amounts[index]
                 if share_value <= 0:
-                    share_value = 0
+                    res[i, index:] = 0
                     break
             share_value *= monthly_returns_with_fees[j + 1]
             res[i, index] = share_value
