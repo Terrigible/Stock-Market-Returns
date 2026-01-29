@@ -10,7 +10,9 @@ app_layout = html.Div(
                     [
                         html.Div(
                             [
-                                dbc.Label("Security Type"),
+                                dbc.Label(
+                                    "Security Type", html_for="security-type-selection"
+                                ),
                                 dbc.Select(
                                     [
                                         "Index",
@@ -23,7 +25,10 @@ app_layout = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        dbc.Label("Index Provider"),
+                                        dbc.Label(
+                                            "Index Provider",
+                                            html_for="index-provider-selection",
+                                        ),
                                         dbc.Select(
                                             {
                                                 "MSCI": "MSCI",
@@ -36,13 +41,19 @@ app_layout = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                dbc.Label("Index Type"),
+                                                dbc.Label(
+                                                    "Index Type",
+                                                    html_for="msci-index-type-selection",
+                                                ),
                                                 dbc.Select(
                                                     ["Regional", "Country"],
                                                     value="Regional",
                                                     id="msci-index-type-selection",
                                                 ),
-                                                dbc.Label("Base Index"),
+                                                dbc.Label(
+                                                    "Base Index",
+                                                    html_for="msci-index-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "WORLD": "World",
@@ -55,7 +66,10 @@ app_layout = html.Div(
                                                     value="WORLD",
                                                     id="msci-index-selection",
                                                 ),
-                                                dbc.Label("Size"),
+                                                dbc.Label(
+                                                    "Size",
+                                                    html_for="msci-size-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "STANDARD": "Standard",
@@ -68,7 +82,10 @@ app_layout = html.Div(
                                                     value="STANDARD",
                                                     id="msci-size-selection",
                                                 ),
-                                                dbc.Label("Style"),
+                                                dbc.Label(
+                                                    "Style",
+                                                    html_for="msci-style-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "BLEND": "None",
@@ -78,7 +95,10 @@ app_layout = html.Div(
                                                     value="BLEND",
                                                     id="msci-style-selection",
                                                 ),
-                                                dbc.Label("Tax Treatment"),
+                                                dbc.Label(
+                                                    "Tax Treatment",
+                                                    html_for="msci-tax-treatment-selection",
+                                                ),
                                                 dbc.Select(
                                                     ["Gross", "Net"],
                                                     value="Gross",
@@ -89,7 +109,10 @@ app_layout = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                dbc.Label("Index"),
+                                                dbc.Label(
+                                                    "Index",
+                                                    html_for="fred-index-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "US-T": "US Treasuries",
@@ -99,7 +122,10 @@ app_layout = html.Div(
                                                 ),
                                                 html.Div(
                                                     [
-                                                        dbc.Label("Duration"),
+                                                        dbc.Label(
+                                                            "Duration",
+                                                            html_for="us-treasury-duration-selection",
+                                                        ),
                                                         dbc.Select(
                                                             {
                                                                 "1MO": "1 Month",
@@ -125,7 +151,10 @@ app_layout = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                dbc.Label("Index"),
+                                                dbc.Label(
+                                                    "Index",
+                                                    html_for="mas-index-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "SGS": "SGS",
@@ -135,7 +164,10 @@ app_layout = html.Div(
                                                 ),
                                                 html.Div(
                                                     [
-                                                        dbc.Label("Duration"),
+                                                        dbc.Label(
+                                                            "Duration",
+                                                            html_for="sgs-duration-selection",
+                                                        ),
                                                         dbc.Select(
                                                             {
                                                                 "1": "1 Year",
@@ -158,7 +190,10 @@ app_layout = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                dbc.Label("Index"),
+                                                dbc.Label(
+                                                    "Index",
+                                                    html_for="others-index-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "STI": "STI",
@@ -172,7 +207,10 @@ app_layout = html.Div(
                                                 ),
                                                 html.Div(
                                                     [
-                                                        dbc.Label("Tax Treatment"),
+                                                        dbc.Label(
+                                                            "Tax Treatment",
+                                                            html_for="others-tax-treatment-selection",
+                                                        ),
                                                         dbc.Select(
                                                             ["Gross", "Net"],
                                                             value="Gross",
@@ -192,10 +230,16 @@ app_layout = html.Div(
                                 html.Div(
                                     [
                                         html.P(),
-                                        dbc.Label("Yahoo Finance Ticker"),
+                                        dbc.Label(
+                                            "Yahoo Finance Ticker",
+                                            html_for="yf-security-input",
+                                        ),
                                         html.Br(),
                                         dbc.Input(id="yf-security-input", type="text"),
-                                        dbc.Label("Tax Treatment"),
+                                        dbc.Label(
+                                            "Tax Treatment",
+                                            html_for="yf-security-tax-treatment-selection",
+                                        ),
                                         dbc.Select(
                                             ["Gross", "Net"],
                                             value="Gross",
@@ -221,7 +265,10 @@ app_layout = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        dbc.Label("Fund Company"),
+                                        dbc.Label(
+                                            "Fund Company",
+                                            html_for="fund-company-selection",
+                                        ),
                                         dbc.Select(
                                             [
                                                 "Great Eastern",
@@ -232,7 +279,7 @@ app_layout = html.Div(
                                             value="Great Eastern",
                                             id="fund-company-selection",
                                         ),
-                                        dbc.Label("Fund"),
+                                        dbc.Label("Fund", html_for="fund-selection"),
                                         dbc.Select(
                                             [],
                                             id="fund-selection",
@@ -245,7 +292,9 @@ app_layout = html.Div(
                                 html.Div(
                                     [
                                         html.P(),
-                                        dbc.Label("FT Ticker"),
+                                        dbc.Label(
+                                            "FT Ticker", html_for="ft-security-input"
+                                        ),
                                         html.Br(),
                                         dbc.Input(id="ft-security-input", type="text"),
                                         html.P(),
@@ -280,7 +329,10 @@ app_layout = html.Div(
                                     color="info",
                                 ),
                                 html.P(),
-                                dbc.Label("Selected Securities"),
+                                dbc.Label(
+                                    "Selected Securities",
+                                    html_for="selected-securities",
+                                ),
                                 dcc.Dropdown(
                                     {},
                                     multi=True,
@@ -292,13 +344,13 @@ app_layout = html.Div(
                                     storage_type="memory",
                                     data={},
                                 ),
-                                dbc.Label("Interval"),
+                                dbc.Label("Interval", html_for="interval-selection"),
                                 dbc.Select(
                                     ["Monthly", "Daily"],
                                     value="Monthly",
                                     id="interval-selection",
                                 ),
-                                dbc.Label("Currency"),
+                                dbc.Label("Currency", html_for="currency-selection"),
                                 dbc.Select(
                                     [
                                         "SGD",
@@ -307,7 +359,10 @@ app_layout = html.Div(
                                     value="USD",
                                     id="currency-selection",
                                 ),
-                                dbc.Label("Adjust for Inflation"),
+                                dbc.Label(
+                                    "Adjust for Inflation",
+                                    html_for="inflation-adjustment-selection",
+                                ),
                                 dbc.Select(
                                     [
                                         "No",
@@ -316,7 +371,7 @@ app_layout = html.Div(
                                     value="No",
                                     id="inflation-adjustment-selection",
                                 ),
-                                dbc.Label("Value"),
+                                dbc.Label("Value", html_for="y-var-selection"),
                                 dbc.Select(
                                     {
                                         "price": "Price",
@@ -351,7 +406,10 @@ app_layout = html.Div(
                                     [
                                         html.Div(
                                             [
-                                                dbc.Label("Return Interval"),
+                                                dbc.Label(
+                                                    "Return Interval",
+                                                    html_for="return-interval-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "1mo": "Monthly",
@@ -366,7 +424,10 @@ app_layout = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                dbc.Label("Return Duration"),
+                                                dbc.Label(
+                                                    "Return Duration",
+                                                    html_for="return-duration-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "1mo": "1 Month",
@@ -385,7 +446,10 @@ app_layout = html.Div(
                                                     value="1mo",
                                                     id="return-duration-selection",
                                                 ),
-                                                dbc.Label("Return Type"),
+                                                dbc.Label(
+                                                    "Return Type",
+                                                    html_for="return-type-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "cumulative": "Cumulative",
@@ -394,7 +458,10 @@ app_layout = html.Div(
                                                     value="cumulative",
                                                     id="return-type-selection",
                                                 ),
-                                                dbc.Label("Chart Type"),
+                                                dbc.Label(
+                                                    "Chart Type",
+                                                    html_for="chart-type-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "timeseries": "Time Series",
@@ -406,7 +473,10 @@ app_layout = html.Div(
                                             ],
                                             id="rolling-return-selection-container",
                                         ),
-                                        dbc.Label("Baseline"),
+                                        dbc.Label(
+                                            "Baseline",
+                                            html_for="baseline-security-selection",
+                                        ),
                                         dbc.Select(
                                             {
                                                 "None": "None",
@@ -436,12 +506,14 @@ app_layout = html.Div(
                     [
                         html.Div(
                             [
-                                dbc.Label("Security"),
+                                dbc.Label(
+                                    "Security", html_for="portfolio-security-selection"
+                                ),
                                 dbc.Select(
                                     {},
                                     id="portfolio-security-selection",
                                 ),
-                                dbc.Label("Weight (%)"),
+                                dbc.Label("Weight (%)", html_for="security-weight"),
                                 dbc.Input(
                                     id="security-weight",
                                     type="number",
@@ -451,7 +523,10 @@ app_layout = html.Div(
                                 html.P(),
                                 dbc.Button("Add Security", id="add-security-button"),
                                 html.P(),
-                                dbc.Label("Portfolio Allocations"),
+                                dbc.Label(
+                                    "Portfolio Allocations",
+                                    html_for="portfolio-allocations",
+                                ),
                                 dcc.Dropdown(
                                     {},
                                     id="portfolio-allocations",
@@ -471,7 +546,9 @@ app_layout = html.Div(
                                     multi=True,
                                     searchable=False,
                                 ),
-                                dbc.Label("Currency"),
+                                dbc.Label(
+                                    "Currency", html_for="portfolio-currency-selection"
+                                ),
                                 dbc.Select(
                                     [
                                         "SGD",
@@ -480,7 +557,10 @@ app_layout = html.Div(
                                     value="USD",
                                     id="portfolio-currency-selection",
                                 ),
-                                dbc.Label("Adjust for Inflation"),
+                                dbc.Label(
+                                    "Adjust for Inflation",
+                                    html_for="portfolio-inflation-adjustment-selection",
+                                ),
                                 dbc.Select(
                                     [
                                         "No",
@@ -489,7 +569,9 @@ app_layout = html.Div(
                                     value="No",
                                     id="portfolio-inflation-adjustment-selection",
                                 ),
-                                dbc.Label("Value"),
+                                dbc.Label(
+                                    "Value", html_for="portfolio-y-var-selection"
+                                ),
                                 dbc.Select(
                                     {
                                         "price": "Price",
@@ -524,7 +606,10 @@ app_layout = html.Div(
                                     [
                                         html.Div(
                                             [
-                                                dbc.Label("Return Interval"),
+                                                dbc.Label(
+                                                    "Return Interval",
+                                                    html_for="portfolio-return-interval-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "1mo": "Monthly",
@@ -539,7 +624,10 @@ app_layout = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                dbc.Label("Return Duration"),
+                                                dbc.Label(
+                                                    "Return Duration",
+                                                    html_for="portfolio-return-duration-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "1mo": "1 Month",
@@ -558,7 +646,10 @@ app_layout = html.Div(
                                                     value="1mo",
                                                     id="portfolio-return-duration-selection",
                                                 ),
-                                                dbc.Label("Return Type"),
+                                                dbc.Label(
+                                                    "Return Type",
+                                                    html_for="portfolio-return-type-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "cumulative": "Cumulative",
@@ -567,7 +658,10 @@ app_layout = html.Div(
                                                     value="cumulative",
                                                     id="portfolio-return-type-selection",
                                                 ),
-                                                dbc.Label("Chart Type"),
+                                                dbc.Label(
+                                                    "Chart Type",
+                                                    html_for="portfolio-chart-type-selection",
+                                                ),
                                                 dbc.Select(
                                                     {
                                                         "timeseries": "Time Series",
@@ -579,7 +673,10 @@ app_layout = html.Div(
                                             ],
                                             id="portfolio-rolling-return-selection-container",
                                         ),
-                                        dbc.Label("Baseline"),
+                                        dbc.Label(
+                                            "Baseline",
+                                            html_for="portfolio-baseline-security-selection",
+                                        ),
                                         dbc.Select(
                                             {
                                                 "None": "None",
@@ -617,7 +714,10 @@ app_layout = html.Div(
                     [
                         html.Div(
                             [
-                                dbc.Label("Portfolio"),
+                                dbc.Label(
+                                    "Portfolio",
+                                    html_for="accumulation-strategy-portfolio",
+                                ),
                                 html.Div(
                                     [
                                         dbc.Select(
@@ -628,7 +728,10 @@ app_layout = html.Div(
                                     ],
                                     style={"display": "flex"},
                                 ),
-                                dbc.Label("Currency"),
+                                dbc.Label(
+                                    "Currency",
+                                    html_for="accumulation-strategy-currency-selection",
+                                ),
                                 dbc.Select(
                                     [
                                         "SGD",
@@ -639,6 +742,7 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label(
                                     "Initial Portfolio Value",
+                                    html_for="accumulation-investment-amount-input",
                                 ),
                                 dbc.Input(
                                     id="accumulation-investment-amount-input",
@@ -647,7 +751,10 @@ app_layout = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        dbc.Label("Monthly Investment Amount"),
+                                        dbc.Label(
+                                            "Monthly Investment Amount",
+                                            html_for="accumulation-monthly-investment-input",
+                                        ),
                                         dbc.Input(
                                             id="accumulation-monthly-investment-input",
                                             type="number",
@@ -662,40 +769,58 @@ app_layout = html.Div(
                                     ],
                                     id="accumulation-dca-input-container",
                                 ),
-                                dbc.Label("Investment Horizon (Months)"),
+                                dbc.Label(
+                                    "Investment Horizon (Months)",
+                                    html_for="accumulation-investment-horizon-input",
+                                ),
                                 dbc.Input(
                                     id="accumulation-investment-horizon-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
-                                dbc.Label("DCA Length (Months)"),
+                                dbc.Label(
+                                    "DCA Length (Months)",
+                                    html_for="accumulation-dca-length-input",
+                                ),
                                 dbc.Input(
                                     id="accumulation-dca-length-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
-                                dbc.Label("DCA Interval (Months)"),
+                                dbc.Label(
+                                    "DCA Interval (Months)",
+                                    html_for="accumulation-dca-interval-input",
+                                ),
                                 dbc.Input(
                                     id="accumulation-dca-interval-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
-                                dbc.Label("Variable Transaction Fees (%)"),
+                                dbc.Label(
+                                    "Variable Transaction Fees (%)",
+                                    html_for="accumulation-variable-transaction-fees-input",
+                                ),
                                 dbc.Input(
                                     id="accumulation-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
-                                dbc.Label("Fixed Transaction Fees ($)"),
+                                dbc.Label(
+                                    "Fixed Transaction Fees ($)",
+                                    html_for="accumulation-fixed-transaction-fees-input",
+                                ),
                                 dbc.Input(
                                     id="accumulation-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
-                                dbc.Label("Annualised Holding Fees (% p.a.)"),
+                                dbc.Label(
+                                    "Annualised Holding Fees (% p.a.)",
+                                    html_for="accumulation-annualised-holding-fees-input",
+                                ),
                                 dbc.Input(
                                     id="accumulation-annualised-holding-fees-input",
                                     type="number",
@@ -712,7 +837,9 @@ app_layout = html.Div(
                                     id="add-accumulation-strategy-button",
                                 ),
                                 html.P(),
-                                dbc.Label("Strategies"),
+                                dbc.Label(
+                                    "Strategies", html_for="accumulation-strategies"
+                                ),
                                 dcc.Dropdown(
                                     {},
                                     multi=True,
@@ -743,7 +870,10 @@ app_layout = html.Div(
                     [
                         html.Div(
                             [
-                                dbc.Label("Portfolio"),
+                                dbc.Label(
+                                    "Portfolio",
+                                    html_for="withdrawal-strategy-portfolio",
+                                ),
                                 html.Div(
                                     [
                                         dbc.Select(
@@ -754,7 +884,10 @@ app_layout = html.Div(
                                     ],
                                     style={"display": "flex"},
                                 ),
-                                dbc.Label("Currency"),
+                                dbc.Label(
+                                    "Currency",
+                                    html_for="withdrawal-strategy-currency-selection",
+                                ),
                                 dbc.Select(
                                     [
                                         "SGD",
@@ -763,13 +896,19 @@ app_layout = html.Div(
                                     value="SGD",
                                     id="withdrawal-strategy-currency-selection",
                                 ),
-                                dbc.Label("Initial Capital"),
+                                dbc.Label(
+                                    "Initial Capital",
+                                    html_for="withdrawal-initial-capital-input",
+                                ),
                                 dbc.Input(
                                     id="withdrawal-initial-capital-input",
                                     type="number",
                                     min=0.01,
                                 ),
-                                dbc.Label("Monthly Withdrawal Amount"),
+                                dbc.Label(
+                                    "Monthly Withdrawal Amount",
+                                    html_for="monthly-withdrawal-input",
+                                ),
                                 dbc.Input(
                                     id="monthly-withdrawal-input",
                                     type="number",
@@ -781,33 +920,48 @@ app_layout = html.Div(
                                     label="Adjust for Inflation",
                                     style={"marginTop": "0"},
                                 ),
-                                dbc.Label("Withdrawal Horizon (Months)"),
+                                dbc.Label(
+                                    "Withdrawal Horizon (Months)",
+                                    html_for="withdrawal-horizon-input",
+                                ),
                                 dbc.Input(
                                     id="withdrawal-horizon-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
-                                dbc.Label("Withdrawal Interval (Months)"),
+                                dbc.Label(
+                                    "Withdrawal Interval (Months)",
+                                    html_for="withdrawal-interval-input",
+                                ),
                                 dbc.Input(
                                     id="withdrawal-interval-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
-                                dbc.Label("Variable Transaction Fees (%)"),
+                                dbc.Label(
+                                    "Variable Transaction Fees (%)",
+                                    html_for="withdrawal-variable-transaction-fees-input",
+                                ),
                                 dbc.Input(
                                     id="withdrawal-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
-                                dbc.Label("Fixed Transaction Fees ($)"),
+                                dbc.Label(
+                                    "Fixed Transaction Fees ($)",
+                                    html_for="withdrawal-fixed-transaction-fees-input",
+                                ),
                                 dbc.Input(
                                     id="withdrawal-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
-                                dbc.Label("Annualised Holding Fees (% p.a.)"),
+                                dbc.Label(
+                                    "Annualised Holding Fees (% p.a.)",
+                                    html_for="withdrawal-annualised-holding-fees-input",
+                                ),
                                 dbc.Input(
                                     id="withdrawal-annualised-holding-fees-input",
                                     type="number",
@@ -818,7 +972,9 @@ app_layout = html.Div(
                                     "Add Strategy", id="add-withdrawal-strategy-button"
                                 ),
                                 html.P(),
-                                dbc.Label("Strategies"),
+                                dbc.Label(
+                                    "Strategies", html_for="withdrawal-strategies"
+                                ),
                                 dcc.Dropdown(
                                     {},
                                     multi=True,
