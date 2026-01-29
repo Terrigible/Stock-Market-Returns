@@ -60,7 +60,7 @@ input[type="number"] {
     display: block;
 }
 
-.Select--multi:is(.has-value) .Select-input {
+.Select--multi.has-value .Select-input {
     display: none !important;
 }
 
