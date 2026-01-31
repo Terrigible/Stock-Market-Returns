@@ -1,12 +1,16 @@
 import asyncio
 import datetime
+import json
 import os
+import re
 from glob import glob
+from io import StringIO
 from itertools import chain
 
 import httpx
 import pandas as pd
 import polars as pl
+from bs4 import BeautifulSoup
 
 
 def read_msci_data(filename_pattern: str):
@@ -18,7 +22,7 @@ def read_msci_data(filename_pattern: str):
 
 
 def read_ft_data(filename: str):
-    df = pl.read_csv("data/FT/{filename}.csv", try_parse_dates=True).select(
+    df = pl.read_csv(f"data/FT/{filename}.csv", try_parse_dates=True).select(
         pl.col("date"), pl.col("close").alias("price")
     )
     if filename == "S&P 500 USD Gross":
@@ -723,7 +727,7 @@ async def download_us_cpi_async():
                 },
                 headers={"Content-Type": "application/json"},
             )
-            for year in range(1947, pd.to_datetime("today").year, 10)
+            for year in range(1947, datetime.date.today().year, 10)
         )
         responses = await asyncio.gather(*tasks)
     responses = responses[::-1]
@@ -803,3 +807,119 @@ def read_greatlink_data(fund_name: str):
             .fill_null(1),
         )
     return price
+
+
+def get_ft_api_key():
+    res = httpx.get("https://markets.ft.com/research/webservices/securities/v1/docs")
+    source = re.search("source=([0-9a-f]*)", res.content.decode())
+    if not source:
+        raise ValueError("API key not found in page")
+    api_key = source.group(1)
+    if not isinstance(api_key, str) or len(api_key) == 0:
+        raise ValueError("API key not found in page")
+    return api_key
+
+
+def download_ft_data(symbol: str, api_key: str | None = None):
+    with httpx.Client() as client:
+        if api_key is None:
+            api_key = get_ft_api_key()
+        details_response = client.get(
+            "https://markets.ft.com/research/webservices/securities/v1/details",
+            params={
+                "source": api_key,
+                "symbols": symbol,
+            },
+        )
+        if details_response.is_client_error:
+            if (
+                details_response.json()["error"]["errors"][0]["reason"]
+                == "MissingAPIKey"
+            ):
+                api_key = get_ft_api_key()
+                details_response = client.get(
+                    "https://markets.ft.com/research/webservices/securities/v1/details",
+                    params={
+                        "source": api_key,
+                        "symbols": symbol,
+                    },
+                )
+            else:
+                raise ValueError(
+                    details_response.json()["error"]["errors"][0]["message"]
+                )
+        else:
+            details_response.raise_for_status()
+        item = details_response.json()["data"]["items"][0]
+        ticker = item["basic"]["symbol"]
+        currency = item["basic"]["currency"]
+        if item["details"]["issueType"] == "OF":
+            historical_tearsheet_response = client.get(
+                "https://markets.ft.com/data/funds/tearsheet/historical",
+                params={"s": ticker},
+                headers={},
+            )
+            historical_prices_mod = BeautifulSoup(
+                historical_tearsheet_response.content, "lxml"
+            ).select_one(".mod-tearsheet-historical-prices")
+
+            if historical_prices_mod is None:
+                raise ValueError("Unable to retrive inception date")
+            data_mod_config = historical_prices_mod["data-mod-config"]
+            if isinstance(data_mod_config, str) and "inception" in data_mod_config:
+                start_date = datetime.datetime.fromisoformat(
+                    json.loads(data_mod_config)["inception"]
+                )
+            else:
+                raise ValueError("Unable to retrive inception date")
+        else:
+            start_date = datetime.datetime.strptime(
+                item["details"]["inceptionDate"],
+                "%Y-%m-%dT00:00:00",
+            )
+        response = client.get(
+            "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
+            params={
+                "source": api_key,
+                "symbols": symbol,
+                "dayCount": (datetime.date.today() - start_date.date()).days,
+            },
+        )
+        if (
+            response.json()["data"]["items"][0]["historicalSeries"].get(
+                "historicalQuoteData"
+            )
+            is None
+        ):
+            raise ValueError("No data for this fund or index.")
+
+        df = (
+            pl.from_dicts(
+                response.json()["data"]["items"][0]["historicalSeries"][
+                    "historicalQuoteData"
+                ],
+                schema={"date": pl.String, "close": pl.Float64},
+            )
+            .with_columns(date=pl.col("date").str.to_date("%Y-%m-%dT00:00:00"))
+            .reverse()
+        )
+
+        return df, ticker, currency, api_key
+
+
+def get_sgx_dividends(ticker: str):
+    res = httpx.get(f"https://www.dividends.sg/view/{ticker}")
+    df_pd = pd.read_html(StringIO(res.content.decode()))[0][["Ex Date", "Amount"]]
+    df = (
+        pl.from_pandas(df_pd)
+        .select(date="Ex Date", dividends="Amount")
+        .filter(pl.col("dividends").str.contains("SGD"))
+        .with_columns(
+            pl.col("date").str.to_date(),
+            pl.col("dividends").str.strip_prefix("SGD").cast(pl.Float64),
+        )
+        .group_by("date")
+        .agg(pl.col("dividends").sum())
+        .sort("date")
+    )
+    return df
