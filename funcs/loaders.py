@@ -3,6 +3,7 @@ import json
 import os
 import re
 from glob import glob
+from io import StringIO
 from itertools import chain
 from json import JSONDecodeError
 
@@ -786,9 +787,10 @@ def download_ft_data(symbol: str, api_key: str | None = None):
 
 
 def get_sgx_dividends(ticker: str):
-    df = pd.read_html(f"https://www.dividends.sg/view/{ticker}")[0][
-        ["Ex Date", "Amount"]
-    ].rename(columns={"Ex Date": "date", "Amount": "dividends"})
+    res = httpx.get(f"https://www.dividends.sg/view/{ticker}")
+    df = pd.read_html(StringIO(res.content.decode()))[0][["Ex Date", "Amount"]].rename(
+        columns={"Ex Date": "date", "Amount": "dividends"}
+    )
     df = df[df["dividends"].str.contains("SGD")]
     df.loc[:, "dividends"] = df["dividends"].str.replace("SGD", "").astype(float)
     df.loc[:, "date"] = pd.to_datetime(df["date"])
