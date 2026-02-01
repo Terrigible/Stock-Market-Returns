@@ -11,7 +11,7 @@ import httpx
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
-from pandas.tseries.offsets import BMonthEnd
+from pandas.tseries.offsets import BDay, BMonthEnd, Day, MonthEnd, Week
 
 
 def read_msci_data(filename_pattern: str):
@@ -68,8 +68,9 @@ def load_fed_funds_rate():
         fed_funds_rate = pd.read_csv(
             "data/fed_funds_rate.csv", parse_dates=["date"], index_col="date"
         )
-        if fed_funds_rate.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, True
+        if (
+            fed_funds_rate.index[-1] + BMonthEnd() + BDay() + Day(1)
+            < pd.to_datetime("today")
         ) and os.environ.get("FRED_API_KEY", None):
             raise FileNotFoundError
         fed_funds_rate = fed_funds_rate["ffr"]
@@ -118,8 +119,9 @@ async def load_us_treasury_rates_async():
         treasury_rates = pd.read_csv(
             "data/us_treasury.csv", parse_dates=["date"], index_col="date"
         )
-        if treasury_rates.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, True
+        if (
+            treasury_rates.index[-1] + BMonthEnd() + BDay() + Day(1)
+            < pd.to_datetime("today")
         ) and os.environ.get("FRED_API_KEY", None):
             raise FileNotFoundError
 
@@ -227,8 +229,8 @@ def download_mas_sgd_fx():
 def load_mas_sgd_fx():
     try:
         sgd_fx = pd.read_csv("data/sgd_fx.csv", parse_dates=["date"], index_col="date")
-        if sgd_fx.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, True
+        if (
+            sgd_fx.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
         ) and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None):
             raise FileNotFoundError
     except FileNotFoundError:
@@ -294,8 +296,11 @@ async def download_fred_usd_fx_async():
 async def load_fred_usd_fx_async():
     try:
         usd_fx = pd.read_csv("data/usd_fx.csv", parse_dates=["date"], index_col="date")
-        if usd_fx.index[-1] < pd.to_datetime("today") + BMonthEnd(
-            -1, True
+        if (
+            usd_fx.index[-1]
+            + pd.tseries.offsets.BMonthEnd()
+            + pd.tseries.offsets.Week(weekday=1)
+            <= pd.to_datetime("today")
         ) and os.environ.get("FRED_API_KEY", None):
             raise FileNotFoundError
     except FileNotFoundError:
@@ -344,7 +349,7 @@ def load_usdsgd():
     try:
         usdsgd = pd.read_csv("data/usdsgd.csv", parse_dates=["date"], index_col="date")
         if (
-            usdsgd.index[-1] < pd.to_datetime("today") + BMonthEnd(-1, True)
+            usdsgd.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
             and os.environ.get("FRED_API_KEY", None)
             and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None)
         ):
@@ -381,7 +386,7 @@ def load_mas_swap_points():
         parse_dates=["date"],
         index_col="date",
     )
-    if df.index[-1] < pd.Timestamp.now() - BMonthEnd(1, True):
+    if df.index[-1] + BMonthEnd() + Week(weekday=0) < pd.Timestamp.today():
         try:
             res = httpx.get(
                 "https://www.mas.gov.sg/api/v1/MAS/chart/swappoint",
@@ -409,7 +414,7 @@ def load_sgd_neer():
         parse_dates=["date"],
         index_col="date",
     )
-    if df.index[-1] < pd.Timestamp.now() - BMonthEnd(1, True):
+    if df.index[-1] + BMonthEnd() + Week(weekday=4) < pd.to_datetime("today"):
         try:
             res = httpx.get(
                 "https://www.mas.gov.sg/api/v1/MAS/chart/sneer",
@@ -579,7 +584,7 @@ def download_sg_cpi():
 def load_sg_cpi():
     try:
         sg_cpi = pd.read_csv("data/sg_cpi.csv", parse_dates=["date"], index_col="date")
-        if sg_cpi.index[-1] + pd.DateOffset(days=55) < pd.to_datetime("today"):
+        if sg_cpi.index[-1] + MonthEnd(0) + Day(23) < pd.to_datetime("today"):
             raise FileNotFoundError
         return sg_cpi
     except FileNotFoundError:
@@ -625,8 +630,8 @@ async def download_us_cpi_async():
 async def load_us_cpi_async():
     try:
         us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")
-        if us_cpi.index[-1] + pd.DateOffset(days=45) < pd.to_datetime(
-            "today"
+        if (
+            us_cpi.index[-1] + MonthEnd(0) + Day(10) < pd.to_datetime("today")
         ) and os.environ.get("BLS_API_KEY", None):
             raise FileNotFoundError
         return us_cpi.interpolate()
@@ -687,6 +692,7 @@ def read_greatlink_data(fund_name: str):
             .div(df["price"].shift(1))
             .fillna(1)
             .cumprod()
+            .rename("price")
             .to_frame()
         )
     return df
