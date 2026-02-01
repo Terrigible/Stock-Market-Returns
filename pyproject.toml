@@ -31,5 +31,5 @@ dev = [
     "snakeviz>=2.2.2",
 ]
 prod = [
-    "gunicorn>=24.1.1",
+    "gunicorn>=25.0.0",
 ]
