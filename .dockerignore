@@ -2,3 +2,4 @@
 geckodriver.log
 *.ipynb
 .venv
+AGENTS.md

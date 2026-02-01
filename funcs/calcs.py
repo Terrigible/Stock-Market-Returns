@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from numpy.lib.stride_tricks import sliding_window_view
 from scipy.signal import correlate2d
 
 
