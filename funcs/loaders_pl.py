@@ -6,6 +6,7 @@ import re
 from glob import glob
 from io import StringIO
 from itertools import chain
+from json import JSONDecodeError
 
 import httpx
 import pandas as pd
@@ -50,38 +51,40 @@ def get_fred_series(series_id: str):
             "file_type": "json",
         },
     )
-    df = (
+    return (
         pl.read_json(res.content)["observations"]
         .explode()
         .struct.unnest()
         .select(
             pl.col("date").str.to_date(),
-            pl.col("value").replace(".", None).cast(pl.Float64),
+            pl.col("value").replace(".", None).cast(pl.Float64).alias(series_id),
         )
     )
-    return df
 
 
 def download_fed_funds_rate():
-    fed_funds_rate = get_fred_series("DFF").rename({"value": "ffr"})
+    fed_funds_rate = get_fred_series("DFF").rename({"DFF": "ffr"})
     fed_funds_rate.write_csv("data/fed_funds_rate.csv")
     return fed_funds_rate
 
 
 def load_fed_funds_rate():
-    fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
-
-    if (
-        fed_funds_rate.get_column("date")
-        .dt.add_business_days(1, roll="forward")
-        .dt.month_end()
-        .dt.add_business_days(2, roll="backward")
-        .lt(datetime.date.today())
-        .last()
-        and "FRED_API_KEY" in os.environ
-    ):
+    try:
+        fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
+        if (
+            fed_funds_rate.get_column("date")
+            .dt.add_business_days(1, roll="forward")
+            .dt.month_end()
+            .dt.add_business_days(1, roll="backward")
+            .dt.offset_by("1d")
+            .lt(datetime.date.today())
+            .last()
+            and "FRED_API_KEY" in os.environ
+        ):
+            raise FileNotFoundError
+        fed_funds_rate = fed_funds_rate.select("ffr")
+    except FileNotFoundError:
         fed_funds_rate = download_fed_funds_rate()
-        fed_funds_rate.write_csv("data/fed_funds_rate.csv")
 
     fed_funds_rate_1m = (
         fed_funds_rate.with_columns(
@@ -132,7 +135,8 @@ async def load_us_treasury_rates_async():
         treasury_rates.get_column("date")
         .dt.add_business_days(1, roll="forward")
         .dt.month_end()
-        .dt.add_business_days(2, roll="backward")
+        .dt.add_business_days(1, roll="backward")
+        .dt.offset_by("1d")
         .lt(datetime.date.today())
         .last()
         and "FRED_API_KEY" in os.environ
@@ -187,6 +191,14 @@ async def load_us_treasury_returns_async():
         treasury_returns = treasury_returns.with_columns(price[duration])
 
     return treasury_returns
+
+
+def load_us_treasury_rates():
+    return asyncio.run(load_us_treasury_rates_async())
+
+
+def load_us_treasury_returns():
+    return asyncio.run(load_us_treasury_returns_async())
 
 
 def read_shiller_sp500_data(tax_treatment: str):
@@ -280,17 +292,20 @@ def download_mas_sgd_fx():
 
 
 def load_mas_sgd_fx():
-    sgd_fx = pl.read_csv("data/sgd_fx.csv", use_pyarrow=True)
-
-    if (
-        sgd_fx.get_column("date")
-        .dt.add_business_days(1, roll="forward")
-        .dt.month_end()
-        .dt.add_business_days(0, roll="backward")
-        .lt(datetime.date.today())
-        .last()
-        and "FRED_API_KEY" in os.environ
-    ):
+    try:
+        sgd_fx = pl.read_csv("data/sgd_fx.csv", use_pyarrow=True)
+        if (
+            sgd_fx.get_column("date")
+            .dt.add_business_days(1, roll="forward")
+            .dt.month_end()
+            .dt.add_business_days(0, roll="backward")
+            .dt.offset_by("1d")
+            .lt(datetime.date.today())
+            .last()
+            and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
+        ):
+            raise FileNotFoundError
+    except FileNotFoundError:
         sgd_fx = download_mas_sgd_fx()
         sgd_fx.write_csv("data/sgd_fx.csv")
     return sgd_fx
@@ -355,19 +370,27 @@ async def download_fred_usd_fx_async():
 
 
 async def load_fred_usd_fx_async():
-    usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
-    if (
-        usd_fx.get_column("date")
-        .dt.add_business_days(1, roll="forward")
-        .dt.month_end()
-        .dt.add_business_days(2, roll="backward")
-        .lt(datetime.date.today())
-        .last()
-        and "FRED_API_KEY" in os.environ
-    ):
+    try:
+        usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
+        if (
+            usd_fx.get_column("date")
+            .dt.add_business_days(1, roll="forward")
+            .dt.month_end()
+            .dt.add_business_days(0, roll="backward")
+            .dt.offset_by(pl.format("{}d", pl.lit(9) - pl.col("date").dt.weekday()))
+            .lt(datetime.date.today())
+            .last()
+            and "FRED_API_KEY" in os.environ
+        ):
+            raise FileNotFoundError
+    except FileNotFoundError:
         usd_fx = await download_fred_usd_fx_async()
         usd_fx.write_csv("data/usd_fx.csv")
     return usd_fx
+
+
+def load_fred_usd_fx():
+    return asyncio.run(load_fred_usd_fx_async())
 
 
 def load_fred_usdsgd():
@@ -414,17 +437,22 @@ def load_worldbank_usdsgd():
 
 
 def load_usdsgd():
-    usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
-    if (
-        usdsgd.get_column("date")
-        .dt.add_business_days(1, roll="forward")
-        .dt.month_end()
-        .dt.add_business_days(0, roll="backward")
-        .lt(datetime.date.today())
-        .last()
-        and "FRED_API_KEY" in os.environ
-        and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
-    ):
+    try:
+        usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
+        if (
+            usdsgd.get_column("date")
+            .dt.add_business_days(1, roll="forward")
+            .dt.month_end()
+            .dt.add_business_days(0, roll="backward")
+            .dt.offset_by("1d")
+            .lt(datetime.date.today())
+            .last()
+            and "FRED_API_KEY" in os.environ
+            and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
+        ):
+            raise FileNotFoundError
+        usdsgd = usdsgd.select("usdsgd")
+    except FileNotFoundError:
         world_bank_usdsgd = load_worldbank_usdsgd().rename({"usd_sgd": "usd_sgd_wb"})
         fred_usdsgd = load_fred_usdsgd().rename({"usd_sgd": "usd_sgd_fred"})
         mas_usdsgd = (
@@ -450,6 +478,7 @@ def load_mas_swap_points():
         .dt.add_business_days(1, roll="forward")
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
+        .dt.offset_by(pl.format("{}d", pl.lit(8) - pl.col("date").dt.weekday()))
         .lt(datetime.date.today())
         .last()
     ):
@@ -485,6 +514,7 @@ def load_sgd_neer():
         .dt.add_business_days(1, roll="forward")
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
+        .dt.offset_by(pl.format("{}d", pl.lit(12) - pl.col("date").dt.weekday()))
         .lt(datetime.date.today())
         .last()
     ):
@@ -535,17 +565,21 @@ def download_sgd_interest_rates():
 
 
 def load_sgd_interest_rates():
-    sgd_interest_rates = pl.read_csv("data/sgd_interest_rates.csv", use_pyarrow=True)
-
-    if (
-        sgd_interest_rates.get_column("date")
-        .dt.add_business_days(1, roll="forward")
-        .dt.month_end()
-        .dt.add_business_days(0, roll="backward")
-        .lt(datetime.date.today())
-        .last()
-        and "MAS_INTEREST_RATE_API_KEY" in os.environ
-    ):
+    try:
+        sgd_interest_rates = pl.read_csv(
+            "data/sgd_interest_rates.csv", use_pyarrow=True
+        )
+        if (
+            sgd_interest_rates.get_column("date")
+            .dt.add_business_days(1, roll="forward")
+            .dt.month_end()
+            .dt.add_business_days(1, roll="backward")
+            .lt(datetime.date.today())
+            .last()
+            and "MAS_INTEREST_RATE_API_KEY" in os.environ
+        ):
+            raise FileNotFoundError
+    except FileNotFoundError:
         sgd_interest_rates = download_sgd_interest_rates()
         sgd_interest_rates.write_csv("data/sgd_interest_rates.csv")
 
@@ -553,11 +587,6 @@ def load_sgd_interest_rates():
         sgd_interest_rates.upsample("date", every="1d")
         .with_columns(
             pl.all().exclude("date").forward_fill(),
-        )
-        .with_columns(
-            pl.when(pl.col("date").dt.year() < 2014)
-            .then(pl.col("interbank_overnight"))
-            .alias("interbank_overnight"),
         )
         .with_columns(
             pl.col("date")
@@ -571,9 +600,16 @@ def load_sgd_interest_rates():
         .with_columns(
             pl.all().exclude("date").replace(0, None),
         )
-        .with_columns(
-            sgd_ir_1m=pl.col("sora").fill_null(pl.col("interbank_overnight")),
-        )
+    )
+    # Set interbank_overnight to null for dates on or after 2014-01-31
+    sgd_interest_rates_1m = sgd_interest_rates_1m.with_columns(
+        pl.when(pl.col("date") >= pl.date(2014, 1, 31))
+        .then(pl.lit(None))
+        .otherwise(pl.col("interbank_overnight"))
+        .alias("interbank_overnight")
+    )
+    sgd_interest_rates_1m = sgd_interest_rates_1m.with_columns(
+        sgd_ir_1m=pl.col("sora").fill_null(pl.col("interbank_overnight")),
     )
 
     return sgd_interest_rates, sgd_interest_rates_1m
@@ -654,7 +690,7 @@ def load_sgs_returns():
                         pl.col(duration)
                         .truediv(2)
                         .add(1)
-                        .pow(-2 * (eval(duration.replace("MO", "/12")) - 1 / 365.25))
+                        .pow(-2 * (int(duration) - 1 / 365.25))
                     )
                 )
             )
@@ -662,55 +698,71 @@ def load_sgs_returns():
                 pl.col(duration)
                 .truediv(2)
                 .add(1)
-                .pow(-2 * (eval(duration.replace("MO", "/12")) - 1 / 365.25))
+                .pow(-2 * (int(duration) - 1 / 365.25))
             )
             .fill_nan(1)
             .cum_prod()
+            .alias(duration)
+        )
+        # Set the row before the first valid index to 1
+        price = price.with_columns(
+            pl.when(
+                pl.col(duration).is_not_null().shift(-1) & pl.col(duration).is_null()
+            )
+            .then(pl.lit(1.0))
+            .otherwise(pl.col(duration))
+            .alias(duration)
         )
         sgs_returns = sgs_returns.with_columns(price[duration])
     return sgs_returns
 
 
 def download_sg_cpi():
-    sg_cpi_response = httpx.get(
-        "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
-        params={"seriesNoORrowNo": 1},
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-        timeout=20,
-    )
-    sg_cpi = (
-        pl.read_json(sg_cpi_response.content)["Data"]
-        .struct.unnest()["row"]
-        .explode()
-        .struct.unnest()["columns"]
-        .explode()
-        .struct.unnest()
-        .select(
-            pl.col("key")
-            .str.to_date("%Y %b")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-            .alias("date"),
-            pl.col("value").cast(pl.Float64).alias("sg_cpi"),
+    try:
+        sg_cpi_response = httpx.get(
+            "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
+            params={"seriesNoORrowNo": 1},
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            timeout=20,
         )
-    )
+        sg_cpi = (
+            pl.read_json(sg_cpi_response.content)["Data"]
+            .struct.unnest()["row"]
+            .explode()
+            .struct.unnest()["columns"]
+            .explode()
+            .struct.unnest()
+            .select(
+                pl.col("key")
+                .str.to_date("%Y %b")
+                .dt.month_end()
+                .dt.add_business_days(0, roll="backward")
+                .alias("date"),
+                pl.col("value").cast(pl.Float64).alias("sg_cpi"),
+            )
+        )
+    except JSONDecodeError:
+        sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
 
     return sg_cpi
 
 
 def load_sg_cpi():
-    sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
-    if (
-        sg_cpi.get_column("date")
-        .dt.add_business_days(1, roll="forward")
-        .dt.month_end()
-        .dt.offset_by("25d")
-        .lt(datetime.date.today())
-        .last()
-    ):
+    try:
+        sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
+        if (
+            sg_cpi.get_column("date")
+            .dt.month_end()
+            .dt.offset_by("23d")
+            .lt(datetime.date.today())
+            .last()
+        ):
+            raise FileNotFoundError
+        return sg_cpi
+    except FileNotFoundError:
         sg_cpi = download_sg_cpi()
         sg_cpi.write_csv("data/sg_cpi.csv")
-    return sg_cpi
+        return sg_cpi
 
 
 async def download_us_cpi_async():
@@ -755,18 +807,26 @@ async def download_us_cpi_async():
 
 
 async def load_us_cpi_async():
-    us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
-    if (
-        us_cpi.get_column("date")
-        .dt.month_end()
-        .dt.add_business_days(15, roll="backward")
-        .lt(datetime.date.today())
-        .last()
-        and "BLS_API_KEY" in os.environ
-    ):
+    try:
+        us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
+        if (
+            us_cpi.get_column("date")
+            .dt.month_end()
+            .dt.add_business_days(10, roll="backward")
+            .lt(datetime.date.today())
+            .last()
+            and "BLS_API_KEY" in os.environ
+        ):
+            raise FileNotFoundError
+        return us_cpi
+    except FileNotFoundError:
         us_cpi = await download_us_cpi_async()
         us_cpi.write_csv("data/us_cpi.csv")
         return us_cpi
+
+
+def load_us_cpi():
+    return asyncio.run(load_us_cpi_async())
 
 
 def read_greatlink_data(fund_name: str):
@@ -777,7 +837,7 @@ def read_greatlink_data(fund_name: str):
             columns=["Price Date", "Price"],
         )
         .select(
-            pl.col("Price Date").str.to_date().alias("date"),
+            pl.col("Price Date").str.to_date("%d/%m/%Y").alias("date"),
             pl.col("Price").replace(".", None).cast(pl.Float64).alias("price"),
         )
         .sort("date")
@@ -790,7 +850,7 @@ def read_greatlink_data(fund_name: str):
                 columns=["XD Date", "Gross Dividend"],
             )
             .select(
-                pl.col("XD Date").str.to_date().alias("date"),
+                pl.col("XD Date").str.to_date("%d/%m/%Y").alias("date"),
                 pl.col("Gross Dividend")
                 .replace(".", None)
                 .cast(pl.Float64)
@@ -803,8 +863,9 @@ def read_greatlink_data(fund_name: str):
             pl.col("price")
             .add(pl.col("dividend").fill_null(0))
             .truediv(pl.col("price").shift(1))
+            .fill_null(1)
             .cum_prod()
-            .fill_null(1),
+            .alias("price"),
         )
     return price
 
@@ -902,6 +963,7 @@ def download_ft_data(symbol: str, api_key: str | None = None):
             )
             .with_columns(date=pl.col("date").str.to_date("%Y-%m-%dT00:00:00"))
             .reverse()
+            .select(pl.col("date"), pl.col("close").alias("price"))
         )
 
         return df, ticker, currency, api_key
@@ -916,10 +978,54 @@ def get_sgx_dividends(ticker: str):
         .filter(pl.col("dividends").str.contains("SGD"))
         .with_columns(
             pl.col("date").str.to_date(),
-            pl.col("dividends").str.strip_prefix("SGD").cast(pl.Float64),
+            pl.col("dividends").cast(pl.Float64),
         )
         .group_by("date")
         .agg(pl.col("dividends").sum())
         .sort("date")
     )
     return df
+
+
+def add_return_columns(df: pl.DataFrame, periods: list[str], durations: list[int]):
+    """Add cumulative and annualized return columns to a DataFrame."""
+    for period, duration in zip(periods, durations):
+        df = df.with_columns(
+            pl.col("price").pct_change(duration).alias(f"{period}_cumulative")
+        )
+    for period, duration in zip(periods, durations):
+        df = df.with_columns(
+            ((pl.col(f"{period}_cumulative").add(1)).pow(12 / duration).sub(1)).alias(
+                f"{period}_annualized"
+            )
+        )
+    return df
+
+
+__all__ = [
+    "read_msci_data",
+    "load_fed_funds_rate",
+    "load_us_treasury_rates_async",
+    "load_us_treasury_rates",
+    "load_us_treasury_returns_async",
+    "load_us_treasury_returns",
+    "read_shiller_sp500_data",
+    "load_usdsgd",
+    "load_mas_sgd_fx",
+    "load_fred_usd_fx_async",
+    "load_fred_usd_fx",
+    "load_mas_swap_points",
+    "load_sgd_neer",
+    "load_sgd_interest_rates",
+    "load_sgs_rates",
+    "load_sgs_returns",
+    "load_sg_cpi",
+    "load_us_cpi_async",
+    "load_us_cpi",
+    "add_return_columns",
+    "read_greatlink_data",
+    "read_ft_data",
+    "get_ft_api_key",
+    "download_ft_data",
+    "get_sgx_dividends",
+]
