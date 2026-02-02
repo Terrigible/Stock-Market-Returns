@@ -847,6 +847,11 @@ app_layout = html.Div(
                                     id="accumulation-strategies",
                                     optionHeight=200,
                                 ),
+                                dbc.Switch(
+                                    "accumulation-index-by-start-date",
+                                    value=False,
+                                    label="Index by Start Date",
+                                ),
                             ],
                             className="sidebar",
                         ),
@@ -981,6 +986,11 @@ app_layout = html.Div(
                                     searchable=False,
                                     id="withdrawal-strategies",
                                     optionHeight=150,
+                                ),
+                                dbc.Switch(
+                                    id="withdrawal-index-by-start-date",
+                                    value=False,
+                                    label="Index by Start Date",
                                 ),
                             ],
                             className="sidebar",

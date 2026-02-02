@@ -1942,12 +1942,14 @@ def update_accumulation_strategies(
     Output("accumulation-strategy-graph", "figure"),
     Input("accumulation-strategies", "value"),
     State("accumulation-strategies", "options"),
+    Input("accumulation-index-by-start-date", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_accumulation_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
+    index_by_start_date: bool,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -2021,6 +2023,8 @@ def update_accumulation_strategy_graph(
             index=strategy_series.index,
             columns=range(1, investment_horizon + 1),
         )
+        if index_by_start_date:
+            portfolio_values = portfolio_values.shift(-investment_horizon)
         portfolio_values.insert(0, 0, investment_amount)
         dfs.update({strategy_str: portfolio_values})
 
@@ -2148,12 +2152,14 @@ def update_withdrawal_strategies(
     Output("withdrawal-strategy-graph", "figure"),
     Input("withdrawal-strategies", "value"),
     State("withdrawal-strategies", "options"),
+    Input("withdrawal-index-by-start-date", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_withdrawal_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
+    index_by_start_date: bool,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -2213,6 +2219,8 @@ def update_withdrawal_strategy_graph(
             index=strategy_series.index,
             columns=range(1, withdrawal_horizon + 1),
         )
+        if index_by_start_date:
+            portfolio_values = portfolio_values.shift(-withdrawal_horizon)
         portfolio_values.insert(0, 0, initial_capital)
         dfs.update({strategy_str: portfolio_values})
     ending_values = pd.concat(
