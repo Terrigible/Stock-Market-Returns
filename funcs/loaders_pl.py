@@ -69,21 +69,17 @@ def download_fed_funds_rate():
 
 
 def load_fed_funds_rate():
-    try:
-        fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
-        if (
-            fed_funds_rate.get_column("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(1, roll="backward")
-            .dt.offset_by("1d")
-            .lt(datetime.date.today())
-            .last()
-            and "FRED_API_KEY" in os.environ
-        ):
-            raise FileNotFoundError
-        fed_funds_rate = fed_funds_rate.select("ffr")
-    except FileNotFoundError:
+    fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
+    if (
+        fed_funds_rate.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(1, roll="backward")
+        .dt.offset_by("1d")
+        .lt(datetime.date.today())
+        .last()
+        and "FRED_API_KEY" in os.environ
+    ):
         fed_funds_rate = download_fed_funds_rate()
 
     fed_funds_rate_1m = (
@@ -125,6 +121,7 @@ async def download_us_treasury_rates_async():
         ],
         how="align",
     )
+    treasury_rates.write_csv("data/us_treasury.csv")
     return treasury_rates
 
 
@@ -142,7 +139,6 @@ async def load_us_treasury_rates_async():
         and "FRED_API_KEY" in os.environ
     ):
         treasury_rates = await download_us_treasury_rates_async()
-        treasury_rates.write_csv("data/us_treasury.csv")
 
     treasury_rates = treasury_rates.with_columns(
         pl.col("20").fill_null(pl.col("10").add(pl.col("30")).truediv(2)),
@@ -234,7 +230,7 @@ def download_mas_sgd_fx():
         timeout=20,
     )
 
-    return (
+    sgd_fx = (
         pl.read_json(sgd_fx_response.content)["elements"]
         .explode()
         .struct.unnest()
@@ -289,25 +285,24 @@ def download_mas_sgd_fx():
             .name.map(lambda s: s.removesuffix("_100").removesuffix("_sgd").upper()),
         )
     )
+    sgd_fx.write_csv("data/sgd_fx.csv")
+    return sgd_fx
 
 
 def load_mas_sgd_fx():
-    try:
-        sgd_fx = pl.read_csv("data/sgd_fx.csv", use_pyarrow=True)
-        if (
-            sgd_fx.get_column("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-            .dt.offset_by("1d")
-            .lt(datetime.date.today())
-            .last()
-            and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
-        ):
-            raise FileNotFoundError
-    except FileNotFoundError:
+    sgd_fx = pl.read_csv("data/sgd_fx.csv", use_pyarrow=True)
+    if (
+        sgd_fx.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .dt.offset_by("1d")
+        .lt(datetime.date.today())
+        .last()
+        and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
+    ):
         sgd_fx = download_mas_sgd_fx()
-        sgd_fx.write_csv("data/sgd_fx.csv")
+
     return sgd_fx
 
 
@@ -366,26 +361,24 @@ async def download_fred_usd_fx_async():
         .with_columns(pl.col("^1_.*$").pow(-1).name.map(lambda s: s.lstrip("1_")))
         .select(pl.all().exclude("^1_.*$"))
     )
+    usd_fx.write_csv("data/usd_fx.csv")
     return usd_fx
 
 
 async def load_fred_usd_fx_async():
-    try:
-        usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
-        if (
-            usd_fx.get_column("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-            .dt.offset_by(pl.format("{}d", pl.lit(9) - pl.col("date").dt.weekday()))
-            .lt(datetime.date.today())
-            .last()
-            and "FRED_API_KEY" in os.environ
-        ):
-            raise FileNotFoundError
-    except FileNotFoundError:
+    usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
+    if (
+        usd_fx.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .dt.offset_by(pl.format("{}d", pl.lit(9) - pl.col("date").dt.weekday()))
+        .lt(datetime.date.today())
+        .last()
+        and "FRED_API_KEY" in os.environ
+    ):
         usd_fx = await download_fred_usd_fx_async()
-        usd_fx.write_csv("data/usd_fx.csv")
+
     return usd_fx
 
 
@@ -437,22 +430,18 @@ def load_worldbank_usdsgd():
 
 
 def load_usdsgd():
-    try:
-        usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
-        if (
-            usdsgd.get_column("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-            .dt.offset_by("1d")
-            .lt(datetime.date.today())
-            .last()
-            and "FRED_API_KEY" in os.environ
-            and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
-        ):
-            raise FileNotFoundError
-        usdsgd = usdsgd.select("usdsgd")
-    except FileNotFoundError:
+    usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
+    if (
+        usdsgd.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+        .dt.offset_by("1d")
+        .lt(datetime.date.today())
+        .last()
+        and "FRED_API_KEY" in os.environ
+        and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
+    ):
         world_bank_usdsgd = load_worldbank_usdsgd().rename({"usd_sgd": "usd_sgd_wb"})
         fred_usdsgd = load_fred_usdsgd().rename({"usd_sgd": "usd_sgd_fred"})
         mas_usdsgd = (
@@ -550,7 +539,7 @@ def download_sgd_interest_rates():
         timeout=20,
     )
 
-    return (
+    sgd_interest_rates = (
         pl.read_json(sgd_interest_rates_response.content)["elements"]
         .explode()
         .struct.unnest()
@@ -562,26 +551,22 @@ def download_sgd_interest_rates():
         .unique(keep="first", maintain_order=True)
         .sort("date")
     )
+    sgd_interest_rates.write_csv("data/sgd_interest_rates.csv")
+    return sgd_interest_rates
 
 
 def load_sgd_interest_rates():
-    try:
-        sgd_interest_rates = pl.read_csv(
-            "data/sgd_interest_rates.csv", use_pyarrow=True
-        )
-        if (
-            sgd_interest_rates.get_column("date")
-            .dt.add_business_days(1, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(1, roll="backward")
-            .lt(datetime.date.today())
-            .last()
-            and "MAS_INTEREST_RATE_API_KEY" in os.environ
-        ):
-            raise FileNotFoundError
-    except FileNotFoundError:
+    sgd_interest_rates = pl.read_csv("data/sgd_interest_rates.csv", use_pyarrow=True)
+    if (
+        sgd_interest_rates.get_column("date")
+        .dt.add_business_days(1, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(1, roll="backward")
+        .lt(datetime.date.today())
+        .last()
+        and "MAS_INTEREST_RATE_API_KEY" in os.environ
+    ):
         sgd_interest_rates = download_sgd_interest_rates()
-        sgd_interest_rates.write_csv("data/sgd_interest_rates.csv")
 
     sgd_interest_rates_1m = (
         sgd_interest_rates.upsample("date", every="1d")
@@ -718,51 +703,46 @@ def load_sgs_returns():
 
 
 def download_sg_cpi():
-    try:
-        sg_cpi_response = httpx.get(
-            "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
-            params={"seriesNoORrowNo": 1},
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=20,
+    sg_cpi_response = httpx.get(
+        "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
+        params={"seriesNoORrowNo": 1},
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        timeout=20,
+    )
+    sg_cpi = (
+        pl.read_json(sg_cpi_response.content)["Data"]
+        .struct.unnest()["row"]
+        .explode()
+        .struct.unnest()["columns"]
+        .explode()
+        .struct.unnest()
+        .select(
+            pl.col("key")
+            .str.to_date("%Y %b")
+            .dt.month_end()
+            .dt.add_business_days(0, roll="backward")
+            .alias("date"),
+            pl.col("value").cast(pl.Float64).alias("sg_cpi"),
         )
-        sg_cpi = (
-            pl.read_json(sg_cpi_response.content)["Data"]
-            .struct.unnest()["row"]
-            .explode()
-            .struct.unnest()["columns"]
-            .explode()
-            .struct.unnest()
-            .select(
-                pl.col("key")
-                .str.to_date("%Y %b")
-                .dt.month_end()
-                .dt.add_business_days(0, roll="backward")
-                .alias("date"),
-                pl.col("value").cast(pl.Float64).alias("sg_cpi"),
-            )
-        )
-    except JSONDecodeError:
-        sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
-
+    )
+    sg_cpi.write_csv("data/sg_cpi.csv")
     return sg_cpi
 
 
 def load_sg_cpi():
-    try:
-        sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
-        if (
-            sg_cpi.get_column("date")
-            .dt.month_end()
-            .dt.offset_by("23d")
-            .lt(datetime.date.today())
-            .last()
-        ):
-            raise FileNotFoundError
-        return sg_cpi
-    except FileNotFoundError:
-        sg_cpi = download_sg_cpi()
-        sg_cpi.write_csv("data/sg_cpi.csv")
-        return sg_cpi
+    sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
+    if (
+        sg_cpi.get_column("date")
+        .dt.month_end()
+        .dt.offset_by("23d")
+        .lt(datetime.date.today())
+        .last()
+    ):
+        try:
+            sg_cpi = download_sg_cpi()
+        except JSONDecodeError:
+            return sg_cpi
+    return sg_cpi
 
 
 async def download_us_cpi_async():
@@ -807,22 +787,18 @@ async def download_us_cpi_async():
 
 
 async def load_us_cpi_async():
-    try:
-        us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
-        if (
-            us_cpi.get_column("date")
-            .dt.month_end()
-            .dt.add_business_days(10, roll="backward")
-            .lt(datetime.date.today())
-            .last()
-            and "BLS_API_KEY" in os.environ
-        ):
-            raise FileNotFoundError
-        return us_cpi
-    except FileNotFoundError:
+    us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
+    if (
+        us_cpi.get_column("date")
+        .dt.month_end()
+        .dt.add_business_days(10, roll="backward")
+        .lt(datetime.date.today())
+        .last()
+        and "BLS_API_KEY" in os.environ
+    ):
         us_cpi = await download_us_cpi_async()
         us_cpi.write_csv("data/us_cpi.csv")
-        return us_cpi
+    return us_cpi
 
 
 def load_us_cpi():

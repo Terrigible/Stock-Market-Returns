@@ -64,18 +64,13 @@ def download_fed_funds_rate():
 
 
 def load_fed_funds_rate():
-    try:
-        fed_funds_rate = pd.read_csv(
-            "data/fed_funds_rate.csv", parse_dates=["date"], index_col="date"
-        )
-        if (
-            fed_funds_rate.index[-1] + BMonthEnd() + BDay() + Day(1)
-            < pd.to_datetime("today")
-        ) and os.environ.get("FRED_API_KEY", None):
-            raise FileNotFoundError
-        fed_funds_rate = fed_funds_rate["ffr"]
-
-    except FileNotFoundError:
+    fed_funds_rate = pd.read_csv(
+        "data/fed_funds_rate.csv", parse_dates=["date"], index_col="date"
+    )["ffr"]
+    if (
+        fed_funds_rate.index[-1] + BMonthEnd() + BDay() + Day(1)
+        < pd.to_datetime("today")
+    ) and os.environ.get("FRED_API_KEY", None):
         fed_funds_rate = download_fed_funds_rate()
 
     fed_funds_rate_1m = (
@@ -111,23 +106,19 @@ async def download_us_treasury_rates_async():
         }
     )
     treasury_rates = treasury_rates.replace(".", np.nan).astype(float)
+    treasury_rates.to_csv("data/us_treasury.csv")
     return treasury_rates
 
 
 async def load_us_treasury_rates_async():
-    try:
-        treasury_rates = pd.read_csv(
-            "data/us_treasury.csv", parse_dates=["date"], index_col="date"
-        )
-        if (
-            treasury_rates.index[-1] + BMonthEnd() + BDay() + Day(1)
-            < pd.to_datetime("today")
-        ) and os.environ.get("FRED_API_KEY", None):
-            raise FileNotFoundError
-
-    except FileNotFoundError:
+    treasury_rates = pd.read_csv(
+        "data/us_treasury.csv", parse_dates=["date"], index_col="date"
+    )
+    if (
+        treasury_rates.index[-1] + BMonthEnd() + BDay() + Day(1)
+        < pd.to_datetime("today")
+    ) and os.environ.get("FRED_API_KEY", None):
         treasury_rates = await download_us_treasury_rates_async()
-        treasury_rates.to_csv("data/us_treasury.csv")
 
     treasury_rates["20"] = treasury_rates["20"].fillna(
         treasury_rates["10"].add(treasury_rates["30"]).div(2)
@@ -223,19 +214,17 @@ def download_mas_sgd_fx():
     sgd_fx.columns = (
         sgd_fx.columns.str.replace("_100", "").str.replace("_sgd", "").str.upper()
     )
+    sgd_fx.to_csv("data/sgd_fx.csv")
     return sgd_fx
 
 
 def load_mas_sgd_fx():
-    try:
-        sgd_fx = pd.read_csv("data/sgd_fx.csv", parse_dates=["date"], index_col="date")
-        if (
-            sgd_fx.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
-        ) and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None):
-            raise FileNotFoundError
-    except FileNotFoundError:
+    sgd_fx = pd.read_csv("data/sgd_fx.csv", parse_dates=["date"], index_col="date")
+    if (
+        sgd_fx.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
+    ) and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None):
         sgd_fx = download_mas_sgd_fx()
-        sgd_fx.to_csv("data/sgd_fx.csv")
+
     return sgd_fx
 
 
@@ -290,22 +279,20 @@ async def download_fred_usd_fx_async():
     usd_fx = usd_fx.replace(".", np.nan).astype(float)
     usd_fx.update(usd_fx.filter(like="1_").rdiv(1))
     usd_fx.columns = usd_fx.columns.str.replace("1_", "")
+    usd_fx.to_csv("data/usd_fx.csv")
     return usd_fx
 
 
 async def load_fred_usd_fx_async():
-    try:
-        usd_fx = pd.read_csv("data/usd_fx.csv", parse_dates=["date"], index_col="date")
-        if (
-            usd_fx.index[-1]
-            + pd.tseries.offsets.BMonthEnd()
-            + pd.tseries.offsets.Week(weekday=1)
-            <= pd.to_datetime("today")
-        ) and os.environ.get("FRED_API_KEY", None):
-            raise FileNotFoundError
-    except FileNotFoundError:
+    usd_fx = pd.read_csv("data/usd_fx.csv", parse_dates=["date"], index_col="date")
+    if (
+        usd_fx.index[-1]
+        + pd.tseries.offsets.BMonthEnd()
+        + pd.tseries.offsets.Week(weekday=1)
+        <= pd.to_datetime("today")
+    ) and os.environ.get("FRED_API_KEY", None):
         usd_fx = await download_fred_usd_fx_async()
-        usd_fx.to_csv("data/usd_fx.csv")
+
     return usd_fx
 
 
@@ -346,16 +333,14 @@ def load_worldbank_usdsgd():
 
 
 def load_usdsgd():
-    try:
-        usdsgd = pd.read_csv("data/usdsgd.csv", parse_dates=["date"], index_col="date")
-        if (
-            usdsgd.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
-            and os.environ.get("FRED_API_KEY", None)
-            and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None)
-        ):
-            raise FileNotFoundError
-        usdsgd = usdsgd["usdsgd"]
-    except FileNotFoundError:
+    usdsgd = pd.read_csv("data/usdsgd.csv", parse_dates=["date"], index_col="date")[
+        "usdsgd"
+    ]
+    if (
+        usdsgd.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
+        and os.environ.get("FRED_API_KEY", None)
+        and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None)
+    ):
         df = pd.merge(
             pd.merge(
                 load_mas_sgd_fx()["USD"].rename("mas_usdsgd"),
@@ -459,26 +444,21 @@ def download_sgd_interest_rates():
         .rename_axis("date")
         .sort_index()
     )
+    sgd_interest_rates.to_csv("data/sgd_interest_rates.csv")
     return sgd_interest_rates
 
 
 def load_sgd_interest_rates():
-    try:
-        sgd_interest_rates = pd.read_csv(
-            "data/sgd_interest_rates.csv", parse_dates=["date"], index_col="date"
-        )
-        if (
-            sgd_interest_rates.index[-1]
-            + pd.tseries.offsets.BMonthEnd()
-            + pd.tseries.offsets.BDay()
-            <= pd.to_datetime("today")
-            and os.environ.get("MAS_INTEREST_RATE_API_KEY", None)
-        ):
-            raise FileNotFoundError
-
-    except FileNotFoundError:
+    sgd_interest_rates = pd.read_csv(
+        "data/sgd_interest_rates.csv", parse_dates=["date"], index_col="date"
+    )
+    if (
+        sgd_interest_rates.index[-1]
+        + pd.tseries.offsets.BMonthEnd()
+        + pd.tseries.offsets.BDay()
+        <= pd.to_datetime("today")
+    ) and os.environ.get("MAS_INTEREST_RATE_API_KEY", None):
         sgd_interest_rates = download_sgd_interest_rates()
-        sgd_interest_rates.to_csv("data/sgd_interest_rates.csv")
 
     sgd_interest_rates_1m = (
         sgd_interest_rates.resample("D")
@@ -565,32 +545,28 @@ def load_sgs_returns():
 
 
 def download_sg_cpi():
-    try:
-        sg_cpi_response = httpx.get(
-            "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751",
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=20,
-        )
-        sg_cpi = pd.DataFrame(sg_cpi_response.json()["Data"]["row"][0]["columns"])
-        sg_cpi = sg_cpi.set_axis(["date", "sg_cpi"], axis=1)
-        sg_cpi["date"] = pd.to_datetime(sg_cpi["date"], format="%Y %b")
-        sg_cpi["sg_cpi"] = sg_cpi["sg_cpi"].astype(float)
-        sg_cpi = sg_cpi.set_index("date").resample("BME").last()
-    except JSONDecodeError:
-        sg_cpi = pd.read_csv("data/sg_cpi.csv", index_col="date")
+    sg_cpi_response = httpx.get(
+        "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751",
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        timeout=20,
+    )
+    sg_cpi = pd.DataFrame(sg_cpi_response.json()["Data"]["row"][0]["columns"])
+    sg_cpi = sg_cpi.set_axis(["date", "sg_cpi"], axis=1)
+    sg_cpi["date"] = pd.to_datetime(sg_cpi["date"], format="%Y %b")
+    sg_cpi["sg_cpi"] = sg_cpi["sg_cpi"].astype(float)
+    sg_cpi = sg_cpi.set_index("date").resample("BME").last()
+    sg_cpi.to_csv("data/sg_cpi.csv")
     return sg_cpi
 
 
 def load_sg_cpi():
-    try:
-        sg_cpi = pd.read_csv("data/sg_cpi.csv", parse_dates=["date"], index_col="date")
-        if sg_cpi.index[-1] + MonthEnd(0) + Day(23) < pd.to_datetime("today"):
-            raise FileNotFoundError
-        return sg_cpi
-    except FileNotFoundError:
-        sg_cpi = download_sg_cpi()
-        sg_cpi.to_csv("data/sg_cpi.csv")
-        return sg_cpi
+    sg_cpi = pd.read_csv("data/sg_cpi.csv", parse_dates=["date"], index_col="date")
+    if sg_cpi.index[-1] + MonthEnd(0) + Day(23) < pd.to_datetime("today"):
+        try:
+            sg_cpi = download_sg_cpi()
+        except JSONDecodeError:
+            return sg_cpi
+    return sg_cpi
 
 
 async def download_us_cpi_async():
@@ -628,17 +604,13 @@ async def download_us_cpi_async():
 
 
 async def load_us_cpi_async():
-    try:
-        us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")
-        if (
-            us_cpi.index[-1] + MonthEnd(0) + Day(10) < pd.to_datetime("today")
-        ) and os.environ.get("BLS_API_KEY", None):
-            raise FileNotFoundError
-        return us_cpi.interpolate()
-    except FileNotFoundError:
+    us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")
+    if (
+        us_cpi.index[-1] + MonthEnd(0) + Day(10) < pd.to_datetime("today")
+    ) and os.environ.get("BLS_API_KEY", None):
         us_cpi = await download_us_cpi_async()
         us_cpi.to_csv("data/us_cpi.csv")
-        return us_cpi.interpolate()
+    return us_cpi.interpolate()
 
 
 def load_us_cpi():

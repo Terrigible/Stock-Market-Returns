@@ -90,9 +90,8 @@ pytest --cov=funcs --cov-report=html
 
 ### Error Handling
 
-- Use specific exceptions (e.g., `ValueError`, `FileNotFoundError`)
-- Use try/except for file operations and API calls
-- Prefer `raise FileNotFoundError` over returning None for missing data
+- Use specific exceptions (e.g., `ValueError`)
+- Use try/except for API calls
 - Log errors with `print()` for now (consider adding logging later)
 
 ### DataFrame Operations
