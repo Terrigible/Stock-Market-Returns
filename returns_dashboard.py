@@ -748,8 +748,6 @@ def update_fund_selection_options(fund_company: str):
     if fund_company == "Great Eastern":
         return (
             [
-                "Great Eastern-Lion Dynamic Balanced",
-                "Great Eastern-Lion Dynamic Growth",
                 "GreatLink ASEAN Growth",
                 "GreatLink Asia Dividend Advantage",
                 "GreatLink Asia High Dividend Equity",
@@ -764,7 +762,6 @@ def update_fund_selection_options(fund_company: str):
                 "GreatLink Global Emerging Markets Equity",
                 "GreatLink Global Equity Alpha",
                 "GreatLink Global Equity",
-                "GreatLink Global Optimum",
                 "GreatLink Global Perspective",
                 "GreatLink Global Real Estate Securities",
                 "GreatLink Global Supreme",
@@ -788,7 +785,7 @@ def update_fund_selection_options(fund_company: str):
                 "GreatLink Sustainable Global Thematic Fund",
                 "GreatLink US Income and Growth Fund (Dis)",
             ],
-            "Great Eastern-Lion Dynamic Balanced",
+            "GreatLink ASEAN Growth",
         )
     if fund_company == "GMO":
         return (
