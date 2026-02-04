@@ -1116,7 +1116,7 @@ def update_graph(
                 max_val = df.loc[start_date:end_date].max().max()
                 ytickvals = [n / 10 for n in range(0, 20)] + [
                     base * 10**exp + 1
-                    for exp in range(math.floor(math.log10(max_val)) + 2)
+                    for exp in range(math.floor(math.log10(max_val + 1)) + 1)
                     for base in range(1, 10)
                 ]
                 yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
