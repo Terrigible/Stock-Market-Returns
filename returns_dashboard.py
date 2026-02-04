@@ -1918,9 +1918,9 @@ def update_accumulation_strategies(
     )
     strategy_name = (
         f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
-        f"{investment_amount} initial capital\n"
-        f"{monthly_investment} invested monthly,\n"
-        f"{' inflation adjusted,' if adjust_monthly_investment_for_inflation else ''}\n"
+        f"${investment_amount} initial capital\n"
+        f"${monthly_investment} invested monthly"
+        f"{', inflation adjusted' if adjust_monthly_investment_for_inflation else ''}\n"
         f"for {dca_length} months every {dca_interval} months\n"
         f"held for {investment_horizon} months\n"
         f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
@@ -2129,12 +2129,12 @@ def update_withdrawal_strategies(
     )
 
     strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency},\n"
-        f"{initial_capital} initial capital,\n"
-        f"{monthly_withdrawal} withdrawn monthly,\n"
-        f"{' inflation adjusted,' if adjust_for_inflation else ''}\n"
-        f"every {withdrawal_interval} months for {withdrawal_horizon} months,\n"
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee,\n"
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
+        f"${initial_capital} initial capital\n"
+        f"${monthly_withdrawal} withdrawn monthly"
+        f"{', inflation adjusted' if adjust_for_inflation else ''}\n"
+        f"every {withdrawal_interval} months for {withdrawal_horizon} months\n"
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
         f"{annualised_holding_fees}% p.a. Holding Fees"
     )
 
