@@ -157,7 +157,7 @@ def load_data(
         fund_company = security["fund_company"]
         fund = security["fund"]
         fund_currency = security["currency"]
-        if fund_company == "Great Eastern":
+        if fund_company == "GreatLink":
             series = read_greatlink_data(fund).iloc[:, 0]
         elif fund_company == "GMO":
             series = read_ft_data("GMO Quality Investment Fund").iloc[:, 0]
@@ -745,51 +745,51 @@ def add_ft_security(
     Input("fund-company-selection", "value"),
 )
 def update_fund_selection_options(fund_company: str):
-    if fund_company == "Great Eastern":
+    if fund_company == "GreatLink":
         return (
             [
-                "GreatLink ASEAN Growth",
-                "GreatLink Asia Dividend Advantage",
-                "GreatLink Asia High Dividend Equity",
-                "GreatLink Asia Pacific Equity",
-                "GreatLink Cash",
-                "GreatLink China Growth",
-                "GreatLink Diversified Growth Portfolio",
-                "GreatLink Dynamic Balanced Portfolio",
-                "GreatLink Dynamic Growth Portfolio",
-                "GreatLink Dynamic Secure Portfolio",
-                "GreatLink European Sustainable Equity Fund",
-                "GreatLink Far East Ex Japan Equities",
-                "GreatLink Global Bond",
-                "GreatLink Global Disruptive Innovation Fund",
-                "GreatLink Global Emerging Markets Equity",
-                "GreatLink Global Equity Alpha",
-                "GreatLink Global Equity",
-                "GreatLink Global Perspective",
-                "GreatLink Global Real Estate Securities",
-                "GreatLink Global Supreme",
-                "GreatLink Global Technology",
-                "GreatLink Income Bond",
-                "GreatLink Income Focus",
-                "GreatLink International Health Care Fund",
-                "GreatLink LifeStyle Balanced Portfolio",
-                "GreatLink LifeStyle Dynamic Portfolio",
-                "GreatLink LifeStyle Progressive Portfolio",
-                "GreatLink LifeStyle Secure Portfolio",
-                "GreatLink LifeStyle Steady Portfolio",
-                "GreatLink Lion Asian Balanced",
-                "GreatLink Lion India",
-                "GreatLink Lion Japan Growth",
-                "GreatLink Lion Vietnam",
-                "GreatLink Multi-Sector Income",
-                "GreatLink Multi-Theme Equity",
-                "GreatLink Short Duration Bond",
-                "GreatLink Singapore Equities",
-                "GreatLink Singapore Physical Gold Fund",
-                "GreatLink Sustainable Global Thematic Fund",
-                "GreatLink US Income and Growth Fund (Dis)",
+                "ASEAN Growth",
+                "Asia Dividend Advantage",
+                "Asia High Dividend Equity",
+                "Asia Pacific Equity",
+                "Cash",
+                "China Growth",
+                "Diversified Growth Portfolio",
+                "Dynamic Balanced Portfolio",
+                "Dynamic Growth Portfolio",
+                "Dynamic Secure Portfolio",
+                "European Sustainable Equity Fund",
+                "Far East Ex Japan Equities",
+                "Global Bond",
+                "Global Disruptive Innovation Fund",
+                "Global Emerging Markets Equity",
+                "Global Equity Alpha",
+                "Global Equity",
+                "Global Perspective",
+                "Global Real Estate Securities",
+                "Global Supreme",
+                "Global Technology",
+                "Income Bond",
+                "Income Focus",
+                "International Health Care Fund",
+                "LifeStyle Balanced Portfolio",
+                "LifeStyle Dynamic Portfolio",
+                "LifeStyle Progressive Portfolio",
+                "LifeStyle Secure Portfolio",
+                "LifeStyle Steady Portfolio",
+                "Lion Asian Balanced",
+                "Lion India",
+                "Lion Japan Growth",
+                "Lion Vietnam",
+                "Multi-Sector Income",
+                "Multi-Theme Equity",
+                "Short Duration Bond",
+                "Singapore Equities",
+                "Singapore Physical Gold Fund",
+                "Sustainable Global Thematic Fund",
+                "US Income and Growth Fund (Dis)",
             ],
-            "GreatLink ASEAN Growth",
+            "ASEAN Growth",
         )
     if fund_company == "GMO":
         return (
@@ -831,7 +831,7 @@ def add_fund(
     fund_company: str,
     fund: str,
 ):
-    if fund_company == "Great Eastern":
+    if fund_company == "GreatLink":
         currency = "SGD"
     elif fund_company == "GMO":
         currency = "USD"
@@ -849,9 +849,7 @@ def add_fund(
             "currency": currency,
         }
     )
-    security_name = (
-        f"{f'{fund_company} ' if fund_company != 'Great Eastern' else ''}{fund}"
-    )
+    security_name = f"{fund_company} {fund}"
     if security_json in selected_securities:
         return no_update
     selected_securities.append(security_json)

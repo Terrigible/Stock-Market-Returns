@@ -271,12 +271,12 @@ app_layout = html.Div(
                                         ),
                                         dbc.Select(
                                             [
-                                                "Great Eastern",
+                                                "GreatLink",
                                                 "GMO",
                                                 "Fundsmith",
                                                 "Dimensional",
                                             ],
-                                            value="Great Eastern",
+                                            value="GreatLink",
                                             id="fund-company-selection",
                                         ),
                                         dbc.Label("Fund", html_for="fund-selection"),
