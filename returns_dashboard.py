@@ -135,8 +135,8 @@ def load_data(
         elif security["others_index"] == "AWORLDS":
             series = read_ft_data("FTSE All-World USD Gross").iloc[:, 0]
         elif security["others_index"] == "SREIT":
-            series = read_ft_data("iEdge S-REIT Leaders SGD Gross").iloc[:, 0]
-            series = convert_price_to_usd(series, "SGD")
+            series = read_ft_data("iEdge S-REIT Leaders USD Gross").iloc[:, 0]
+            series = convert_price_to_usd(series, "USD")
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
