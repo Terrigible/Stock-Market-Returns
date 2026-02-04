@@ -1415,6 +1415,23 @@ wheels = [
 ]
 
 [[package]]
+name = "sdmx1"
+version = "2.25.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lxml" },
+    { name = "packaging" },
+    { name = "pandas" },
+    { name = "platformdirs" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/24/9c/55c429df7f9b961f90a7dc75150f54e65d1bdc959da223ad9e1e1b9bba95/sdmx1-2.25.1.tar.gz", hash = "sha256:d551b3e8efffaafb6c50eb14daf2a5c103ac65503d234b5064ba9a3f6e7c59f2", size = 274355, upload-time = "2026-01-23T12:59:38.803Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/97/b44bd7988da7230e107ab74133597a983d74b2d2e4d42b4a98ac25cd0ffb/sdmx1-2.25.1-py3-none-any.whl", hash = "sha256:f5b92727b9307742f08cc73e387bbc6ce870e8871ad76a177ad2b13801808678", size = 264103, upload-time = "2026-01-23T12:59:40.355Z" },
+]
+
+[[package]]
 name = "seaborn"
 version = "0.13.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1536,6 +1553,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "python-calamine" },
     { name = "scipy" },
+    { name = "sdmx1" },
     { name = "yfinance" },
 ]
 
@@ -1568,6 +1586,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=23.0.0" },
     { name = "python-calamine", specifier = ">=0.6.1" },
     { name = "scipy", specifier = ">=1.17.0" },
+    { name = "sdmx1", specifier = ">=2.25.1" },
     { name = "yfinance", specifier = ">=1.1.0" },
 ]
 
