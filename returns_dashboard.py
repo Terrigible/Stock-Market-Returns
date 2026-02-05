@@ -2022,9 +2022,11 @@ def update_accumulation_strategy_graph(
             index=strategy_series.index,
             columns=range(1, investment_horizon + 1),
         )
+        portfolio_values.insert(0, 0, investment_amount)
+        portfolio_values.iloc[:investment_horizon, 0] = np.nan
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
-        portfolio_values.insert(0, 0, investment_amount)
+        portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
     ending_values = pd.concat(
@@ -2218,10 +2220,13 @@ def update_withdrawal_strategy_graph(
             index=strategy_series.index,
             columns=range(1, withdrawal_horizon + 1),
         )
+        portfolio_values.insert(0, 0, initial_capital)
+        portfolio_values.iloc[:withdrawal_horizon, 0] = np.nan
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)
-        portfolio_values.insert(0, 0, initial_capital)
+        portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
+
     ending_values = pd.concat(
         [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
     )
