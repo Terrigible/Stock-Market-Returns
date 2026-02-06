@@ -1832,6 +1832,22 @@ def update_strategy_portfolios(portfolio_options: dict[str, str]):
 
 
 @app.callback(
+    Output("accumulation-drawdown-type-container", "style"),
+    Input("accumulation-y-var-selection", "value"),
+)
+def update_accumulation_drawdown_type_visibility(y_var: str):
+    return {"display": "block"} if y_var == "max_drawdown" else {"display": "none"}
+
+
+@app.callback(
+    Output("withdrawal-drawdown-type-container", "style"),
+    Input("withdrawal-y-var-selection", "value"),
+)
+def update_withdrawal_drawdown_type_visibility(y_var: str):
+    return {"display": "block"} if y_var == "max_drawdown" else {"display": "none"}
+
+
+@app.callback(
     Output("accumulation-strategies", "value"),
     Output("accumulation-strategies", "options"),
     Input("add-accumulation-strategy-button", "n_clicks"),
@@ -1942,6 +1958,8 @@ def update_accumulation_strategies(
     Input("accumulation-strategies", "value"),
     State("accumulation-strategies", "options"),
     Input("accumulation-index-by-start-date", "value"),
+    Input("accumulation-y-var-selection", "value"),
+    Input("accumulation-drawdown-type-selection", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
@@ -1949,6 +1967,8 @@ def update_accumulation_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
+    y_var: str,
+    drawdown_type: str,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -2032,16 +2052,39 @@ def update_accumulation_strategy_graph(
     ending_values = pd.concat(
         [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
     )
+
+    if y_var == "ending_values":
+        values = ending_values
+    elif y_var == "max_drawdown":
+        if drawdown_type == "percent":
+            values = pd.concat(
+                [
+                    df.T.div(df.T.cummax()).sub(1).min().rename(name)
+                    for name, df in dfs.items()
+                ],
+                axis=1,
+            )
+        else:
+            values = pd.concat(
+                [
+                    df.T.sub(df.T.cummax()).min().rename(name)
+                    for name, df in dfs.items()
+                ],
+                axis=1,
+            )
+    else:
+        raise ValueError("Invalid y_var")
+
     return {
         "data": [
             go.Scatter(
-                x=ending_values.index,
-                y=ending_values[strategy],
+                x=values.index,
+                y=values[strategy],
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy]),
                 name=strategy_options[strategy].replace("\n", "<br>"),
             )
-            for strategy in ending_values.columns
+            for strategy in values.columns
         ],
         "layout": go.Layout(
             title="Strategy Performance",
@@ -2154,6 +2197,8 @@ def update_withdrawal_strategies(
     Input("withdrawal-strategies", "value"),
     State("withdrawal-strategies", "options"),
     Input("withdrawal-index-by-start-date", "value"),
+    Input("withdrawal-y-var-selection", "value"),
+    Input("withdrawal-drawdown-type-selection", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
@@ -2161,6 +2206,8 @@ def update_withdrawal_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
+    y_var: str,
+    drawdown_type: str,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -2230,16 +2277,39 @@ def update_withdrawal_strategy_graph(
     ending_values = pd.concat(
         [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
     )
+
+    if y_var == "ending_values":
+        values = ending_values
+    elif y_var == "max_drawdown":
+        if drawdown_type == "percent":
+            values = pd.concat(
+                [
+                    df.T.div(df.T.cummax()).sub(1).min().rename(name)
+                    for name, df in dfs.items()
+                ],
+                axis=1,
+            )
+        else:
+            values = pd.concat(
+                [
+                    df.T.sub(df.T.cummax()).min().rename(name)
+                    for name, df in dfs.items()
+                ],
+                axis=1,
+            )
+    else:
+        raise ValueError("Invalid y_var")
+
     return {
         "data": [
             go.Scatter(
-                x=ending_values.index,
-                y=ending_values[strategy],
+                x=values.index,
+                y=values[strategy],
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy]),
                 name=strategy_options[strategy].replace("\n", "<br>"),
             )
-            for strategy in ending_values.columns
+            for strategy in values.columns
         ],
         "layout": go.Layout(
             title="Strategy Performance",

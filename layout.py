@@ -852,6 +852,35 @@ app_layout = html.Div(
                                     value=False,
                                     label="Index by Start Date",
                                 ),
+                                dbc.Label(
+                                    "Value", html_for="accumulation-y-var-selection"
+                                ),
+                                dbc.Select(
+                                    {
+                                        "ending_values": "Ending Values",
+                                        "max_drawdown": "Max Drawdown",
+                                    },
+                                    value="ending_values",
+                                    id="accumulation-y-var-selection",
+                                ),
+                                html.Div(
+                                    [
+                                        dbc.Label(
+                                            "Drawdown Type",
+                                            html_for="accumulation-drawdown-type-selection",
+                                        ),
+                                        dbc.Select(
+                                            {
+                                                "percent": "Percent Drawdown",
+                                                "dollar": "Dollar Drawdown",
+                                            },
+                                            value="percent",
+                                            id="accumulation-drawdown-type-selection",
+                                        ),
+                                    ],
+                                    id="accumulation-drawdown-type-container",
+                                    style={"display": "none"},
+                                ),
                             ],
                             className="sidebar",
                         ),
@@ -991,6 +1020,35 @@ app_layout = html.Div(
                                     id="withdrawal-index-by-start-date",
                                     value=False,
                                     label="Index by Start Date",
+                                ),
+                                dbc.Label(
+                                    "Value", html_for="withdrawal-y-var-selection"
+                                ),
+                                dbc.Select(
+                                    {
+                                        "ending_values": "Ending Values",
+                                        "max_drawdown": "Max Drawdown",
+                                    },
+                                    value="ending_values",
+                                    id="withdrawal-y-var-selection",
+                                ),
+                                html.Div(
+                                    [
+                                        dbc.Label(
+                                            "Drawdown Type",
+                                            html_for="withdrawal-drawdown-type-selection",
+                                        ),
+                                        dbc.Select(
+                                            {
+                                                "percent": "Percent Drawdown",
+                                                "dollar": "Dollar Drawdown",
+                                            },
+                                            value="percent",
+                                            id="withdrawal-drawdown-type-selection",
+                                        ),
+                                    ],
+                                    id="withdrawal-drawdown-type-container",
+                                    style={"display": "none"},
                                 ),
                             ],
                             className="sidebar",
