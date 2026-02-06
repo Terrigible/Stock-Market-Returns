@@ -158,7 +158,7 @@ Key packages:
 
 ## Notes
 
-- Python version: 3.13.11 (strict)
+- Python version: 3.13.12 (strict)
 - Package manager: `uv`
 - Formatter/Linter: `ruff`
 - No tests currently exist - add them to a `tests/` directory
