@@ -13,7 +13,7 @@ dependencies = [
     "python-calamine>=0.6.1",
     "scipy>=1.17.0",
     "yfinance>=1.1.0",
-    "polars>=1.38.0",
+    "polars>=1.38.1",
     "pyarrow>=23.0.0",
     "fastexcel>=0.19.0",
     "lxml>=6.0.2",
@@ -24,7 +24,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "geckodriver>=0.0.1",
-    "ipykernel>=7.1.0",
+    "ipykernel>=7.2.0",
     "matplotlib>=3.10.8",
     "nbformat>=5.10.4",
     "ruff>=0.15.0",
@@ -33,5 +33,5 @@ dev = [
     "snakeviz>=2.2.2",
 ]
 prod = [
-    "gunicorn>=25.0.1",
+    "gunicorn>=25.0.3",
 ]
