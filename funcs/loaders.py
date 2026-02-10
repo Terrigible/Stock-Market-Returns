@@ -681,7 +681,9 @@ def get_ft_api_key():
     return api_key
 
 
-def download_ft_data(symbol: str, api_key: str | None = None):
+def download_ft_data(
+    symbol: str, api_key: str | None = None
+) -> tuple[pd.DataFrame, str, str, str]:
     with httpx.Client() as client:
         if api_key is None:
             api_key = get_ft_api_key()

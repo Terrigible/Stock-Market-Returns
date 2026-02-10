@@ -644,10 +644,12 @@ def load_sgs_rates():
             pl.all()
             .exclude("^.*Price.*$")
             .name.map(
-                lambda s: s.removesuffix(" Yield")
-                .removesuffix(" T-Bill")
-                .removesuffix(" Bond")
-                .removesuffix("-Year")
+                lambda s: (
+                    s.removesuffix(" Yield")
+                    .removesuffix(" T-Bill")
+                    .removesuffix(" Bond")
+                    .removesuffix("-Year")
+                )
             )
         )
         .upsample("date", every="1d")
@@ -857,7 +859,9 @@ def get_ft_api_key():
     return api_key
 
 
-def download_ft_data(symbol: str, api_key: str | None = None):
+def download_ft_data(
+    symbol: str, api_key: str | None = None
+) -> tuple[pl.DataFrame, str, str, str]:
     with httpx.Client() as client:
         if api_key is None:
             api_key = get_ft_api_key()
