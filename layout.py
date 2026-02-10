@@ -319,6 +319,7 @@ app_layout = html.Div(
                                 dcc.Store(
                                     id="toast-store", storage_type="memory", data=""
                                 ),
+                                html.P(),
                                 dbc.Toast(
                                     "",
                                     id="toast",

@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
 import yfinance as yf
-from dash import ClientsideFunction, Dash, ctx, no_update
+from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 
@@ -339,6 +339,7 @@ def update_msci_index_options(index_type: str):
             "ISRAEL": "Israel",
             "ITALY": "Italy",
             "JAPAN": "Japan",
+            "NIHONKABU": "Nihonkabu (Japan ex REITs)",
             "NETHERLANDS": "Netherlands",
             "NEW ZEALAND": "New Zealand",
             "NORWAY": "Norway",
@@ -372,7 +373,6 @@ def update_toast(toast):
 
 
 @app.callback(
-    Output("toast-store", "data"),
     Output("selected-securities", "value"),
     Output("selected-securities", "options"),
     Input("add-index-button", "n_clicks"),
@@ -433,7 +433,8 @@ def add_index(
             f"{msci_style}/"
             f"* {msci_tax_treatment}*.csv"
         ):
-            return "The constructed index is not available", no_update, no_update
+            set_props("toast-store", {"data": "The constructed index is not available"})
+            return no_update
 
         index_json = json.dumps(
             {
@@ -475,7 +476,8 @@ def add_index(
                 f"{fred_index_options[fred_index]}"
             )
         else:
-            return "The constructed index is not available", no_update, no_update
+            set_props("toast-store", {"data": "The constructed index is not available"})
+            return no_update
 
     elif index_provider == "MAS":
         if mas_index == "SGS":
@@ -490,7 +492,8 @@ def add_index(
                 f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}"
             )
         else:
-            return "The constructed index is not available", no_update, no_update
+            set_props("toast-store", {"data": "The constructed index is not available"})
+            return no_update
 
     else:
         others_tax_treatment = (
@@ -508,19 +511,17 @@ def add_index(
         index_name = f"{others_index_options[others_index]} {others_tax_treatment}"
 
     if selected_securities is None:
-        return no_update, [index_json], {index_json: index_name}
+        return [index_json], {index_json: index_name}
     if index_json in selected_securities:
         return no_update
     selected_securities.append(index_json)
     selected_securities_options.update({index_json: index_name})
-    return no_update, selected_securities, selected_securities_options
+    return selected_securities, selected_securities_options
 
 
 @app.callback(
-    Output("toast-store", "data", allow_duplicate=True),
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
-    Output("yf-invalid-securities-store", "data"),
     Output("cached-securities-store", "data"),
     Input("add-yf-security-button", "n_clicks"),
     State("selected-securities", "value"),
@@ -544,15 +545,11 @@ def add_yf_security(
     if not yf_security:
         return no_update
     if ";" in yf_security:
-        return "Invalid character: ;", no_update, no_update, no_update, no_update
+        set_props("toast-store", {"data": "Invalid character: ;"})
+        return no_update
     if yf_security in yf_invalid_securities_store:
-        return (
-            "The selected ticker is not available",
-            no_update,
-            no_update,
-            no_update,
-            no_update,
-        )
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        return no_update
     for stored_yf_security_str in yf_securities_store:
         stored_yf_security = json.loads(stored_yf_security_str)
         if yf_security != stored_yf_security["ticker"]:
@@ -564,31 +561,27 @@ def add_yf_security(
         if stored_yf_security_str in selected_securities_options:
             selected_securities.append(stored_yf_security_str)
             return (
-                no_update,
                 selected_securities,
                 selected_securities_options,
-                no_update,
                 yf_securities_store,
             )
     ticker = yf.Ticker(yf_security)
     if ticker.history_metadata == {}:
         yf_invalid_securities_store.append(yf_security)
-        return (
-            "The selected ticker is not available",
-            no_update,
-            no_update,
-            yf_invalid_securities_store,
-            no_update,
-        )
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
+        return no_update
     ticker_symbol = ticker.ticker
     if "currency" not in ticker.history_metadata:
         currency = "USD"
-        toast = (
-            "The selected ticker does not have currency information. Defaulting to USD."
+        set_props(
+            "toast-store",
+            {
+                "data": "The selected ticker does not have currency information. Defaulting to USD."
+            },
         )
     else:
         currency = ticker.history_metadata["currency"]
-        toast = no_update
     new_yf_security = json.dumps(
         {
             "source": "YF",
@@ -619,19 +612,15 @@ def add_yf_security(
     )
 
     return (
-        toast,
         selected_securities,
         selected_securities_options,
-        no_update,
         yf_securities_store,
     )
 
 
 @app.callback(
-    Output("toast-store", "data", allow_duplicate=True),
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
-    Output("ft-invalid-securities-store", "data"),
     Output("cached-securities-store", "data", allow_duplicate=True),
     Output("ft-api-key-store", "data"),
     Input("add-ft-security-button", "n_clicks"),
@@ -656,16 +645,11 @@ def add_ft_security(
     if not ft_security:
         return no_update
     if ";" in ft_security:
-        return "Invalid character: ;", no_update, no_update, no_update, no_update
+        set_props("toast-store", {"data": "Invalid character: ;"})
+        return no_update
     if ft_security in ft_invalid_securities_store:
-        return (
-            "The selected ticker is not available",
-            no_update,
-            no_update,
-            no_update,
-            no_update,
-            no_update,
-        )
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        return no_update
     for ft_security_str in ft_securities_store:
         stored_ft_security = json.loads(ft_security_str)
         if ft_security != stored_ft_security["ticker"]:
@@ -675,10 +659,8 @@ def add_ft_security(
         if ft_security_str in selected_securities_options:
             selected_securities.append(ft_security_str)
             return (
-                no_update,
                 selected_securities,
                 selected_securities_options,
-                no_update,
                 ft_securities_store,
                 no_update,
             )
@@ -688,14 +670,9 @@ def add_ft_security(
         )
     except ValueError as e:
         ft_invalid_securities_store.append(ft_security)
-        return (
-            str(e),
-            no_update,
-            no_update,
-            ft_invalid_securities_store,
-            no_update,
-            stored_ft_api_key,
-        )
+        set_props("toast-store", {"data": f"Error: {e}"})
+        set_props("ft-invalid-securities-store", {"data": ft_invalid_securities_store})
+        return no_update
 
     new_ft_security = {
         "source": "FT",
@@ -730,10 +707,8 @@ def add_ft_security(
     )
 
     return (
-        no_update,
         selected_securities,
         selected_securities_options,
-        no_update,
         ft_securities_store,
         ft_api_key,
     )
