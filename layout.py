@@ -1074,8 +1074,8 @@ app_layout = html.Div(
         style={
             "textWrap": "nowrap",
             "flexWrap": "nowrap",
-            "overflow-x": "scroll",
-            "overflow-y": "hidden",
+            "overflowX": "scroll",
+            "overflowY": "hidden",
         },
     ),
     style={"height": "100svh"},
