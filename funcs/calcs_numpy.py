@@ -85,7 +85,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     annualised_holding_fees: float,
     adjust_portfolio_value_for_inflation: bool,
     cpi: np.ndarray,
-    interest_rates: np.ndarray,
+    cash_returns: np.ndarray,
 ):
     dca_amount = initial_monthly_amount * dca_interval
     if fixed_transaction_fees >= dca_amount:
@@ -98,7 +98,6 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
     ) ** (1 / 12)
-    cash_returns = (1 + interest_rates / 100) ** (1 / 12)
     for i in range(investment_horizon, len(monthly_returns)):
         share_value = initial_portfolio_value
         funds_to_invest = 0
@@ -125,7 +124,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 )
                 funds_to_invest = 0
             else:
-                funds_to_invest *= cash_returns[j + 1]
+                funds_to_invest *= 1 + cash_returns[j + 1]
             res[i, index] = share_value
         for index, j in enumerate(range(i - investment_horizon + dca_length, i)):
             share_value *= monthly_returns_with_fees[j + 1]

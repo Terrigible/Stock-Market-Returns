@@ -23,11 +23,11 @@ from funcs.calcs_numpy import (
 from funcs.loaders import (
     download_ft_data,
     get_sgx_dividends,
-    load_fed_funds_rate,
+    load_fed_funds_returns,
     load_fred_usd_fx,
     load_mas_sgd_fx,
     load_sg_cpi,
-    load_sgd_interest_rates,
+    load_sgd_interest_rates_returns,
     load_sgs_returns,
     load_us_cpi,
     load_us_treasury_returns,
@@ -105,6 +105,11 @@ def load_data(
             )
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
+        elif security["fred_index"] == "FFR":
+            fed_funds_returns = load_fed_funds_returns()
+            series = fed_funds_returns.resample("B").last()
+            if interval == "Monthly":
+                series = fed_funds_returns.pipe(resample_bme)
         else:
             raise ValueError(f"Invalid index: {security}")
     elif source == "MAS":
@@ -115,6 +120,14 @@ def load_data(
             )
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
+        elif security["mas_index"] == "SORA":
+            sgd_interest_rates_returns = load_sgd_interest_rates_returns()
+            sgd_interest_rates_returns = convert_price_to_usd(
+                sgd_interest_rates_returns, "SGD"
+            )
+            series = sgd_interest_rates_returns.resample("B").last()
+            if interval == "Monthly":
+                series = sgd_interest_rates_returns.pipe(resample_bme)
         else:
             raise ValueError(f"Invalid index: {security}")
     elif source == "Others":
@@ -364,6 +377,26 @@ def update_others_tax_treatment_selection_visibility(others_index: str):
 
 
 @app.callback(
+    Output("us-treasury-index-selection-container", "style"),
+    Input("fred-index-selection", "value"),
+)
+def update_fred_duration_selection_visibility(fred_index: str):
+    if fred_index == "FFR":
+        return {"display": "none"}
+    return {"display": "block"}
+
+
+@app.callback(
+    Output("sgs-index-selection-container", "style"),
+    Input("mas-index-selection", "value"),
+)
+def update_mas_duration_selection_visibility(mas_index: str):
+    if mas_index == "SORA":
+        return {"display": "none"}
+    return {"display": "block"}
+
+
+@app.callback(
     Output("toast", "children"),
     Output("toast", "is_open"),
     Input("toast-store", "data"),
@@ -475,6 +508,14 @@ def add_index(
                 f"{us_treasury_duration_options[us_treasury_duration]} "
                 f"{fred_index_options[fred_index]}"
             )
+        elif fred_index == "FFR":
+            index_json = json.dumps(
+                {
+                    "source": "FRED",
+                    "fred_index": fred_index,
+                }
+            )
+            index_name = fred_index_options[fred_index]
         else:
             set_props("toast-store", {"data": "The constructed index is not available"})
             return no_update
@@ -491,6 +532,14 @@ def add_index(
             index_name = (
                 f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}"
             )
+        elif mas_index == "SORA":
+            index_json = json.dumps(
+                {
+                    "source": "MAS",
+                    "mas_index": mas_index,
+                }
+            )
+            index_name = mas_index_options[mas_index]
         else:
             set_props("toast-store", {"data": "The constructed index is not available"})
             return no_update
@@ -1984,10 +2033,15 @@ def update_accumulation_strategy_graph(
         strategy_series = load_portfolio(
             strategy_portfolio, currency, "No", yf_securities
         )
-        interest_rates = (
-            load_fed_funds_rate()[1].reindex(strategy_series.index).fillna(0).to_numpy()
-            if currency == "USD"
-            else load_sgd_interest_rates()[1]["sgd_ir_1m"]
+        cash_returns = (
+            (
+                load_fed_funds_returns()
+                if currency == "USD"
+                else load_sgd_interest_rates_returns()
+            )
+            .resample("BME")
+            .last()
+            .pct_change()
             .reindex(strategy_series.index)
             .fillna(0)
             .to_numpy()
@@ -2012,7 +2066,7 @@ def update_accumulation_strategy_graph(
                 annualised_holding_fees,
                 adjust_portfolio_value_for_inflation,
                 cpi,
-                interest_rates,
+                cash_returns,
             ),
             index=strategy_series.index,
             columns=range(1, investment_horizon + 1),

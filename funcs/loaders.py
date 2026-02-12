@@ -73,11 +73,13 @@ def load_fed_funds_rate():
     ) and os.environ.get("FRED_API_KEY", None):
         fed_funds_rate = download_fed_funds_rate()
 
-    fed_funds_rate_1m = (
-        fed_funds_rate.div(36000).add(1).resample("BME").prod().pow(12).sub(1).mul(100)
-    )
+    return fed_funds_rate.resample("D").ffill().ffill()
 
-    return fed_funds_rate, fed_funds_rate_1m
+
+def load_fed_funds_returns():
+    fed_funds_rate = load_fed_funds_rate()
+    fed_funds_returns = fed_funds_rate.div(36000).add(1).cumprod()
+    return fed_funds_returns
 
 
 async def download_us_treasury_rates_async():
@@ -460,23 +462,19 @@ def load_sgd_interest_rates():
     ) and os.environ.get("MAS_INTEREST_RATE_API_KEY", None):
         sgd_interest_rates = download_sgd_interest_rates()
 
-    sgd_interest_rates_1m = (
-        sgd_interest_rates.resample("D")
+    return (
+        sgd_interest_rates["sora"]
+        .fillna(sgd_interest_rates["interbank_overnight"])
+        .resample("D")
         .ffill()
-        .div(36500)
-        .add(1)
-        .resample("BME")
-        .prod()
-        .pow(12)
-        .sub(1)
-        .mul(100)
-        .replace(0, np.nan)
+        .ffill()
     )
-    sgd_interest_rates_1m.loc["2014-01-31", "interbank_overnight"] = np.nan
-    sgd_interest_rates_1m["sgd_ir_1m"] = sgd_interest_rates_1m[
-        "interbank_overnight"
-    ].fillna(sgd_interest_rates["sora"])
-    return sgd_interest_rates, sgd_interest_rates_1m
+
+
+def load_sgd_interest_rates_returns():
+    sgd_interest_rates = load_sgd_interest_rates()
+    sgd_interest_rates_returns = sgd_interest_rates.div(36500).add(1).cumprod()
+    return sgd_interest_rates_returns
 
 
 def read_sgs_data():
@@ -781,6 +779,7 @@ def get_sgx_dividends(ticker: str):
 __all__ = [
     "read_msci_data",
     "load_fed_funds_rate",
+    "load_fed_funds_returns",
     "load_us_treasury_rates_async",
     "load_us_treasury_rates",
     "load_us_treasury_returns_async",
@@ -793,6 +792,7 @@ __all__ = [
     "load_mas_swap_points",
     "load_sgd_neer",
     "load_sgd_interest_rates",
+    "load_sgd_interest_rates_returns",
     "load_sgs_rates",
     "load_sgs_returns",
     "load_sg_cpi",

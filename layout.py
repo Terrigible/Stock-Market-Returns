@@ -116,6 +116,7 @@ app_layout = html.Div(
                                                 dbc.Select(
                                                     {
                                                         "US-T": "US Treasuries",
+                                                        "FFR": "Fed Funds Rate",
                                                     },
                                                     value="US-T",
                                                     id="fred-index-selection",
@@ -158,6 +159,7 @@ app_layout = html.Div(
                                                 dbc.Select(
                                                     {
                                                         "SGS": "SGS",
+                                                        "SORA": "SORA",
                                                     },
                                                     value="SGS",
                                                     id="mas-index-selection",
