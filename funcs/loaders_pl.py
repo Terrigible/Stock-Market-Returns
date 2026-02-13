@@ -958,7 +958,7 @@ def get_sgx_dividends(ticker: str):
         .filter(pl.col("dividends").str.contains("SGD"))
         .with_columns(
             pl.col("date").str.to_date(),
-            pl.col("dividends").cast(pl.Float64),
+            pl.col("dividends").str.strip_prefix("SGD").cast(pl.Float64),
         )
         .group_by("date")
         .agg(pl.col("dividends").sum())
