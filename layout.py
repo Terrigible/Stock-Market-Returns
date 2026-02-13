@@ -898,6 +898,17 @@ app_layout = html.Div(
                             },
                             id="accumulation-strategy-graph",
                         ),
+                        dbc.Modal(
+                            [
+                                dbc.ModalHeader("Portfolio Growth"),
+                                dbc.ModalBody(
+                                    dcc.Graph(id="accumulation-strategy-modal-graph")
+                                ),
+                            ],
+                            id="accumulation-strategy-modal",
+                            fullscreen=True,
+                            is_open=False,
+                        ),
                     ],
                 ),
             ),
@@ -1066,6 +1077,17 @@ app_layout = html.Div(
                                 },
                             },
                             id="withdrawal-strategy-graph",
+                        ),
+                        dbc.Modal(
+                            [
+                                dbc.ModalHeader("Portfolio Value"),
+                                dbc.ModalBody(
+                                    dcc.Graph(id="withdrawal-strategy-modal-graph")
+                                ),
+                            ],
+                            id="withdrawal-strategy-modal",
+                            fullscreen=True,
+                            is_open=False,
                         ),
                     ],
                 ),

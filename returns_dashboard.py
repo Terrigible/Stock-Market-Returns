@@ -2127,6 +2127,141 @@ def update_accumulation_strategy_graph(
 
 
 @app.callback(
+    Output("accumulation-strategy-modal", "is_open"),
+    Output("accumulation-strategy-modal-graph", "figure"),
+    Input("accumulation-strategy-graph", "clickData"),
+    State("accumulation-strategies", "value"),
+    State("accumulation-strategies", "options"),
+    State("accumulation-index-by-start-date", "value"),
+    State("cached-securities-store", "data"),
+    prevent_initial_call=True,
+)
+def show_accumulation_strategy_modal(
+    click_data: dict | None,
+    strategy_strs: list[str] | None,
+    strategy_options: dict[str, str],
+    index_by_start_date: bool,
+    yf_securities: dict[str, str],
+):
+    if click_data is None or not strategy_strs:
+        return False, {}
+
+    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+
+    strategies_colourmap = dict(
+        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    )
+
+    traces = []
+    for strategy_str in strategy_strs:
+        strategy: dict[str, str | int | float] = json.loads(strategy_str)
+        strategy_portfolio = str(strategy["strategy_portfolio"])
+        currency = str(strategy["currency"])
+        investment_amount = float(strategy["investment_amount"])
+        investment_horizon = int(strategy["investment_horizon"])
+        monthly_investment = float(strategy["monthly_investment"])
+        adjust_monthly_investment_for_inflation = bool(
+            strategy["adjust_monthly_investment_for_inflation"]
+        )
+        dca_length = int(strategy["dca_length"])
+        dca_interval = int(strategy["dca_interval"])
+        variable_transaction_fees = float(strategy["variable_transaction_fees"])
+        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+        annualised_holding_fees = float(strategy["annualised_holding_fees"])
+        adjust_portfolio_value_for_inflation = bool(
+            strategy["adjust_portfolio_value_for_inflation"]
+        )
+
+        variable_transaction_fees /= 100
+        annualised_holding_fees /= 100
+        strategy_series = load_portfolio(
+            strategy_portfolio, currency, "No", yf_securities
+        )
+        cash_returns = (
+            (
+                load_fed_funds_returns()
+                if currency == "USD"
+                else load_sgd_interest_rates_returns()
+            )
+            .resample("BME")
+            .last()
+            .pct_change()
+            .reindex(strategy_series.index)
+            .fillna(0)
+            .to_numpy()
+        )
+        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
+        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
+        cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
+        if cpi is None:
+            raise ValueError("Invalid currency")
+
+        portfolio_values = pd.DataFrame(
+            calculate_dca_portfolio_value_with_fees_and_interest_vector(
+                strategy_series.pct_change().to_numpy(),
+                dca_length,
+                dca_interval,
+                investment_horizon,
+                investment_amount,
+                monthly_investment,
+                adjust_monthly_investment_for_inflation,
+                variable_transaction_fees,
+                fixed_transaction_fees,
+                annualised_holding_fees,
+                adjust_portfolio_value_for_inflation,
+                cpi,
+                cash_returns,
+            ),
+            index=strategy_series.index,
+            columns=range(1, investment_horizon + 1),
+        )
+        portfolio_values.insert(0, 0, investment_amount)
+        portfolio_values.iloc[:investment_horizon, 0] = np.nan
+        if index_by_start_date:
+            portfolio_values = portfolio_values.shift(-investment_horizon)
+        portfolio_values = portfolio_values.dropna(how="all")
+
+        if clicked_date not in portfolio_values.index:
+            continue
+
+        row = portfolio_values.loc[clicked_date]
+
+        if index_by_start_date:
+            start_date = clicked_date
+        else:
+            start_date = clicked_date - pd.DateOffset(months=investment_horizon)
+
+        dates = pd.date_range(
+            start=start_date, periods=investment_horizon + 1, freq="BME"
+        )
+
+        traces.append(
+            go.Scatter(
+                x=dates,
+                y=row.values,
+                mode="lines",
+                line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
+                name=strategy_options[strategy_str].replace("\n", "<br>"),
+            )
+        )
+
+    if not traces:
+        return False, {}
+
+    return True, {
+        "data": traces,
+        "layout": go.Layout(
+            title=f"Portfolio Growth {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
+            hovermode="x",
+            showlegend=True,
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+        ),
+    }
+
+
+@app.callback(
     Output("withdrawal-strategies", "value"),
     Output("withdrawal-strategies", "options"),
     Input("add-withdrawal-strategy-button", "n_clicks"),
@@ -2342,6 +2477,122 @@ def update_withdrawal_strategy_graph(
         ],
         "layout": go.Layout(
             title="Strategy Performance",
+            hovermode="x",
+            showlegend=True,
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+        ),
+    }
+
+
+@app.callback(
+    Output("withdrawal-strategy-modal", "is_open"),
+    Output("withdrawal-strategy-modal-graph", "figure"),
+    Input("withdrawal-strategy-graph", "clickData"),
+    State("withdrawal-strategies", "value"),
+    State("withdrawal-strategies", "options"),
+    State("withdrawal-index-by-start-date", "value"),
+    State("cached-securities-store", "data"),
+    prevent_initial_call=True,
+)
+def show_withdrawal_strategy_modal(
+    click_data: dict | None,
+    strategy_strs: list[str] | None,
+    strategy_options: dict[str, str],
+    index_by_start_date: bool,
+    yf_securities: dict[str, str],
+):
+    if click_data is None or not strategy_strs:
+        return False, {}
+
+    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+
+    strategies_colourmap = dict(
+        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    )
+
+    traces = []
+    for strategy_str in strategy_strs:
+        strategy: dict[str, str | int | float] = json.loads(strategy_str)
+        strategy_portfolio = str(strategy["strategy_portfolio"])
+        currency = str(strategy["currency"])
+        initial_capital = float(strategy["initial_capital"])
+        withdrawal_horizon = int(strategy["withdrawal_horizon"])
+        monthly_withdrawal = float(strategy["monthly_withdrawal"])
+        adjust_for_inflation = bool(strategy["adjust_for_inflation"])
+        withdrawal_interval = int(strategy["withdrawal_interval"])
+        variable_transaction_fees = float(strategy["variable_transaction_fees"])
+        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+        annualised_holding_fees = float(strategy["annualised_holding_fees"])
+        variable_transaction_fees /= 100
+        annualised_holding_fees /= 100
+
+        strategy_series = load_portfolio(
+            strategy_portfolio, currency, "No", yf_securities
+        )
+        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
+        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
+        cpi = (
+            np.ones(len(strategy_series))
+            if not adjust_for_inflation
+            else us_cpi
+            if currency == "USD"
+            else sg_cpi
+        )
+
+        portfolio_values = pd.DataFrame(
+            calculate_withdrawal_portfolio_value_with_fees_vector(
+                strategy_series.pct_change().to_numpy(),
+                withdrawal_horizon,
+                withdrawal_interval,
+                initial_capital,
+                monthly_withdrawal,
+                cpi,
+                variable_transaction_fees,
+                fixed_transaction_fees,
+                annualised_holding_fees,
+            ),
+            index=strategy_series.index,
+            columns=range(1, withdrawal_horizon + 1),
+        )
+        portfolio_values.insert(0, 0, initial_capital)
+        portfolio_values.iloc[:withdrawal_horizon, 0] = np.nan
+        if index_by_start_date:
+            portfolio_values = portfolio_values.shift(-withdrawal_horizon)
+        portfolio_values = portfolio_values.dropna(how="all")
+
+        if clicked_date not in portfolio_values.index:
+            continue
+
+        row = portfolio_values.loc[clicked_date]
+
+        if index_by_start_date:
+            start_date = clicked_date
+        else:
+            start_date = clicked_date - pd.DateOffset(months=withdrawal_horizon)
+
+        dates = pd.date_range(
+            start=start_date, periods=withdrawal_horizon + 1, freq="BME"
+        )
+
+        traces.append(
+            go.Scatter(
+                x=dates,
+                y=row.values,
+                mode="lines",
+                line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
+                name=strategy_options[strategy_str].replace("\n", "<br>"),
+            )
+        )
+
+    if not traces:
+        return False, {}
+
+    return True, {
+        "data": traces,
+        "layout": go.Layout(
+            title=f"Portfolio Value {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
             hovermode="x",
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
