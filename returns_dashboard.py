@@ -1509,10 +1509,17 @@ def update_security_graph(
 
 @app.callback(
     Output("portfolio-security-selection", "options"),
+    Output("portfolio-security-selection", "value"),
     Input("selected-securities", "options"),
+    State("portfolio-security-selection", "value"),
 )
-def update_security_options(security_options: dict[str, str]):
-    return security_options
+def update_security_options(
+    security_options: dict[str, str], current_value: str | None
+):
+    return (
+        security_options,
+        next(iter(security_options)) if current_value is None else no_update,
+    )
 
 
 @app.callback(
