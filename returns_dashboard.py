@@ -1922,8 +1922,6 @@ def update_accumulation_strategies(
     if dca_interval is None:
         dca_interval = 1
 
-    if monthly_investment is None:
-        return no_update
     if dca_length is None:
         return no_update
     if investment_horizon is None:
@@ -1939,14 +1937,10 @@ def update_accumulation_strategies(
     if dca_length > investment_horizon:
         return no_update
 
-    if (
-        variable_transaction_fees < 0
-        or fixed_transaction_fees < 0
-        or annualised_holding_fees < 0
-    ):
-        return no_update
     investment_amount = investment_amount or 0
     monthly_investment = monthly_investment or 0
+    if investment_amount == 0 and monthly_investment == 0:
+        return no_update
     strategy_str = json.dumps(
         {
             "strategy_portfolio": strategy_portfolio,
@@ -2321,14 +2315,8 @@ def update_withdrawal_strategies(
     if annualised_holding_fees is None:
         annualised_holding_fees = 0
 
-    if (
-        variable_transaction_fees < 0
-        or fixed_transaction_fees < 0
-        or annualised_holding_fees < 0
-    ):
+    if initial_capital <= monthly_withdrawal * withdrawal_interval:
         return no_update
-    initial_capital = initial_capital or 0
-    monthly_withdrawal = monthly_withdrawal or 0
     strategy_str = json.dumps(
         {
             "strategy_portfolio": strategy_portfolio,

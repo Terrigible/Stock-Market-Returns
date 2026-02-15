@@ -520,7 +520,8 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="security-weight",
                                     type="number",
-                                    min=0,
+                                    step=0.01,
+                                    min=0.01,
                                     max=100,
                                 ),
                                 html.P(),
@@ -750,7 +751,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="accumulation-investment-amount-input",
                                     type="number",
-                                    min=0.01,
+                                    min=0,
                                 ),
                                 dbc.Label(
                                     "Monthly Investment Amount",
@@ -759,7 +760,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="accumulation-monthly-investment-input",
                                     type="number",
-                                    min=0.01,
+                                    min=0,
                                 ),
                                 dbc.Switch(
                                     "accumulation-monthly-investment-inflation-adjustment-switch",
