@@ -78,7 +78,7 @@ def load_fed_funds_rate():
 
 def load_fed_funds_returns():
     fed_funds_rate = load_fed_funds_rate()
-    fed_funds_returns = fed_funds_rate.div(36000).add(1).cumprod()
+    fed_funds_returns = fed_funds_rate.div(36000).add(1).shift().fillna(1).cumprod()
     return fed_funds_returns
 
 
@@ -474,7 +474,9 @@ def load_sgd_interest_rates():
 
 def load_sgd_interest_rates_returns():
     sgd_interest_rates = load_sgd_interest_rates()
-    sgd_interest_rates_returns = sgd_interest_rates.div(36500).add(1).cumprod()
+    sgd_interest_rates_returns = (
+        sgd_interest_rates.div(36500).add(1).shift().fillna(1).cumprod()
+    )
     return sgd_interest_rates_returns
 
 

@@ -82,18 +82,14 @@ def load_fed_funds_rate():
     ):
         fed_funds_rate = download_fed_funds_rate()
 
-    fed_funds_rate_1m = (
-        fed_funds_rate.with_columns(
-            pl.col("date")
-            .dt.add_business_days(0, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward"),
-        )
-        .set_sorted("date")
-        .group_by("date")
-        .agg(pl.col("ffr").truediv(36000).add(1).product().pow(12).sub(1).mul(100))
+    return fed_funds_rate.upsample("date", every="1d").fill_null(strategy="forward")
+
+
+def load_fed_funds_returns():
+    fed_funds_rate = load_fed_funds_rate()
+    return fed_funds_rate.with_columns(
+        pl.col("ffr").truediv(36000).add(1).shift().fill_null(1).cum_prod()
     )
-    return fed_funds_rate, fed_funds_rate_1m
 
 
 async def download_us_treasury_rates_async():
@@ -540,24 +536,46 @@ def download_sgd_interest_rates():
         timeout=20,
     )
 
-    sgd_interest_rates = (
-        pl.read_json(sgd_interest_rates_response.content)["elements"]
+    df = (
+        pl.read_json(
+            sgd_interest_rates_response.content,
+            schema={
+                "elements": pl.List(
+                    pl.Struct(
+                        {
+                            "end_of_day": pl.String,
+                            "interbank_overnight": pl.Decimal(4, 2),
+                            "sora": pl.Decimal(6, 4),
+                        }
+                    )
+                )
+            },
+        )["elements"]
         .explode()
         .struct.unnest()
         .select(
             pl.col("end_of_day").str.to_date().alias("date"),
-            pl.col("interbank_overnight").cast(pl.Float64),
-            pl.col("sora").cast(pl.Float64),
+            pl.all().exclude("end_of_day"),
         )
         .unique(keep="first", maintain_order=True)
+        .filter(
+            ~(pl.col("date").is_duplicated() & pl.any_horizontal(pl.all().is_null()))
+        )
         .sort("date")
     )
-    sgd_interest_rates.write_csv("data/sgd_interest_rates.csv")
-    return sgd_interest_rates
+    df.write_csv("data/sgd_interest_rates.csv")
+    return df
 
 
 def load_sgd_interest_rates():
-    sgd_interest_rates = pl.read_csv("data/sgd_interest_rates.csv", use_pyarrow=True)
+    sgd_interest_rates = pl.read_csv(
+        "data/sgd_interest_rates.csv",
+        schema={
+            "date": pl.Date,
+            "interbank_overnight": pl.Decimal(4, 2),
+            "sora": pl.Decimal(6, 4),
+        },
+    )
     if (
         sgd_interest_rates.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -569,36 +587,20 @@ def load_sgd_interest_rates():
     ):
         sgd_interest_rates = download_sgd_interest_rates()
 
-    sgd_interest_rates_1m = (
-        sgd_interest_rates.upsample("date", every="1d")
-        .with_columns(
-            pl.all().exclude("date").forward_fill(),
-        )
-        .with_columns(
-            pl.col("date")
-            .dt.add_business_days(0, roll="forward")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward"),
-        )
-        .set_sorted("date")
-        .group_by("date")
-        .agg(pl.all().truediv(36500).add(1).product().pow(12).sub(1).mul(100))
-        .with_columns(
-            pl.all().exclude("date").replace(0, None),
-        )
-    )
-    # Set interbank_overnight to null for dates on or after 2014-01-31
-    sgd_interest_rates_1m = sgd_interest_rates_1m.with_columns(
-        pl.when(pl.col("date") >= pl.date(2014, 1, 31))
-        .then(pl.lit(None))
-        .otherwise(pl.col("interbank_overnight"))
-        .alias("interbank_overnight")
-    )
-    sgd_interest_rates_1m = sgd_interest_rates_1m.with_columns(
-        sgd_ir_1m=pl.col("sora").fill_null(pl.col("interbank_overnight")),
+    return sgd_interest_rates.upsample("date", every="1d").select(
+        "date",
+        sora=pl.col("sora")
+        .fill_null(pl.col("interbank_overnight"))
+        .fill_null(strategy="forward")
+        .cast(pl.Float64),
     )
 
-    return sgd_interest_rates, sgd_interest_rates_1m
+
+def load_sgd_interest_rates_returns():
+    sgd_interest_rates = load_sgd_interest_rates()
+    return sgd_interest_rates.with_columns(
+        pl.col("sora").truediv(36500).add(1).shift().fill_null(1).cum_prod()
+    )
 
 
 def read_sgs_data():
@@ -986,6 +988,7 @@ def add_return_columns(df: pl.DataFrame, periods: list[str], durations: list[int
 __all__ = [
     "read_msci_data",
     "load_fed_funds_rate",
+    "load_fed_funds_returns",
     "load_us_treasury_rates_async",
     "load_us_treasury_rates",
     "load_us_treasury_returns_async",
@@ -998,6 +1001,7 @@ __all__ = [
     "load_mas_swap_points",
     "load_sgd_neer",
     "load_sgd_interest_rates",
+    "load_sgd_interest_rates_returns",
     "load_sgs_rates",
     "load_sgs_returns",
     "load_sg_cpi",
