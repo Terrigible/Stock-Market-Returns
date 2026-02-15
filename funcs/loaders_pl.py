@@ -535,6 +535,7 @@ def load_sgd_neer():
 def download_sgd_interest_rates():
     sgd_interest_rates_response = httpx.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily",
+        params={"$select": "end_of_day,interbank_overnight,sora"},
         headers={"keyid": os.environ["MAS_INTEREST_RATE_API_KEY"]},
         timeout=20,
     )
