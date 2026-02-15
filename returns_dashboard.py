@@ -2236,7 +2236,7 @@ def show_accumulation_strategy_modal(
         if index_by_start_date:
             start_date = clicked_date
         else:
-            start_date = clicked_date - pd.DateOffset(months=investment_horizon)
+            start_date = clicked_date - pd.offsets.BMonthEnd(investment_horizon)
 
         dates = pd.date_range(
             start=start_date, periods=investment_horizon + 1, freq="BME"
@@ -2577,7 +2577,7 @@ def show_withdrawal_strategy_modal(
         if index_by_start_date:
             start_date = clicked_date
         else:
-            start_date = clicked_date - pd.DateOffset(months=withdrawal_horizon)
+            start_date = clicked_date - pd.offsets.BMonthEnd(withdrawal_horizon)
 
         dates = pd.date_range(
             start=start_date, periods=withdrawal_horizon + 1, freq="BME"
