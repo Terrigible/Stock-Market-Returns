@@ -1978,6 +1978,76 @@ def update_accumulation_strategies(
     return strategies, strategy_options
 
 
+def backtest_accumulation_strategy(
+    index_by_start_date: bool, yf_securities: dict[str, str], strategy_str: str
+):
+    strategy: dict[str, str | int | float] = json.loads(strategy_str)
+    strategy_portfolio = str(strategy["strategy_portfolio"])
+    currency = str(strategy["currency"])
+    investment_amount = float(strategy["investment_amount"])
+    investment_horizon = int(strategy["investment_horizon"])
+    monthly_investment = float(strategy["monthly_investment"])
+    adjust_monthly_investment_for_inflation = bool(
+        strategy["adjust_monthly_investment_for_inflation"]
+    )
+    dca_length = int(strategy["dca_length"])
+    dca_interval = int(strategy["dca_interval"])
+    variable_transaction_fees = float(strategy["variable_transaction_fees"])
+    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+    annualised_holding_fees = float(strategy["annualised_holding_fees"])
+    adjust_portfolio_value_for_inflation = bool(
+        strategy["adjust_portfolio_value_for_inflation"]
+    )
+
+    variable_transaction_fees /= 100
+    annualised_holding_fees /= 100
+    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    cash_returns = (
+        (
+            load_fed_funds_returns()
+            if currency == "USD"
+            else load_sgd_interest_rates_returns()
+        )
+        .resample("BME")
+        .last()
+        .pct_change()
+        .reindex(strategy_series.index)
+        .fillna(0)
+        .to_numpy()
+    )
+    us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
+    sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
+    cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
+    if cpi is None:
+        raise ValueError("Invalid currency")
+
+    portfolio_values = pd.DataFrame(
+        calculate_dca_portfolio_value_with_fees_and_interest_vector(
+            strategy_series.pct_change().to_numpy(),
+            dca_length,
+            dca_interval,
+            investment_horizon,
+            investment_amount,
+            monthly_investment,
+            adjust_monthly_investment_for_inflation,
+            variable_transaction_fees,
+            fixed_transaction_fees,
+            annualised_holding_fees,
+            adjust_portfolio_value_for_inflation,
+            cpi,
+            cash_returns,
+        ),
+        index=strategy_series.index,
+        columns=range(1, investment_horizon + 1),
+    )
+    portfolio_values.insert(0, 0, investment_amount)
+    portfolio_values.iloc[:investment_horizon, 0] = np.nan
+    if index_by_start_date:
+        portfolio_values = portfolio_values.shift(-investment_horizon)
+    portfolio_values = portfolio_values.dropna(how="all")
+    return portfolio_values, investment_horizon
+
+
 @app.callback(
     Output("accumulation-strategy-graph", "figure"),
     Input("accumulation-strategies", "value"),
@@ -2011,72 +2081,9 @@ def update_accumulation_strategy_graph(
     )
     dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
     for strategy_str in strategy_strs:
-        strategy: dict[str, str | int | float] = json.loads(strategy_str)
-        strategy_portfolio = str(strategy["strategy_portfolio"])
-        currency = str(strategy["currency"])
-        investment_amount = float(strategy["investment_amount"])
-        investment_horizon = int(strategy["investment_horizon"])
-        monthly_investment = float(strategy["monthly_investment"])
-        adjust_monthly_investment_for_inflation = bool(
-            strategy["adjust_monthly_investment_for_inflation"]
+        portfolio_values, _ = backtest_accumulation_strategy(
+            index_by_start_date, yf_securities, strategy_str
         )
-        dca_length = int(strategy["dca_length"])
-        dca_interval = int(strategy["dca_interval"])
-        variable_transaction_fees = float(strategy["variable_transaction_fees"])
-        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-        annualised_holding_fees = float(strategy["annualised_holding_fees"])
-        adjust_portfolio_value_for_inflation = bool(
-            strategy["adjust_portfolio_value_for_inflation"]
-        )
-
-        variable_transaction_fees /= 100
-        annualised_holding_fees /= 100
-        strategy_series = load_portfolio(
-            strategy_portfolio, currency, "No", yf_securities
-        )
-        cash_returns = (
-            (
-                load_fed_funds_returns()
-                if currency == "USD"
-                else load_sgd_interest_rates_returns()
-            )
-            .resample("BME")
-            .last()
-            .pct_change()
-            .reindex(strategy_series.index)
-            .fillna(0)
-            .to_numpy()
-        )
-        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
-        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
-        cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
-        if cpi is None:
-            raise ValueError("Invalid currency")
-
-        portfolio_values = pd.DataFrame(
-            calculate_dca_portfolio_value_with_fees_and_interest_vector(
-                strategy_series.pct_change().to_numpy(),
-                dca_length,
-                dca_interval,
-                investment_horizon,
-                investment_amount,
-                monthly_investment,
-                adjust_monthly_investment_for_inflation,
-                variable_transaction_fees,
-                fixed_transaction_fees,
-                annualised_holding_fees,
-                adjust_portfolio_value_for_inflation,
-                cpi,
-                cash_returns,
-            ),
-            index=strategy_series.index,
-            columns=range(1, investment_horizon + 1),
-        )
-        portfolio_values.insert(0, 0, investment_amount)
-        portfolio_values.iloc[:investment_horizon, 0] = np.nan
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-investment_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
     ending_values = pd.concat(
@@ -2155,72 +2162,9 @@ def show_accumulation_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
-        strategy: dict[str, str | int | float] = json.loads(strategy_str)
-        strategy_portfolio = str(strategy["strategy_portfolio"])
-        currency = str(strategy["currency"])
-        investment_amount = float(strategy["investment_amount"])
-        investment_horizon = int(strategy["investment_horizon"])
-        monthly_investment = float(strategy["monthly_investment"])
-        adjust_monthly_investment_for_inflation = bool(
-            strategy["adjust_monthly_investment_for_inflation"]
+        portfolio_values, investment_horizon = backtest_accumulation_strategy(
+            index_by_start_date, yf_securities, strategy_str
         )
-        dca_length = int(strategy["dca_length"])
-        dca_interval = int(strategy["dca_interval"])
-        variable_transaction_fees = float(strategy["variable_transaction_fees"])
-        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-        annualised_holding_fees = float(strategy["annualised_holding_fees"])
-        adjust_portfolio_value_for_inflation = bool(
-            strategy["adjust_portfolio_value_for_inflation"]
-        )
-
-        variable_transaction_fees /= 100
-        annualised_holding_fees /= 100
-        strategy_series = load_portfolio(
-            strategy_portfolio, currency, "No", yf_securities
-        )
-        cash_returns = (
-            (
-                load_fed_funds_returns()
-                if currency == "USD"
-                else load_sgd_interest_rates_returns()
-            )
-            .resample("BME")
-            .last()
-            .pct_change()
-            .reindex(strategy_series.index)
-            .fillna(0)
-            .to_numpy()
-        )
-        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
-        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
-        cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
-        if cpi is None:
-            raise ValueError("Invalid currency")
-
-        portfolio_values = pd.DataFrame(
-            calculate_dca_portfolio_value_with_fees_and_interest_vector(
-                strategy_series.pct_change().to_numpy(),
-                dca_length,
-                dca_interval,
-                investment_horizon,
-                investment_amount,
-                monthly_investment,
-                adjust_monthly_investment_for_inflation,
-                variable_transaction_fees,
-                fixed_transaction_fees,
-                annualised_holding_fees,
-                adjust_portfolio_value_for_inflation,
-                cpi,
-                cash_returns,
-            ),
-            index=strategy_series.index,
-            columns=range(1, investment_horizon + 1),
-        )
-        portfolio_values.insert(0, 0, investment_amount)
-        portfolio_values.iloc[:investment_horizon, 0] = np.nan
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-investment_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
 
         if clicked_date not in portfolio_values.index:
             continue
@@ -2351,6 +2295,57 @@ def update_withdrawal_strategies(
     return strategies, strategy_options
 
 
+def backtest_withdrawal_strategy(
+    index_by_start_date: bool, yf_securities: dict[str, str], strategy_str: str
+):
+    strategy: dict[str, str | int | float] = json.loads(strategy_str)
+    strategy_portfolio = str(strategy["strategy_portfolio"])
+    currency = str(strategy["currency"])
+    initial_capital = float(strategy["initial_capital"])
+    withdrawal_horizon = int(strategy["withdrawal_horizon"])
+    monthly_withdrawal = float(strategy["monthly_withdrawal"])
+    adjust_for_inflation = bool(strategy["adjust_for_inflation"])
+    withdrawal_interval = int(strategy["withdrawal_interval"])
+    variable_transaction_fees = float(strategy["variable_transaction_fees"])
+    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+    annualised_holding_fees = float(strategy["annualised_holding_fees"])
+    variable_transaction_fees /= 100
+    annualised_holding_fees /= 100
+
+    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
+    sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
+    cpi = (
+        np.ones(len(strategy_series))
+        if not adjust_for_inflation
+        else us_cpi
+        if currency == "USD"
+        else sg_cpi
+    )
+
+    portfolio_values = pd.DataFrame(
+        calculate_withdrawal_portfolio_value_with_fees_vector(
+            strategy_series.pct_change().to_numpy(),
+            withdrawal_horizon,
+            withdrawal_interval,
+            initial_capital,
+            monthly_withdrawal,
+            cpi,
+            variable_transaction_fees,
+            fixed_transaction_fees,
+            annualised_holding_fees,
+        ),
+        index=strategy_series.index,
+        columns=range(1, withdrawal_horizon + 1),
+    )
+    portfolio_values.insert(0, 0, initial_capital)
+    portfolio_values.iloc[:withdrawal_horizon, 0] = np.nan
+    if index_by_start_date:
+        portfolio_values = portfolio_values.shift(-withdrawal_horizon)
+    portfolio_values = portfolio_values.dropna(how="all")
+    return portfolio_values, withdrawal_horizon
+
+
 @app.callback(
     Output("withdrawal-strategy-graph", "figure"),
     Input("withdrawal-strategies", "value"),
@@ -2384,53 +2379,9 @@ def update_withdrawal_strategy_graph(
     )
     dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
     for strategy_str in strategy_strs:
-        strategy: dict[str, str | int | float] = json.loads(strategy_str)
-        strategy_portfolio = str(strategy["strategy_portfolio"])
-        currency = str(strategy["currency"])
-        initial_capital = float(strategy["initial_capital"])
-        withdrawal_horizon = int(strategy["withdrawal_horizon"])
-        monthly_withdrawal = float(strategy["monthly_withdrawal"])
-        adjust_for_inflation = bool(strategy["adjust_for_inflation"])
-        withdrawal_interval = int(strategy["withdrawal_interval"])
-        variable_transaction_fees = float(strategy["variable_transaction_fees"])
-        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-        annualised_holding_fees = float(strategy["annualised_holding_fees"])
-        variable_transaction_fees /= 100
-        annualised_holding_fees /= 100
-
-        strategy_series = load_portfolio(
-            strategy_portfolio, currency, "No", yf_securities
+        portfolio_values, _ = backtest_withdrawal_strategy(
+            index_by_start_date, yf_securities, strategy_str
         )
-        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
-        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
-        cpi = (
-            np.ones(len(strategy_series))
-            if not adjust_for_inflation
-            else us_cpi
-            if currency == "USD"
-            else sg_cpi
-        )
-
-        portfolio_values = pd.DataFrame(
-            calculate_withdrawal_portfolio_value_with_fees_vector(
-                strategy_series.pct_change().to_numpy(),
-                withdrawal_horizon,
-                withdrawal_interval,
-                initial_capital,
-                monthly_withdrawal,
-                cpi,
-                variable_transaction_fees,
-                fixed_transaction_fees,
-                annualised_holding_fees,
-            ),
-            index=strategy_series.index,
-            columns=range(1, withdrawal_horizon + 1),
-        )
-        portfolio_values.insert(0, 0, initial_capital)
-        portfolio_values.iloc[:withdrawal_horizon, 0] = np.nan
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-withdrawal_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
     ending_values = pd.concat(
@@ -2509,53 +2460,9 @@ def show_withdrawal_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
-        strategy: dict[str, str | int | float] = json.loads(strategy_str)
-        strategy_portfolio = str(strategy["strategy_portfolio"])
-        currency = str(strategy["currency"])
-        initial_capital = float(strategy["initial_capital"])
-        withdrawal_horizon = int(strategy["withdrawal_horizon"])
-        monthly_withdrawal = float(strategy["monthly_withdrawal"])
-        adjust_for_inflation = bool(strategy["adjust_for_inflation"])
-        withdrawal_interval = int(strategy["withdrawal_interval"])
-        variable_transaction_fees = float(strategy["variable_transaction_fees"])
-        fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-        annualised_holding_fees = float(strategy["annualised_holding_fees"])
-        variable_transaction_fees /= 100
-        annualised_holding_fees /= 100
-
-        strategy_series = load_portfolio(
-            strategy_portfolio, currency, "No", yf_securities
+        portfolio_values, withdrawal_horizon = backtest_withdrawal_strategy(
+            index_by_start_date, yf_securities, strategy_str
         )
-        us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
-        sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
-        cpi = (
-            np.ones(len(strategy_series))
-            if not adjust_for_inflation
-            else us_cpi
-            if currency == "USD"
-            else sg_cpi
-        )
-
-        portfolio_values = pd.DataFrame(
-            calculate_withdrawal_portfolio_value_with_fees_vector(
-                strategy_series.pct_change().to_numpy(),
-                withdrawal_horizon,
-                withdrawal_interval,
-                initial_capital,
-                monthly_withdrawal,
-                cpi,
-                variable_transaction_fees,
-                fixed_transaction_fees,
-                annualised_holding_fees,
-            ),
-            index=strategy_series.index,
-            columns=range(1, withdrawal_horizon + 1),
-        )
-        portfolio_values.insert(0, 0, initial_capital)
-        portfolio_values.iloc[:withdrawal_horizon, 0] = np.nan
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-withdrawal_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
 
         if clicked_date not in portfolio_values.index:
             continue
