@@ -752,25 +752,20 @@ app_layout = html.Div(
                                     type="number",
                                     min=0.01,
                                 ),
-                                html.Div(
-                                    [
-                                        dbc.Label(
-                                            "Monthly Investment Amount",
-                                            html_for="accumulation-monthly-investment-input",
-                                        ),
-                                        dbc.Input(
-                                            id="accumulation-monthly-investment-input",
-                                            type="number",
-                                            min=0.01,
-                                        ),
-                                        dbc.Switch(
-                                            "accumulation-monthly-investment-inflation-adjustment-switch",
-                                            value=False,
-                                            label="Adjust for Inflation",
-                                            style={"marginTop": "0"},
-                                        ),
-                                    ],
-                                    id="accumulation-dca-input-container",
+                                dbc.Label(
+                                    "Monthly Investment Amount",
+                                    html_for="accumulation-monthly-investment-input",
+                                ),
+                                dbc.Input(
+                                    id="accumulation-monthly-investment-input",
+                                    type="number",
+                                    min=0.01,
+                                ),
+                                dbc.Switch(
+                                    "accumulation-monthly-investment-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust for Inflation",
+                                    style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
                                     "Investment Horizon (Months)",
