@@ -958,7 +958,7 @@ def update_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict[str, str | float] | None,
+    relayout_data: dict[str, str | float],
     uirevision: str,
     prev_layout: dict | None,
 ):
@@ -1078,8 +1078,7 @@ def update_graph(
                         ]
                     )
                 elif (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
+                    "xaxis.range[0]" in relayout_data
                     and "yaxis.range[0]" in relayout_data
                 ):
                     yaxis_min = float(relayout_data["yaxis.range[0]"])
@@ -1099,8 +1098,10 @@ def update_graph(
                         ]
                     )
                 elif (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
+                    (
+                        "xaxis.range[0]" in relayout_data
+                        or "xaxis.range[1]" in relayout_data
+                    )
                     and "yaxis.range[0]" not in relayout_data
                     and prev_layout
                     and prev_layout["yaxis"]
@@ -1124,13 +1125,25 @@ def update_graph(
                         ]
                     )
                 elif (
-                    relayout_data
-                    and "yaxis.range[0]" in relayout_data
+                    (
+                        "yaxis.range[0]" in relayout_data
+                        or "yaxis.range[1]" in relayout_data
+                    )
                     and "xaxis.range[0]" not in relayout_data
+                    and prev_layout
                 ):
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                    layout.update(yaxis_range=[yaxis_min, yaxis_max])
+                    yaxis_min = None
+                    yaxis_max = None
+                    if "yaxis.range[0]" in relayout_data:
+                        yaxis_min = float(relayout_data["yaxis.range[0]"])
+                    if "yaxis.range[1]" in relayout_data:
+                        yaxis_max = float(relayout_data["yaxis.range[1]"])
+                    layout.update(
+                        yaxis_range=[
+                            yaxis_min or prev_layout["yaxis"]["range"][0],
+                            yaxis_max or prev_layout["yaxis"]["range"][1],
+                        ]
+                    )
 
             else:
                 price_adj = 1
@@ -1145,8 +1158,7 @@ def update_graph(
                 layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
                 if (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
+                    "xaxis.range[0]" in relayout_data
                     and "yaxis.range[0]" in relayout_data
                 ):
                     yaxis_min = 10 ** float(relayout_data["yaxis.range[0]"])
@@ -1168,8 +1180,10 @@ def update_graph(
                         ]
                     )
                 elif (
-                    relayout_data
-                    and "xaxis.range[0]" in relayout_data
+                    (
+                        "xaxis.range[0]" in relayout_data
+                        or "xaxis.range[1]" in relayout_data
+                    )
                     and "yaxis.range[0]" not in relayout_data
                     and prev_layout
                     and prev_layout["yaxis"]["range"]
@@ -1193,13 +1207,25 @@ def update_graph(
                         ]
                     )
                 elif (
-                    relayout_data
-                    and "yaxis.range[0]" in relayout_data
+                    (
+                        "yaxis.range[0]" in relayout_data
+                        or "yaxis.range[1]" in relayout_data
+                    )
                     and "xaxis.range[0]" not in relayout_data
+                    and prev_layout
                 ):
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                    layout.update(yaxis_range=[yaxis_min, yaxis_max])
+                    yaxis_min = None
+                    yaxis_max = None
+                    if "yaxis.range[0]" in relayout_data:
+                        yaxis_min = float(relayout_data["yaxis.range[0]"])
+                    if "yaxis.range[1]" in relayout_data:
+                        yaxis_max = float(relayout_data["yaxis.range[1]"])
+                    layout.update(
+                        yaxis_range=[
+                            yaxis_min or prev_layout["yaxis"]["range"][0],
+                            yaxis_max or prev_layout["yaxis"]["range"][1],
+                        ]
+                    )
 
         if log_scale:
             layout.update(yaxis_type="log")
@@ -1437,7 +1463,7 @@ def update_security_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     chart_type: str,
-    relayout_data: dict[str, str | float] | None,
+    relayout_data: dict[str, str | float],
     prev_layout: dict | None,
 ):
     securities_colourmap = dict(
@@ -1773,7 +1799,7 @@ def update_portfolio_graph(
     percent_scale: bool,
     auto_scale: bool,
     chart_type: str,
-    relayout_data: dict[str, str | float] | None,
+    relayout_data: dict[str, str | float],
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
     prev_layout: dict | None,
