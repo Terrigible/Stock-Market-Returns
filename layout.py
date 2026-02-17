@@ -696,13 +696,6 @@ app_layout = html.Div(
                         ),
                         dcc.Graph(
                             responsive=True,
-                            figure={
-                                "data": [],
-                                "layout": {
-                                    "autosize": True,
-                                    "title": "Portfolio Simulation",
-                                },
-                            },
                             id="portfolio-graph",
                         ),
                         dcc.Store(

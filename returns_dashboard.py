@@ -5,6 +5,7 @@ from functools import cache, reduce
 from glob import glob
 from io import StringIO
 from itertools import cycle
+from typing import TypedDict
 
 import dash_bootstrap_components as dbc
 import numpy as np
@@ -941,6 +942,19 @@ def update_baseline_security_selection_options(
     )
 
 
+class XAxis(TypedDict):
+    range: list[str]
+
+
+class YAxis(TypedDict):
+    range: list[float]
+
+
+class PrevLayout(TypedDict):
+    xaxis: XAxis
+    yaxis: YAxis
+
+
 def update_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
@@ -960,7 +974,7 @@ def update_graph(
     chart_type: str,
     relayout_data: dict[str, str | float],
     uirevision: str,
-    prev_layout: dict | None,
+    prev_layout: PrevLayout | None,
 ):
     layout = go.Layout(
         autosize=True,
@@ -989,24 +1003,16 @@ def update_graph(
         if not relayout_data.get("xaxis.autorange"):
             if "xaxis.range[0]" in relayout_data:
                 start_date = pd.to_datetime(relayout_data["xaxis.range[0]"])
-            elif (
-                prev_layout
-                and "xaxis" in prev_layout
-                and "range" in prev_layout["xaxis"]
-            ):
+            elif prev_layout:
                 start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
 
             if "xaxis.range[1]" in relayout_data:
                 end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
-            elif (
-                prev_layout
-                and "xaxis" in prev_layout
-                and "range" in prev_layout["xaxis"]
-            ):
+            elif prev_layout:
                 end_date = pd.to_datetime(prev_layout["xaxis"]["range"][1])
             layout.update(xaxis_range=[start_date, end_date])
 
-        if prev_layout and "xaxis" in prev_layout and "range" in prev_layout["xaxis"]:
+        if prev_layout:
             prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
 
         price_adj = 0
@@ -1104,9 +1110,6 @@ def update_graph(
                     )
                     and "yaxis.range[0]" not in relayout_data
                     and prev_layout
-                    and prev_layout["yaxis"]
-                    and "range" in prev_layout["yaxis"]
-                    and prev_layout["yaxis"]["range"]
                 ):
                     yaxis_min = float(prev_layout["yaxis"]["range"][0])
                     yaxis_max = float(prev_layout["yaxis"]["range"][1])
@@ -1186,7 +1189,6 @@ def update_graph(
                     )
                     and "yaxis.range[0]" not in relayout_data
                     and prev_layout
-                    and prev_layout["yaxis"]["range"]
                 ):
                     yaxis_min = 10 ** float(prev_layout["yaxis"]["range"][0])
                     yaxis_max = 10 ** float(prev_layout["yaxis"]["range"][1])
@@ -1464,7 +1466,7 @@ def update_security_graph(
     baseline_security_options: dict[str, str],
     chart_type: str,
     relayout_data: dict[str, str | float],
-    prev_layout: dict | None,
+    prev_layout: PrevLayout | None,
 ):
     securities_colourmap = dict(
         zip(
@@ -1802,15 +1804,10 @@ def update_portfolio_graph(
     relayout_data: dict[str, str | float],
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
-    prev_layout: dict | None,
+    prev_layout: PrevLayout | None,
 ):
     if not portfolio_strs:
-        return {
-            "data": [],
-            "layout": {
-                "title": "Portfolio Performance",
-            },
-        }
+        return no_update
     portfolios_colourmap = dict(
         zip(
             portfolio_options.keys(),
@@ -2156,6 +2153,14 @@ def update_accumulation_strategy_graph(
     }
 
 
+class Point(TypedDict):
+    x: str
+
+
+class ClickData(TypedDict):
+    points: list[Point]
+
+
 @app.callback(
     Output("accumulation-strategy-modal", "is_open"),
     Output("accumulation-strategy-modal-graph", "figure"),
@@ -2167,15 +2172,12 @@ def update_accumulation_strategy_graph(
     prevent_initial_call=True,
 )
 def show_accumulation_strategy_modal(
-    click_data: dict | None,
-    strategy_strs: list[str] | None,
+    click_data: ClickData,
+    strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
     yf_securities: dict[str, str],
 ):
-    if click_data is None or not strategy_strs:
-        return False, {}
-
     clicked_date = pd.to_datetime(click_data["points"][0]["x"])
 
     strategies_colourmap = dict(
@@ -2465,15 +2467,12 @@ def update_withdrawal_strategy_graph(
     prevent_initial_call=True,
 )
 def show_withdrawal_strategy_modal(
-    click_data: dict | None,
-    strategy_strs: list[str] | None,
+    click_data: ClickData,
+    strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
     yf_securities: dict[str, str],
 ):
-    if click_data is None or not strategy_strs:
-        return False, {}
-
     clicked_date = pd.to_datetime(click_data["points"][0]["x"])
 
     strategies_colourmap = dict(
