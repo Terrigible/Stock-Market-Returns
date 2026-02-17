@@ -960,7 +960,7 @@ def update_graph(
     chart_type: str,
     relayout_data: dict[str, str | float] | None,
     uirevision: str,
-    prev_layout: dict[str, dict] | None,
+    prev_layout: dict | None,
 ):
     layout = go.Layout(
         autosize=True,
@@ -986,32 +986,28 @@ def update_graph(
         end_date = None
         prev_start_date = None
 
-        if relayout_data and not relayout_data.get("xaxis.autorange"):
+        if not relayout_data.get("xaxis.autorange"):
             if "xaxis.range[0]" in relayout_data:
                 start_date = pd.to_datetime(relayout_data["xaxis.range[0]"])
             elif (
                 prev_layout
-                and "xaxis" in prev_layout["price"]
-                and "range" in prev_layout["price"]["xaxis"]
+                and "xaxis" in prev_layout
+                and "range" in prev_layout["xaxis"]
             ):
-                start_date = pd.to_datetime(prev_layout["price"]["xaxis"]["range"][0])
+                start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
 
             if "xaxis.range[1]" in relayout_data:
                 end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
             elif (
                 prev_layout
-                and "xaxis" in prev_layout["price"]
-                and "range" in prev_layout["price"]["xaxis"]
+                and "xaxis" in prev_layout
+                and "range" in prev_layout["xaxis"]
             ):
-                end_date = pd.to_datetime(prev_layout["price"]["xaxis"]["range"][1])
+                end_date = pd.to_datetime(prev_layout["xaxis"]["range"][1])
             layout.update(xaxis_range=[start_date, end_date])
 
-        if (
-            prev_layout
-            and "xaxis" in prev_layout["price"]
-            and "range" in prev_layout["price"]["xaxis"]
-        ):
-            prev_start_date = pd.to_datetime(prev_layout["price"]["xaxis"]["range"][0])
+        if prev_layout and "xaxis" in prev_layout and "range" in prev_layout["xaxis"]:
+            prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
 
         price_adj = 0
         hoverinfo = None
@@ -1107,10 +1103,12 @@ def update_graph(
                     and "xaxis.range[0]" in relayout_data
                     and "yaxis.range[0]" not in relayout_data
                     and prev_layout
-                    and prev_layout["price"]["yaxis"]["range"]
+                    and prev_layout["yaxis"]
+                    and "range" in prev_layout["yaxis"]
+                    and prev_layout["yaxis"]["range"]
                 ):
-                    yaxis_min = float(prev_layout["price"]["yaxis"]["range"][0])
-                    yaxis_max = float(prev_layout["price"]["yaxis"]["range"][1])
+                    yaxis_min = float(prev_layout["yaxis"]["range"][0])
+                    yaxis_max = float(prev_layout["yaxis"]["range"][1])
                     layout.update(
                         yaxis_range=[
                             prev_zoom_df.add(1)
@@ -1174,10 +1172,10 @@ def update_graph(
                     and "xaxis.range[0]" in relayout_data
                     and "yaxis.range[0]" not in relayout_data
                     and prev_layout
-                    and prev_layout["price"]["yaxis"]["range"]
+                    and prev_layout["yaxis"]["range"]
                 ):
-                    yaxis_min = 10 ** float(prev_layout["price"]["yaxis"]["range"][0])
-                    yaxis_max = 10 ** float(prev_layout["price"]["yaxis"]["range"][1])
+                    yaxis_min = 10 ** float(prev_layout["yaxis"]["range"][0])
+                    yaxis_max = 10 ** float(prev_layout["yaxis"]["range"][1])
                     layout.update(
                         yaxis_range=[
                             prev_zoom_df.add(1)
@@ -1390,7 +1388,6 @@ app.clientside_callback(
     ClientsideFunction(namespace="clientside", function_name="updateLastLayoutStore"),
     Output("graph-last-layout-state-store", "data"),
     Input("graph", "figure"),
-    State("graph-last-layout-state-store", "data"),
     State("y-var-selection", "value"),
     prevent_initial_call=True,
 )
@@ -1441,7 +1438,7 @@ def update_security_graph(
     baseline_security_options: dict[str, str],
     chart_type: str,
     relayout_data: dict[str, str | float] | None,
-    prev_layout: dict[str, dict] | None,
+    prev_layout: dict | None,
 ):
     securities_colourmap = dict(
         zip(
@@ -1731,7 +1728,6 @@ app.clientside_callback(
     ClientsideFunction(namespace="clientside", function_name="updateLastLayoutStore"),
     Output("portfolio-graph-last-layout-state-store", "data"),
     Input("portfolio-graph", "figure"),
-    State("portfolio-graph-last-layout-state-store", "data"),
     State("portfolio-y-var-selection", "value"),
     prevent_initial_call=True,
 )
@@ -1780,7 +1776,7 @@ def update_portfolio_graph(
     relayout_data: dict[str, str | float] | None,
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
-    prev_layout: dict[str, dict] | None,
+    prev_layout: dict | None,
 ):
     if not portfolio_strs:
         return {
