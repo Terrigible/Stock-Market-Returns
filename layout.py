@@ -493,12 +493,18 @@ app_layout = html.Div(
                             ],
                             className="sidebar",
                         ),
-                        dcc.Graph(
-                            responsive=True,
-                            id="graph",
-                        ),
-                        dcc.Store(
-                            id="graph-last-layout-state-store", storage_type="memory"
+                        html.Div(
+                            [
+                                dcc.Graph(
+                                    responsive=True,
+                                    id="graph",
+                                ),
+                                dcc.Store(
+                                    id="graph-last-layout-state-store",
+                                    storage_type="memory",
+                                ),
+                            ],
+                            className="graph-container",
                         ),
                     ],
                 ),
@@ -694,13 +700,18 @@ app_layout = html.Div(
                             ],
                             className="sidebar",
                         ),
-                        dcc.Graph(
-                            responsive=True,
-                            id="portfolio-graph",
-                        ),
-                        dcc.Store(
-                            id="portfolio-graph-last-layout-state-store",
-                            storage_type="memory",
+                        html.Div(
+                            [
+                                dcc.Graph(
+                                    responsive=True,
+                                    id="portfolio-graph",
+                                ),
+                                dcc.Store(
+                                    id="portfolio-graph-last-layout-state-store",
+                                    storage_type="memory",
+                                ),
+                            ],
+                            className="graph-container",
                         ),
                     ],
                 ),
@@ -876,22 +887,39 @@ app_layout = html.Div(
                             ],
                             className="sidebar",
                         ),
-                        dcc.Graph(
-                            responsive=True,
-                            figure={
-                                "data": [],
-                                "layout": {
-                                    "autosize": True,
-                                    "title": "Strategy Performance",
-                                },
-                            },
-                            id="accumulation-strategy-graph",
+                        html.Div(
+                            [
+                                dcc.Graph(
+                                    responsive=True,
+                                    figure={
+                                        "data": [],
+                                        "layout": {
+                                            "autosize": True,
+                                            "title": "Strategy Performance",
+                                        },
+                                    },
+                                    id="accumulation-strategy-graph",
+                                ),
+                                dcc.Store(
+                                    id="accumulation-strategy-clicked-date-store"
+                                ),
+                                dbc.Button(
+                                    "Click a data point to view portfolio growth",
+                                    id="accumulation-strategy-show-details-button",
+                                    disabled=True,
+                                    style={"marginTop": "10px", "borderRadius": "0"},
+                                ),
+                            ],
+                            className="graph-container",
                         ),
                         dbc.Modal(
                             [
                                 dbc.ModalHeader("Portfolio Growth"),
                                 dbc.ModalBody(
-                                    dcc.Graph(id="accumulation-strategy-modal-graph")
+                                    dcc.Graph(
+                                        id="accumulation-strategy-modal-graph",
+                                        style={"height": "100%"},
+                                    )
                                 ),
                             ],
                             id="accumulation-strategy-modal",
@@ -1056,22 +1084,37 @@ app_layout = html.Div(
                             ],
                             className="sidebar",
                         ),
-                        dcc.Graph(
-                            responsive=True,
-                            figure={
-                                "data": [],
-                                "layout": {
-                                    "autosize": True,
-                                    "title": "Strategy Performance",
-                                },
-                            },
-                            id="withdrawal-strategy-graph",
+                        html.Div(
+                            [
+                                dcc.Graph(
+                                    responsive=True,
+                                    figure={
+                                        "data": [],
+                                        "layout": {
+                                            "autosize": True,
+                                            "title": "Strategy Performance",
+                                        },
+                                    },
+                                    id="withdrawal-strategy-graph",
+                                ),
+                                dcc.Store(id="withdrawal-strategy-clicked-date-store"),
+                                dbc.Button(
+                                    "Click a data point to view details",
+                                    id="withdrawal-strategy-show-details-button",
+                                    disabled=True,
+                                    style={"marginTop": "10px", "borderRadius": "0"},
+                                ),
+                            ],
+                            className="graph-container",
                         ),
                         dbc.Modal(
                             [
                                 dbc.ModalHeader("Portfolio Value"),
                                 dbc.ModalBody(
-                                    dcc.Graph(id="withdrawal-strategy-modal-graph")
+                                    dcc.Graph(
+                                        id="withdrawal-strategy-modal-graph",
+                                        style={"height": "100%"},
+                                    )
                                 ),
                             ],
                             id="withdrawal-strategy-modal",

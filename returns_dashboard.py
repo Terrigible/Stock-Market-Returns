@@ -2162,9 +2162,27 @@ class ClickData(TypedDict):
 
 
 @app.callback(
+    Output("accumulation-strategy-clicked-date-store", "data"),
+    Output("accumulation-strategy-show-details-button", "children"),
+    Output("accumulation-strategy-show-details-button", "disabled"),
+    Input("accumulation-strategy-graph", "clickData"),
+    Input("accumulation-strategies", "value"),
+    prevent_initial_call=True,
+)
+def handle_accumulation_graph_interaction(click_data: ClickData, _):
+    if ctx.triggered_id == "accumulation-strategies":
+        return None, "Click a data point to view portfolio growth", True
+
+    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+    date_str = clicked_date.strftime("%b %Y")
+    return clicked_date.isoformat(), f"View Portfolio Growth for {date_str}", False
+
+
+@app.callback(
     Output("accumulation-strategy-modal", "is_open"),
     Output("accumulation-strategy-modal-graph", "figure"),
-    Input("accumulation-strategy-graph", "clickData"),
+    Input("accumulation-strategy-show-details-button", "n_clicks"),
+    State("accumulation-strategy-clicked-date-store", "data"),
     State("accumulation-strategies", "value"),
     State("accumulation-strategies", "options"),
     State("accumulation-index-by-start-date", "value"),
@@ -2172,13 +2190,17 @@ class ClickData(TypedDict):
     prevent_initial_call=True,
 )
 def show_accumulation_strategy_modal(
-    click_data: ClickData,
+    n_clicks,
+    clicked_date_str: str,
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
     yf_securities: dict[str, str],
 ):
-    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+    if not clicked_date_str:
+        return False, {}
+
+    clicked_date = pd.to_datetime(clicked_date_str)
 
     strategies_colourmap = dict(
         zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
@@ -2458,9 +2480,27 @@ def update_withdrawal_strategy_graph(
 
 
 @app.callback(
+    Output("withdrawal-strategy-clicked-date-store", "data"),
+    Output("withdrawal-strategy-show-details-button", "children"),
+    Output("withdrawal-strategy-show-details-button", "disabled"),
+    Input("withdrawal-strategy-graph", "clickData"),
+    Input("withdrawal-strategies", "value"),
+    prevent_initial_call=True,
+)
+def handle_withdrawal_graph_interaction(click_data: ClickData, _):
+    if ctx.triggered_id == "withdrawal-strategies":
+        return None, "Click a data point to view portfolio value", True
+
+    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+    date_str = clicked_date.strftime("%b %Y")
+    return clicked_date.isoformat(), f"View Portfolio Value for {date_str}", False
+
+
+@app.callback(
     Output("withdrawal-strategy-modal", "is_open"),
     Output("withdrawal-strategy-modal-graph", "figure"),
-    Input("withdrawal-strategy-graph", "clickData"),
+    Input("withdrawal-strategy-show-details-button", "n_clicks"),
+    State("withdrawal-strategy-clicked-date-store", "data"),
     State("withdrawal-strategies", "value"),
     State("withdrawal-strategies", "options"),
     State("withdrawal-index-by-start-date", "value"),
@@ -2468,13 +2508,17 @@ def update_withdrawal_strategy_graph(
     prevent_initial_call=True,
 )
 def show_withdrawal_strategy_modal(
-    click_data: ClickData,
+    n_clicks,
+    clicked_date_str: str,
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
     yf_securities: dict[str, str],
 ):
-    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+    if not clicked_date_str:
+        return False, {}
+
+    clicked_date = pd.to_datetime(clicked_date_str)
 
     strategies_colourmap = dict(
         zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
