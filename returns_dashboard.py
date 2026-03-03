@@ -278,7 +278,12 @@ def transform_data(
     raise ValueError("Invalid y_var")
 
 
-app = Dash(compress=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(
+    serve_locally=False,
+    eager_loading=True,
+    compress=True,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+)
 
 server = app.server
 
