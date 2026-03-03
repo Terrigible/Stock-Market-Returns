@@ -2064,7 +2064,7 @@ def backtest_accumulation_strategy(
     if index_by_start_date:
         portfolio_values = portfolio_values.shift(-investment_horizon)
     portfolio_values = portfolio_values.dropna(how="all")
-    return portfolio_values, investment_horizon
+    return portfolio_values
 
 
 @app.callback(
@@ -2100,7 +2100,7 @@ def update_accumulation_strategy_graph(
     )
     dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
     for strategy_str in strategy_strs:
-        portfolio_values, _ = backtest_accumulation_strategy(
+        portfolio_values = backtest_accumulation_strategy(
             index_by_start_date, yf_securities, strategy_str
         )
         dfs.update({strategy_str: portfolio_values})
@@ -2186,9 +2186,10 @@ def show_accumulation_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
-        portfolio_values, investment_horizon = backtest_accumulation_strategy(
+        portfolio_values = backtest_accumulation_strategy(
             index_by_start_date, yf_securities, strategy_str
         )
+        investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
 
         if clicked_date not in portfolio_values.index:
             continue
@@ -2367,7 +2368,7 @@ def backtest_withdrawal_strategy(
     if index_by_start_date:
         portfolio_values = portfolio_values.shift(-withdrawal_horizon)
     portfolio_values = portfolio_values.dropna(how="all")
-    return portfolio_values, withdrawal_horizon
+    return portfolio_values
 
 
 @app.callback(
@@ -2403,7 +2404,7 @@ def update_withdrawal_strategy_graph(
     )
     dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
     for strategy_str in strategy_strs:
-        portfolio_values, _ = backtest_withdrawal_strategy(
+        portfolio_values = backtest_withdrawal_strategy(
             index_by_start_date, yf_securities, strategy_str
         )
         dfs.update({strategy_str: portfolio_values})
@@ -2481,9 +2482,10 @@ def show_withdrawal_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
-        portfolio_values, withdrawal_horizon = backtest_withdrawal_strategy(
+        portfolio_values = backtest_withdrawal_strategy(
             index_by_start_date, yf_securities, strategy_str
         )
+        withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
 
         if clicked_date not in portfolio_values.index:
             continue
