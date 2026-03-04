@@ -125,7 +125,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 funds_to_invest = 0
             else:
                 funds_to_invest *= 1 + cash_returns[j + 1]
-            res[i, index] = share_value
+            res[i, index] = share_value + funds_to_invest
         for index, j in enumerate(range(i - investment_horizon + dca_length, i)):
             share_value *= monthly_returns_with_fees[j + 1]
             res[i, dca_length + index] = share_value
