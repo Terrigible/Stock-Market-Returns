@@ -14,6 +14,32 @@ import polars as pl
 from bs4 import BeautifulSoup
 
 
+def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
+    """
+    Polars expression for pandas BMonthEnd(n).
+
+    Parameters
+    ----------
+    col : pl.Expr
+        The expression representing the date column.
+    n : int
+        Number of BMonthEnd periods.
+    """
+    bme = (
+        col.dt.add_business_days(0, roll="forward")
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+    )
+
+    return (
+        pl.when((n > 0) & (col < bme))
+        .then(bme.dt.offset_by(f"{n - 1}mo"))
+        .otherwise(bme.dt.offset_by(f"{n}mo"))
+        .dt.month_end()
+        .dt.add_business_days(0, roll="backward")
+    )
+
+
 def read_msci_data(filename_pattern: str):
     return pl.read_csv(
         filename_pattern,
