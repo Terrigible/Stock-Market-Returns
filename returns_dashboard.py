@@ -1,6 +1,5 @@
 import json
 import math
-from collections import OrderedDict
 from functools import cache, reduce
 from glob import glob
 from io import StringIO
@@ -2092,7 +2091,7 @@ def update_accumulation_strategy_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
-    dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
+    dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
         portfolio_values = backtest_accumulation_strategy(
             index_by_start_date, yf_securities, strategy_str
@@ -2418,7 +2417,7 @@ def update_withdrawal_strategy_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
-    dfs: OrderedDict[str, pd.DataFrame] = OrderedDict()
+    dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
         portfolio_values = backtest_withdrawal_strategy(
             index_by_start_date, yf_securities, strategy_str
