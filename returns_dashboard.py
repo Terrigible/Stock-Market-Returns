@@ -56,25 +56,21 @@ def resample_bme(series: pd.Series):
 def convert_price_to_usd(
     series: pd.Series,
     currency: str,
-    usd_sgd: pd.Series = load_usdsgd(),
-    usd_fx: pd.DataFrame = load_fred_usd_fx(),
-    sgd_fx: pd.DataFrame = load_mas_sgd_fx(),
 ):
     if currency == "USD":
         return series
+    usd_sgd = load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
     if currency == "SGD":
-        return series.div(usd_sgd.resample("D").ffill().ffill().reindex(series.index))
+        return series.div(usd_sgd)
+    usd_fx = load_fred_usd_fx().resample("D").ffill().ffill().reindex(series.index)
     if currency == "GBp":
         series = series.div(100)
         currency = "GBP"
     if currency in usd_fx.columns:
-        return series.mul(
-            usd_fx[currency].resample("D").ffill().ffill().reindex(series.index)
-        )
+        return series.mul(usd_fx[currency])
+    sgd_fx = load_mas_sgd_fx().resample("D").ffill().ffill().reindex(series.index)
     if currency in sgd_fx.columns:
-        return series.mul(
-            sgd_fx[currency].resample("D").ffill().ffill().reindex(series.index)
-        ).div(usd_sgd.resample("D").ffill().ffill().reindex(series.index))
+        return series.mul(sgd_fx[currency]).div(usd_sgd)
     return series
 
 
@@ -116,9 +112,7 @@ def load_data(
     elif source == "MAS":
         if security["mas_index"] == "SGS":
             series = load_sgs_returns()[security["sgs_duration"]].resample("B").last()
-            series = series.div(
-                load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
-            )
+            series = convert_price_to_usd(series, "SGD")
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
         elif security["mas_index"] == "SORA":
