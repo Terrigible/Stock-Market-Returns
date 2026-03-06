@@ -1335,29 +1335,31 @@ def update_graph(
 
             data = [
                 go.Histogram(
-                    x=[None],
-                    name=trace_options[baseline_trace],
-                    marker=go.histogram.Marker(color=trace_colourmap[baseline_trace]),
+                    x=df[column],
+                    name=trace_options[column],
+                    marker=go.histogram.Marker(color=trace_colourmap[column]),
                     histnorm="probability",
                     opacity=0.7,
                     showlegend=True,
                 )
-                if baseline_trace != "None"
-                else None,
-                *[
+                for column in df.columns
+                if column != baseline_trace
+            ]
+
+            if baseline_trace != "None":
+                data.insert(
+                    0,
                     go.Histogram(
-                        x=df[column],
-                        name=trace_options[column],
-                        marker=go.histogram.Marker(color=trace_colourmap[column]),
+                        x=[None],
+                        name=trace_options[baseline_trace],
+                        marker=go.histogram.Marker(
+                            color=trace_colourmap[baseline_trace]
+                        ),
                         histnorm="probability",
                         opacity=0.7,
                         showlegend=True,
-                    )
-                    for column in df.columns
-                    if column != baseline_trace
-                ],
-            ]
-            data = [trace for trace in data if trace is not None]
+                    ),
+                )
 
         else:
             raise ValueError("Invalid chart_type")
