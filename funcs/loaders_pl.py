@@ -932,14 +932,14 @@ def download_ft_data(
             ).select_one(".mod-tearsheet-historical-prices")
 
             if historical_prices_mod is None:
-                raise ValueError("Unable to retrive inception date")
+                raise ValueError("Unable to retrieve inception date")
             data_mod_config = historical_prices_mod["data-mod-config"]
             if isinstance(data_mod_config, str) and "inception" in data_mod_config:
                 start_date = datetime.datetime.fromisoformat(
                     json.loads(data_mod_config)["inception"]
                 )
             else:
-                raise ValueError("Unable to retrive inception date")
+                raise ValueError("Unable to retrieve inception date")
         else:
             start_date = datetime.datetime.strptime(
                 item["details"]["inceptionDate"],
@@ -995,7 +995,7 @@ def get_sgx_dividends(ticker: str):
 
 
 def add_return_columns(df: pl.DataFrame, periods: list[str], durations: list[int]):
-    """Add cumulative and annualized return columns to a DataFrame."""
+    """Add cumulative and annualised return columns to a DataFrame."""
     for period, duration in zip(periods, durations):
         df = df.with_columns(
             pl.col("price").pct_change(duration).alias(f"{period}_cumulative")
@@ -1003,7 +1003,7 @@ def add_return_columns(df: pl.DataFrame, periods: list[str], durations: list[int
     for period, duration in zip(periods, durations):
         df = df.with_columns(
             ((pl.col(f"{period}_cumulative").add(1)).pow(12 / duration).sub(1)).alias(
-                f"{period}_annualized"
+                f"{period}_annualised"
             )
         )
     return df

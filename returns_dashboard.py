@@ -240,7 +240,7 @@ def transform_data(
             ).sub(1)
         else:
             raise ValueError("Invalid interval")
-        if return_type == "annualized":
+        if return_type == "annualised":
             series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
         return series.dropna()
     if y_var == "calendar_returns":

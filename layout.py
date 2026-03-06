@@ -456,7 +456,7 @@ app_layout = html.Div(
                                                 dbc.Select(
                                                     {
                                                         "cumulative": "Cumulative",
-                                                        "annualized": "Annualized",
+                                                        "annualised": "Annualised",
                                                     },
                                                     value="cumulative",
                                                     id="return-type-selection",
@@ -663,7 +663,7 @@ app_layout = html.Div(
                                                 dbc.Select(
                                                     {
                                                         "cumulative": "Cumulative",
-                                                        "annualized": "Annualized",
+                                                        "annualised": "Annualised",
                                                     },
                                                     value="cumulative",
                                                     id="portfolio-return-type-selection",

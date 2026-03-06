@@ -621,7 +621,7 @@ def add_return_columns(df: pd.DataFrame, periods: list[str], durations: list[int
     for period, duration in zip(periods, durations):
         df[f"{period}_cumulative"] = df["price"].pct_change(periods=duration)
     for period, duration in zip(periods, durations):
-        df[f"{period}_annualized"] = (1 + df[f"{period}_cumulative"]) ** (
+        df[f"{period}_annualised"] = (1 + df[f"{period}_cumulative"]) ** (
             12 / duration
         ) - 1
 
@@ -727,14 +727,14 @@ def download_ft_data(
             ).select_one(".mod-tearsheet-historical-prices")
 
             if historical_prices_mod is None:
-                raise ValueError("Unable to retrive inception date")
+                raise ValueError("Unable to retrieve inception date")
             data_mod_config = historical_prices_mod["data-mod-config"]
             if isinstance(data_mod_config, str) and "inception" in data_mod_config:
                 start_date = pd.Timestamp(
                     json.loads(data_mod_config)["inception"]
                 ).tz_convert(None)
             else:
-                raise ValueError("Unable to retrive inception date")
+                raise ValueError("Unable to retrieve inception date")
         else:
             start_date = pd.Timestamp(item["details"]["inceptionDate"])
         response = client.get(
