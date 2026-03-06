@@ -644,9 +644,7 @@ def load_sgs_rates():
     sgs = read_sgs_data()
     sgs = (
         sgs.select(
-            pl.all()
-            .exclude("^.*Price.*$")
-            .name.map(
+            pl.all().name.map(
                 lambda s: (
                     s.removesuffix(" Yield")
                     .removesuffix(" T-Bill")

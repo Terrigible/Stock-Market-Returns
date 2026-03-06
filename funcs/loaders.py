@@ -506,8 +506,7 @@ def read_sgs_data():
 
 
 def load_sgs_rates():
-    sgs = read_sgs_data()
-    sgs_yields = sgs.filter(like="Yield")
+    sgs_yields = read_sgs_data()
     sgs_yields = sgs_yields.set_axis(
         sgs_yields.columns.str.removesuffix(" Yield")
         .str.removesuffix(" Bond")
