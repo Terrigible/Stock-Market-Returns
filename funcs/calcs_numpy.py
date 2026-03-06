@@ -11,10 +11,6 @@ def calculate_return(
 ):
     if investment_horizon is None:
         investment_horizon = dca_length
-    elif investment_horizon < dca_length:
-        raise ValueError(
-            "Investment horizon must be greater than or equal to DCA length"
-        )
     if ending_index < dca_length:
         return np.nan
     monthly_returns = 1 + monthly_returns
@@ -36,10 +32,6 @@ def calculate_return(
 def calculate_return_vector(
     monthly_returns: np.ndarray, dca_length: int, investment_horizon: int
 ):
-    if investment_horizon < dca_length:
-        raise ValueError(
-            "Investment horizon must be greater than or equal to DCA length"
-        )
     res = np.full_like(monthly_returns, np.nan)
     monthly_returns = 1 + monthly_returns
     for i in range(investment_horizon, len(monthly_returns)):
@@ -87,13 +79,6 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     cpi: np.ndarray,
     cash_returns: np.ndarray,
 ):
-    dca_amount = initial_monthly_amount * dca_interval
-    if fixed_transaction_fees >= dca_amount:
-        raise ValueError("Fixed fees must be less than the amount invested in each DCA")
-    if dca_interval > dca_length:
-        raise ValueError(
-            f"DCA interval ({dca_interval}) must be less than or equal to DCA length ({dca_length})"
-        )
     res = np.full((monthly_returns.shape[0], investment_horizon), np.nan)
     monthly_returns_with_fees = (
         (1 + monthly_returns) ** 12 - annualised_holding_fees
