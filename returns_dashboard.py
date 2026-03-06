@@ -150,18 +150,11 @@ def load_data(
             series = read_ft_data("FTSE All-World USD Gross").iloc[:, 0]
         elif security["others_index"] == "SREIT":
             series = read_ft_data("iEdge S-REIT Leaders USD Gross").iloc[:, 0]
-            series = convert_price_to_usd(series, "USD")
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
             series = series.pipe(resample_bme)
-    elif source == "YF":
-        ticker_currency = security["currency"]
-        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
-        series = convert_price_to_usd(series, ticker_currency)
-        if interval == "Monthly":
-            series = series.pipe(resample_bme)
-    elif source == "FT":
+    elif source in ["YF", "FT"]:
         ticker_currency = security["currency"]
         series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
         series = convert_price_to_usd(series, ticker_currency)
