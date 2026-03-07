@@ -198,16 +198,14 @@ def update_price_graph(
                     yaxis_range=[
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_min)
-                        .iloc[:, 0]
                         .loc[start_date:]
                         .apply(np.log10)
-                        .iloc[0],
+                        .iloc[0, 0],
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_max)
-                        .iloc[:, 0]
                         .loc[start_date:]
                         .apply(np.log10)
-                        .iloc[0],
+                        .iloc[0, 0],
                     ]
                 )
             elif (
@@ -221,16 +219,14 @@ def update_price_graph(
                     yaxis_range=[
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_min)
-                        .iloc[:, 0]
                         .loc[start_date:]
                         .apply(np.log10)
-                        .iloc[0],
+                        .iloc[0, 0],
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_max)
-                        .iloc[:, 0]
                         .loc[start_date:]
                         .apply(np.log10)
-                        .iloc[0],
+                        .iloc[0, 0],
                     ]
                 )
             elif (
