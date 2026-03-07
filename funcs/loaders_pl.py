@@ -994,21 +994,6 @@ def get_sgx_dividends(ticker: str):
     return df
 
 
-def add_return_columns(df: pl.DataFrame, periods: list[str], durations: list[int]):
-    """Add cumulative and annualised return columns to a DataFrame."""
-    for period, duration in zip(periods, durations):
-        df = df.with_columns(
-            pl.col("price").pct_change(duration).alias(f"{period}_cumulative")
-        )
-    for period, duration in zip(periods, durations):
-        df = df.with_columns(
-            ((pl.col(f"{period}_cumulative").add(1)).pow(12 / duration).sub(1)).alias(
-                f"{period}_annualised"
-            )
-        )
-    return df
-
-
 __all__ = [
     "read_msci_data",
     "load_fed_funds_rate",
@@ -1031,7 +1016,6 @@ __all__ = [
     "load_sg_cpi",
     "load_us_cpi_async",
     "load_us_cpi",
-    "add_return_columns",
     "read_greatlink_data",
     "read_ft_data",
     "get_ft_api_key",

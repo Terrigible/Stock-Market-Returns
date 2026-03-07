@@ -617,15 +617,6 @@ def load_us_cpi():
     return asyncio.run(load_us_cpi_async())
 
 
-def add_return_columns(df: pd.DataFrame, periods: list[str], durations: list[int]):
-    for period, duration in zip(periods, durations):
-        df[f"{period}_cumulative"] = df["price"].pct_change(periods=duration)
-    for period, duration in zip(periods, durations):
-        df[f"{period}_annualised"] = (1 + df[f"{period}_cumulative"]) ** (
-            12 / duration
-        ) - 1
-
-
 def read_greatlink_data(fund_name: str):
     df = (
         pd.read_excel(
@@ -800,7 +791,6 @@ __all__ = [
     "load_sg_cpi",
     "load_us_cpi_async",
     "load_us_cpi",
-    "add_return_columns",
     "read_greatlink_data",
     "read_ft_data",
     "get_ft_api_key",
