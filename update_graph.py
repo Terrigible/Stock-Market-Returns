@@ -305,8 +305,8 @@ def update_rolling_returns_graph(
     trace_options: dict[str, str],
     return_duration: str,
     return_duration_options: dict[str, str],
-    return_type: str,
-    return_type_options: dict[str, str],
+    return_annualisation: str,
+    return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
@@ -316,7 +316,7 @@ def update_rolling_returns_graph(
 
     title = (
         f"{return_duration_options[return_duration]} "
-        f"{return_type_options[return_type]} Rolling Returns"
+        f"{return_annualisation_options[return_annualisation]} Rolling Returns"
     )
 
     if baseline_trace != "None":
@@ -472,8 +472,8 @@ def update_graph(
     return_duration_options: dict[str, str],
     return_interval: str,
     return_interval_options: dict[str, str],
-    return_type: str,
-    return_type_options: dict[str, str],
+    return_annualisation: str,
+    return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     chart_type: str,
@@ -521,8 +521,8 @@ def update_graph(
             trace_options,
             return_duration,
             return_duration_options,
-            return_type,
-            return_type_options,
+            return_annualisation,
+            return_annualisation_options,
             baseline_trace,
             baseline_trace_options,
             chart_type,

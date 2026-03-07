@@ -198,7 +198,7 @@ def transform_data(
     y_var: str,
     return_duration: str,
     return_interval: str,
-    return_type: str,
+    return_annualisation: str,
 ) -> pd.Series:
     if y_var == "price":
         return series
@@ -232,7 +232,7 @@ def transform_data(
             ).sub(1)
         else:
             raise ValueError("Invalid interval")
-        if return_type == "annualised":
+        if return_annualisation == "annualised":
             series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
         return series.dropna()
     if y_var == "calendar_returns":
@@ -943,8 +943,8 @@ app.clientside_callback(
     Input("return-duration-selection", "options"),
     Input("return-interval-selection", "value"),
     Input("return-interval-selection", "options"),
-    Input("return-type-selection", "value"),
-    Input("return-type-selection", "options"),
+    Input("return-annualisation-selection", "value"),
+    Input("return-annualisation-selection", "options"),
     Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
@@ -966,8 +966,8 @@ def update_security_graph(
     return_duration_options: dict[str, str],
     return_interval: str,
     return_interval_options: dict[str, str],
-    return_type: str,
-    return_type_options: dict[str, str],
+    return_annualisation: str,
+    return_annualisation_options: dict[str, str],
     interval: str,
     baseline_security: str,
     baseline_security_options: dict[str, str],
@@ -995,7 +995,7 @@ def update_security_graph(
                 y_var,
                 return_duration,
                 return_interval,
-                return_type,
+                return_annualisation,
             )
             for selected_security in selected_securities
         }
@@ -1010,7 +1010,7 @@ def update_security_graph(
         + str(auto_scale)
         + return_duration
         + return_interval
-        + return_type
+        + return_annualisation
         + baseline_security
         + chart_type
     )
@@ -1027,8 +1027,8 @@ def update_security_graph(
         return_duration_options,
         return_interval,
         return_interval_options,
-        return_type,
-        return_type_options,
+        return_annualisation,
+        return_annualisation_options,
         baseline_security,
         baseline_security_options,
         chart_type,
@@ -1278,8 +1278,8 @@ app.clientside_callback(
     Input("portfolio-return-duration-selection", "options"),
     Input("portfolio-return-interval-selection", "value"),
     Input("portfolio-return-interval-selection", "options"),
-    Input("portfolio-return-type-selection", "value"),
-    Input("portfolio-return-type-selection", "options"),
+    Input("portfolio-return-annualisation-selection", "value"),
+    Input("portfolio-return-annualisation-selection", "options"),
     Input("portfolio-baseline-security-selection", "value"),
     Input("portfolio-baseline-security-selection", "options"),
     Input("portfolio-log-scale-switch", "value"),
@@ -1300,8 +1300,8 @@ def update_portfolio_graph(
     return_duration_options: dict[str, str],
     return_interval: str,
     return_interval_options: dict[str, str],
-    return_type: str,
-    return_type_options: dict[str, str],
+    return_annualisation: str,
+    return_annualisation_options: dict[str, str],
     baseline_portfolio: str,
     baseline_portfolio_options: dict[str, str],
     log_scale: bool,
@@ -1334,7 +1334,7 @@ def update_portfolio_graph(
                 y_var,
                 return_duration,
                 return_interval,
-                return_type,
+                return_annualisation,
             ).rename(portfolio_str)
             for portfolio_str in portfolio_strs
         ],
@@ -1350,7 +1350,7 @@ def update_portfolio_graph(
         + str(auto_scale)
         + return_duration
         + return_interval
-        + return_type
+        + return_annualisation
         + baseline_portfolio
         + chart_type
     )
@@ -1367,8 +1367,8 @@ def update_portfolio_graph(
         return_duration_options,
         return_interval,
         return_interval_options,
-        return_type,
-        return_type_options,
+        return_annualisation,
+        return_annualisation_options,
         baseline_portfolio,
         baseline_portfolio_options,
         chart_type,

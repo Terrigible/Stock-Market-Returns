@@ -450,8 +450,8 @@ app_layout = html.Div(
                                                     id="return-duration-selection",
                                                 ),
                                                 dbc.Label(
-                                                    "Return Type",
-                                                    html_for="return-type-selection",
+                                                    "Return Annualisation",
+                                                    html_for="return-annualisation-selection",
                                                 ),
                                                 dbc.Select(
                                                     {
@@ -459,7 +459,7 @@ app_layout = html.Div(
                                                         "annualised": "Annualised",
                                                     },
                                                     value="cumulative",
-                                                    id="return-type-selection",
+                                                    id="return-annualisation-selection",
                                                 ),
                                                 dbc.Label(
                                                     "Chart Type",
@@ -657,8 +657,8 @@ app_layout = html.Div(
                                                     id="portfolio-return-duration-selection",
                                                 ),
                                                 dbc.Label(
-                                                    "Return Type",
-                                                    html_for="portfolio-return-type-selection",
+                                                    "Return Annualisation",
+                                                    html_for="portfolio-return-annualisation-selection",
                                                 ),
                                                 dbc.Select(
                                                     {
@@ -666,7 +666,7 @@ app_layout = html.Div(
                                                         "annualised": "Annualised",
                                                     },
                                                     value="cumulative",
-                                                    id="portfolio-return-type-selection",
+                                                    id="portfolio-return-annualisation-selection",
                                                 ),
                                                 dbc.Label(
                                                     "Chart Type",
