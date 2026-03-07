@@ -91,7 +91,7 @@ def load_data(
             f"{security['msci_size']}/"
             f"{security['msci_style']}/"
             f"*{security['msci_tax_treatment']} {interval}.csv"
-        ).iloc[:, 0]
+        )
     elif source == "FRED":
         if security["fred_index"] == "US-T":
             series = (
@@ -126,23 +126,19 @@ def load_data(
             raise ValueError(f"Invalid index: {security}")
     elif source == "Others":
         if security["others_index"] == "STI":
-            series = read_ft_data("Straits Times Index USD Gross").iloc[:, 0]
+            series = read_ft_data("Straits Times Index USD Gross")
         elif security["others_index"] == "SPX":
-            series = read_ft_data(
-                f"S&P 500 USD {security['others_tax_treatment']}"
-            ).iloc[:, 0]
+            series = read_ft_data(f"S&P 500 USD {security['others_tax_treatment']}")
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
         elif security["others_index"] == "SHILLER_SPX":
-            series = read_shiller_sp500_data(security["others_tax_treatment"]).iloc[
-                :, 0
-            ]
+            series = read_shiller_sp500_data(security["others_tax_treatment"])
             if interval == "Daily":
                 series = series.resample("B").interpolate("linear")
         elif security["others_index"] == "AWORLDS":
-            series = read_ft_data("FTSE All-World USD Gross").iloc[:, 0]
+            series = read_ft_data("FTSE All-World USD Gross")
         elif security["others_index"] == "SREIT":
-            series = read_ft_data("iEdge S-REIT Leaders USD Gross").iloc[:, 0]
+            series = read_ft_data("iEdge S-REIT Leaders USD Gross")
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
@@ -158,15 +154,13 @@ def load_data(
         fund = security["fund"]
         fund_currency = security["currency"]
         if fund_company == "GreatLink":
-            series = read_greatlink_data(fund).iloc[:, 0]
+            series = read_greatlink_data(fund)
         elif fund_company == "GMO":
-            series = read_ft_data("GMO Quality Investment Fund").iloc[:, 0]
+            series = read_ft_data("GMO Quality Investment Fund")
         elif fund_company == "Fundsmith":
-            series = read_ft_data(
-                f"Fundsmith {fund.replace('Class ', '')} EUR Acc"
-            ).iloc[:, 0]
+            series = read_ft_data(f"Fundsmith {fund.replace('Class ', '')} EUR Acc")
         elif fund_company == "Dimensional":
-            series = read_ft_data(f"Dimensional {fund} GBP Accumulation").iloc[:, 0]
+            series = read_ft_data(f"Dimensional {fund} GBP Accumulation")
         else:
             raise ValueError(f"Invalid fund: {fund}")
         series = convert_price_to_usd(series, fund_currency)
@@ -178,7 +172,6 @@ def load_data(
         if adjust_for_inflation == "Yes":
             series = series.div(
                 load_us_cpi()
-                .iloc[:, 0]
                 .resample("D")
                 .interpolate("pchip")
                 .ffill()
@@ -191,7 +184,6 @@ def load_data(
         if adjust_for_inflation == "Yes":
             series = series.div(
                 load_sg_cpi()
-                .iloc[:, 0]
                 .resample("D")
                 .interpolate("pchip")
                 .ffill()
@@ -680,7 +672,7 @@ def add_ft_security(
     selected_securities_options: dict,
     ft_security: str,
     ft_invalid_securities_store: list[str],
-    ft_securities_store: dict,
+    ft_securities_store: dict[str, str],
     stored_ft_api_key: str | None,
 ):
     if not ft_security:
@@ -706,7 +698,7 @@ def add_ft_security(
                 no_update,
             )
     try:
-        df, ticker, currency, ft_api_key = download_ft_data(
+        series, ticker, currency, ft_api_key = download_ft_data(
             ft_security, stored_ft_api_key
         )
     except ValueError as e:
@@ -725,17 +717,11 @@ def add_ft_security(
     if ft_security.upper().endswith(":SES"):
         new_ft_security["dividends"] = True
         dividends = get_sgx_dividends(ticker.removesuffix(":SES"))
-        df.loc[:, "dividends"] = dividends.reindex(df.index, fill_value=0)
+        dividends = dividends.reindex(series.index, fill_value=0)
         manually_adjusted = (
-            df["price"]
-            .add(df["dividends"])
-            .div(df["price"].shift(1))
-            .fillna(1)
-            .cumprod()
+            series.add(dividends).div(series.shift(1)).fillna(1).cumprod()
         )
-        df["price"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
-            df["price"].iloc[-1]
-        )
+        series = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(series.iloc[-1])
 
     new_ft_security_str = json.dumps(new_ft_security)
     selected_securities.append(new_ft_security_str)
@@ -743,7 +729,7 @@ def add_ft_security(
         f"FT: {ticker} {('(With Dividends)') * new_ft_security['dividends']}"
     )
 
-    ft_securities_store[new_ft_security_str] = df["price"].to_json(
+    ft_securities_store[new_ft_security_str] = series.to_json(
         orient="index", date_format="iso"
     )
 
@@ -1555,8 +1541,8 @@ def backtest_accumulation_strategy(
         .fillna(0)
         .to_numpy()
     )
-    us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
-    sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
+    us_cpi = load_us_cpi().reindex(strategy_series.index).to_numpy()
+    sg_cpi = load_sg_cpi().reindex(strategy_series.index).to_numpy()
     cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
     if cpi is None:
         raise ValueError("Invalid currency")
@@ -1711,7 +1697,7 @@ def handle_accumulation_graph_interaction(click_data: ClickData, _):
     prevent_initial_call=True,
 )
 def show_accumulation_strategy_modal(
-    n_clicks,
+    _,
     clicked_date_str: str,
     strategy_strs: list[str],
     strategy_options: dict[str, str],
@@ -1881,8 +1867,8 @@ def backtest_withdrawal_strategy(
     annualised_holding_fees /= 100
 
     strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
-    us_cpi = load_us_cpi()["us_cpi"].reindex(strategy_series.index).to_numpy()
-    sg_cpi = load_sg_cpi()["sg_cpi"].reindex(strategy_series.index).to_numpy()
+    us_cpi = load_us_cpi().reindex(strategy_series.index).to_numpy()
+    sg_cpi = load_sg_cpi().reindex(strategy_series.index).to_numpy()
     cpi = (
         np.ones(len(strategy_series))
         if not adjust_for_inflation

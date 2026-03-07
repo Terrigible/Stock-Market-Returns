@@ -18,16 +18,21 @@ def read_msci_data(filename_pattern: str):
     return (
         pd.read_csv(glob(filename_pattern)[0], index_col="Date", parse_dates=["Date"])
         .rename_axis("date")
-        .set_axis(["price"], axis=1)
+        .iloc[:, 0]
+        .rename("price")
     )
 
 
 def read_ft_data(filename: str):
-    df = pd.read_csv(
-        f"data/FT/{filename}.csv",
-        parse_dates=["date"],
-        index_col="date",
-    )[["close"]].set_axis(["price"], axis=1)
+    df = (
+        pd.read_csv(
+            f"data/FT/{filename}.csv",
+            parse_dates=["date"],
+            index_col="date",
+        )
+        .loc[:, "close"]
+        .rename("price")
+    )
 
     if filename == "S&P 500 USD Gross":
         df.update(
@@ -190,8 +195,9 @@ def read_shiller_sp500_data(tax_treatment: str):
         .div(df["P"].shift(1))
         .fillna(1)
         .cumprod()
+        .rename_axis("date")
+        .rename("price")
     )
-    shiller_sp500 = pd.DataFrame(shiller_sp500.rename_axis("date").rename("price"))
     return shiller_sp500
 
 
@@ -400,7 +406,7 @@ def load_sgd_neer():
         "data/sgd_neer.csv",
         parse_dates=["date"],
         index_col="date",
-    )
+    ).loc[:, "sgd_neer"]
     if df.index[-1] + BMonthEnd() + Week(weekday=4) < pd.to_datetime("today"):
         try:
             res = httpx.get(
@@ -418,7 +424,8 @@ def load_sgd_neer():
                     value=lambda x: x["value"].astype(float),
                 )
                 .set_index("date")
-                .rename(columns={"value": "sgd_neer"})
+                .loc[:, "value"]
+                .rename("sgd_neer")
             )
             df.to_csv("data/sgd_neer.csv")
         except httpx.HTTPError as e:
@@ -554,13 +561,15 @@ def download_sg_cpi():
     sg_cpi = sg_cpi.set_axis(["date", "sg_cpi"], axis=1)
     sg_cpi["date"] = pd.to_datetime(sg_cpi["date"], format="%Y %b")
     sg_cpi["sg_cpi"] = sg_cpi["sg_cpi"].astype(float)
-    sg_cpi = sg_cpi.set_index("date").resample("BME").last()
+    sg_cpi = sg_cpi.set_index("date").resample("BME").last()["sg_cpi"]
     sg_cpi.to_csv("data/sg_cpi.csv")
     return sg_cpi
 
 
 def load_sg_cpi():
-    sg_cpi = pd.read_csv("data/sg_cpi.csv", parse_dates=["date"], index_col="date")
+    sg_cpi = pd.read_csv("data/sg_cpi.csv", parse_dates=["date"], index_col="date")[
+        "sg_cpi"
+    ]
     if sg_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(23) < pd.to_datetime("today"):
         try:
             sg_cpi = download_sg_cpi()
@@ -599,12 +608,14 @@ async def download_us_cpi_async():
     us_cpi["value"] = us_cpi["value"].replace("-", np.nan).astype(float)
     us_cpi = us_cpi[["date", "value"]]
     us_cpi = us_cpi.set_axis(["date", "us_cpi"], axis=1)
-    us_cpi = us_cpi.set_index("date")
+    us_cpi = us_cpi.set_index("date")["us_cpi"]
     return us_cpi
 
 
 async def load_us_cpi_async():
-    us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")
+    us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")[
+        "us_cpi"
+    ]
     if (
         us_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(10) < pd.to_datetime("today")
     ) and os.environ.get("BLS_API_KEY", None):
@@ -658,7 +669,7 @@ def read_greatlink_data(fund_name: str):
             .rename("price")
             .to_frame()
         )
-    return df
+    return df["price"]
 
 
 def get_ft_api_key():
@@ -674,7 +685,7 @@ def get_ft_api_key():
 
 def download_ft_data(
     symbol: str, api_key: str | None = None
-) -> tuple[pd.DataFrame, str, str, str]:
+) -> tuple[pd.Series, str, str, str]:
     with httpx.Client() as client:
         if api_key is None:
             api_key = get_ft_api_key()
@@ -752,9 +763,9 @@ def download_ft_data(
             .assign(date=lambda df: df["date"].pipe(pd.to_datetime))
             .set_index("date")[::-1]
         )
-        df = df[["close"]].set_axis(["price"], axis=1)
+        series = df["close"].rename("price")
 
-        return df, ticker, currency, api_key
+        return series, ticker, currency, api_key
 
 
 def get_sgx_dividends(ticker: str):
