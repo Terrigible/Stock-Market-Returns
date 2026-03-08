@@ -223,6 +223,7 @@ def read_shiller_sp500_data(tax_treatment: str):
     return pl.read_excel(
         "data/ie_data.xls",
         sheet_name="Data",
+        columns=["Date", "P", "D"],
         read_options=dict(header_row=7),
         schema_overrides={"Date": pl.String},
     ).select(

@@ -180,14 +180,18 @@ def read_shiller_sp500_data(tax_treatment: str):
     df = pd.read_excel(
         "data/ie_data.xls",
         "Data",
+        usecols=["Date", "P", "D"],
         engine="calamine",
-        skiprows=range(7),
+        skiprows=7,
         skipfooter=1,
         dtype={"Date": str},
-    ).drop(["Unnamed: 13", "Unnamed: 15"], axis=1)
-    df["Date"] = pd.to_datetime(
-        df["Date"].str.pad(7, "right", "0"), format="%Y.%m"
-    ).add(BMonthEnd(0))
+    )
+    df["Date"] = (
+        df["Date"]
+        .str.pad(7, "right", "0")
+        .pipe(pd.to_datetime, format="%Y.%m")
+        .add(BMonthEnd(0))
+    )
     df = df.set_index("Date")
     shiller_sp500 = (
         df["P"]
