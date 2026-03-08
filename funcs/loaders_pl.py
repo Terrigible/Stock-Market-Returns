@@ -147,7 +147,7 @@ async def download_us_treasury_rates_async():
     return treasury_rates
 
 
-async def load_us_treasury_rates_async():
+def load_us_treasury_rates():
     treasury_rates = pl.read_csv("data/us_treasury.csv", use_pyarrow=True)
 
     if (
@@ -160,7 +160,7 @@ async def load_us_treasury_rates_async():
         .last()
         and "FRED_API_KEY" in os.environ
     ):
-        treasury_rates = await download_us_treasury_rates_async()
+        treasury_rates = asyncio.run(download_us_treasury_rates_async())
 
     treasury_rates = treasury_rates.with_columns(
         pl.col("20").fill_null(pl.col("10").add(pl.col("30")).truediv(2)),
@@ -172,8 +172,8 @@ async def load_us_treasury_rates_async():
     return treasury_rates
 
 
-async def load_us_treasury_returns_async():
-    treasury_rates = await load_us_treasury_rates_async()
+def load_us_treasury_returns():
+    treasury_rates = load_us_treasury_rates()
     treasury_returns = pl.DataFrame().with_columns(treasury_rates["date"])
     # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
     for duration in treasury_rates.drop("date").columns:
@@ -209,14 +209,6 @@ async def load_us_treasury_returns_async():
         treasury_returns = treasury_returns.with_columns(price[duration])
 
     return treasury_returns
-
-
-def load_us_treasury_rates():
-    return asyncio.run(load_us_treasury_rates_async())
-
-
-def load_us_treasury_returns():
-    return asyncio.run(load_us_treasury_returns_async())
 
 
 def read_shiller_sp500_data(tax_treatment: str):
@@ -388,7 +380,7 @@ async def download_fred_usd_fx_async():
     return usd_fx
 
 
-async def load_fred_usd_fx_async():
+def load_fred_usd_fx():
     usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
     if (
         usd_fx.get_column("date")
@@ -400,13 +392,9 @@ async def load_fred_usd_fx_async():
         .last()
         and "FRED_API_KEY" in os.environ
     ):
-        usd_fx = await download_fred_usd_fx_async()
+        usd_fx = asyncio.run(download_fred_usd_fx_async())
 
     return usd_fx
-
-
-def load_fred_usd_fx():
-    return asyncio.run(load_fred_usd_fx_async())
 
 
 def load_fred_usdsgd():
@@ -816,7 +804,7 @@ async def download_us_cpi_async():
     return us_cpi
 
 
-async def load_us_cpi_async():
+def load_us_cpi():
     us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
     if (
         us_cpi.get_column("date")
@@ -826,13 +814,9 @@ async def load_us_cpi_async():
         .last()
         and "BLS_API_KEY" in os.environ
     ):
-        us_cpi = await download_us_cpi_async()
+        us_cpi = asyncio.run(download_us_cpi_async())
         us_cpi.write_csv("data/us_cpi.csv")
     return us_cpi
-
-
-def load_us_cpi():
-    return asyncio.run(load_us_cpi_async())
 
 
 def read_greatlink_data(fund_name: str):
@@ -999,14 +983,11 @@ __all__ = [
     "read_msci_data",
     "load_fed_funds_rate",
     "load_fed_funds_returns",
-    "load_us_treasury_rates_async",
     "load_us_treasury_rates",
-    "load_us_treasury_returns_async",
     "load_us_treasury_returns",
     "read_shiller_sp500_data",
     "load_usdsgd",
     "load_mas_sgd_fx",
-    "load_fred_usd_fx_async",
     "load_fred_usd_fx",
     "load_mas_swap_points",
     "load_sgd_neer",
@@ -1015,7 +996,6 @@ __all__ = [
     "load_sgs_rates",
     "load_sgs_returns",
     "load_sg_cpi",
-    "load_us_cpi_async",
     "load_us_cpi",
     "read_greatlink_data",
     "read_ft_data",
