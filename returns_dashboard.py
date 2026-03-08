@@ -21,6 +21,8 @@ from funcs.calcs_numpy import (
 )
 from funcs.loaders import (
     download_ft_data,
+    fast_bday_downsample,
+    fast_bday_upsample,
     get_sgx_dividends,
     load_fed_funds_returns,
     load_fred_usd_fx,
@@ -94,23 +96,23 @@ def load_data(
         )
     elif source == "FRED":
         if security["fred_index"] == "US-T":
-            series = (
-                load_us_treasury_returns()[security["us_treasury_duration"]]
-                .resample("B")
-                .last()
+            series = load_us_treasury_returns()[security["us_treasury_duration"]].pipe(
+                fast_bday_downsample
             )
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
         elif security["fred_index"] == "FFR":
             fed_funds_returns = load_fed_funds_returns()
-            series = fed_funds_returns.resample("B").last()
+            series = fed_funds_returns.pipe(fast_bday_downsample)
             if interval == "Monthly":
                 series = fed_funds_returns.pipe(resample_bme)
         else:
             raise ValueError(f"Invalid index: {security}")
     elif source == "MAS":
         if security["mas_index"] == "SGS":
-            series = load_sgs_returns()[security["sgs_duration"]].resample("B").last()
+            series = load_sgs_returns()[security["sgs_duration"]].pipe(
+                fast_bday_downsample
+            )
             series = convert_price_to_usd(series, "SGD")
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
@@ -119,7 +121,7 @@ def load_data(
             sgd_interest_rates_returns = convert_price_to_usd(
                 sgd_interest_rates_returns, "SGD"
             )
-            series = sgd_interest_rates_returns.resample("B").last()
+            series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
             if interval == "Monthly":
                 series = sgd_interest_rates_returns.pipe(resample_bme)
         else:
@@ -130,11 +132,11 @@ def load_data(
         elif security["others_index"] == "SPX":
             series = read_ft_data(f"S&P 500 USD {security['others_tax_treatment']}")
             if interval == "Daily":
-                series = series.resample("B").interpolate("linear")
+                series = series.pipe(fast_bday_upsample)
         elif security["others_index"] == "SHILLER_SPX":
             series = read_shiller_sp500_data(security["others_tax_treatment"])
             if interval == "Daily":
-                series = series.resample("B").interpolate("linear")
+                series = series.pipe(fast_bday_upsample)
         elif security["others_index"] == "AWORLDS":
             series = read_ft_data("FTSE All-World USD Gross")
         elif security["others_index"] == "SREIT":

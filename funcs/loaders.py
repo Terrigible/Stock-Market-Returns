@@ -14,6 +14,18 @@ from bs4 import BeautifulSoup
 from pandas.tseries.offsets import BDay, BMonthEnd, Day, MonthEnd, Week
 
 
+def fast_bday_upsample(series: pd.Series):
+    new_index = pd.date_range(start=series.index[0], end=series.index[-1], freq="D")
+    new_index = new_index[new_index.day_of_week < 5]
+    return series.reindex(new_index).interpolate("linear")
+
+
+def fast_bday_downsample(series: pd.Series):
+    new_index = pd.date_range(start=series.index[0], end=series.index[-1], freq="D")
+    new_index = new_index[new_index.day_of_week < 5]
+    return series.reindex(new_index)
+
+
 def read_msci_data(filename_pattern: str):
     return (
         pd.read_csv(glob(filename_pattern)[0], index_col="Date", parse_dates=["Date"])
@@ -785,6 +797,8 @@ def get_sgx_dividends(ticker: str):
 
 
 __all__ = [
+    "fast_bday_upsample",
+    "fast_bday_downsample",
     "read_msci_data",
     "load_fed_funds_rate",
     "load_fed_funds_returns",
