@@ -592,7 +592,7 @@ def add_yf_security(
             return (
                 selected_securities,
                 selected_securities_options,
-                yf_securities_store,
+                no_update,
             )
     ticker = yf.Ticker(yf_security)
     if ticker.history_metadata == {}:
@@ -690,7 +690,7 @@ def add_ft_security(
             return (
                 selected_securities,
                 selected_securities_options,
-                ft_securities_store,
+                no_update,
                 no_update,
             )
     try:
