@@ -19,6 +19,7 @@ dependencies = [
     "lxml>=6.0.2",
     "numba>=0.64.0",
     "sdmx1>=2.25.1",
+    "orjson>=3.11.7",
 ]
 
 [dependency-groups]
