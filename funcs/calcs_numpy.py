@@ -35,8 +35,8 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     cash_returns: np.ndarray,
 ):
     res = np.full((monthly_returns.shape[0], investment_horizon), np.nan)
-    monthly_returns_with_fees = (
-        (1 + monthly_returns) ** 12 - annualised_holding_fees
+    monthly_returns_with_fees = (1 + monthly_returns) * (
+        1 - annualised_holding_fees
     ) ** (1 / 12)
     for i in range(investment_horizon, len(monthly_returns)):
         share_value = initial_portfolio_value
@@ -101,8 +101,8 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     annualised_holding_fees: float,
 ):
     initial_withdrawal_amount = initial_monthly_withdrawal * withdrawal_interval
-    monthly_returns_with_fees = (
-        (1 + monthly_returns) ** 12 - annualised_holding_fees
+    monthly_returns_with_fees = (1 + monthly_returns) * (
+        1 - annualised_holding_fees
     ) ** (1 / 12)
     res = np.full((monthly_returns.shape[0], withdrawal_horizon), np.nan)
     for i in range(withdrawal_horizon, len(monthly_returns)):
