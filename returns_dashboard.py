@@ -95,8 +95,10 @@ def load_data(
         )
     elif source == "FRED":
         if security["fred_index"] == "US-T":
-            series = load_us_treasury_returns()[security["us_treasury_duration"]].pipe(
-                fast_bday_downsample
+            series = (
+                load_us_treasury_returns()[security["us_treasury_duration"]]
+                .dropna()
+                .pipe(fast_bday_downsample)
             )
             if interval == "Monthly":
                 series = series.pipe(resample_bme)
@@ -109,8 +111,10 @@ def load_data(
             raise ValueError(f"Invalid index: {security}")
     elif source == "MAS":
         if security["mas_index"] == "SGS":
-            series = load_sgs_returns()[security["sgs_duration"]].pipe(
-                fast_bday_downsample
+            series = (
+                load_sgs_returns()[security["sgs_duration"]]
+                .dropna()
+                .pipe(fast_bday_downsample)
             )
             series = convert_price_to_usd(series, "SGD")
             if interval == "Monthly":
