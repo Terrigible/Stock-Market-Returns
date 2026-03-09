@@ -819,6 +819,14 @@ def load_us_cpi():
     return us_cpi
 
 
+def load_cpi(currency: str):
+    if currency == "USD":
+        return load_us_cpi()
+    if currency == "SGD":
+        return load_sg_cpi()
+    raise ValueError(f'Invalid currency: {currency}. Valid inputs: ["USD", "SGD"]')
+
+
 def read_greatlink_data(fund_name: str):
     price = (
         pl.read_excel(
@@ -997,6 +1005,7 @@ __all__ = [
     "load_sgs_returns",
     "load_sg_cpi",
     "load_us_cpi",
+    "load_cpi",
     "read_greatlink_data",
     "read_ft_data",
     "get_ft_api_key",

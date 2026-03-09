@@ -24,13 +24,12 @@ from funcs.loaders import (
     fast_bday_downsample,
     fast_bday_upsample,
     get_sgx_dividends,
+    load_cpi,
     load_fed_funds_returns,
     load_fred_usd_fx,
     load_mas_sgd_fx,
-    load_sg_cpi,
     load_sgd_interest_rates_returns,
     load_sgs_returns,
-    load_us_cpi,
     load_us_treasury_returns,
     load_usdsgd,
     read_ft_data,
@@ -170,27 +169,18 @@ def load_data(
             series = series.pipe(resample_bme)
     else:
         raise ValueError(f"Invalid index: {security}")
-    if currency == "USD":
-        if adjust_for_inflation == "Yes":
-            series = series.div(
-                load_us_cpi()
-                .resample("D")
-                .interpolate("pchip")
-                .ffill()
-                .reindex(series.index)
-            )
-    elif currency == "SGD":
+    if currency == "SGD":
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
         )
-        if adjust_for_inflation == "Yes":
-            series = series.div(
-                load_sg_cpi()
-                .resample("D")
-                .interpolate("pchip")
-                .ffill()
-                .reindex(series.index)
-            )
+    if adjust_for_inflation == "Yes":
+        series = series.div(
+            load_cpi(currency)
+            .resample("D")
+            .interpolate("pchip")
+            .ffill()
+            .reindex(series.index)
+        )
     return series.rename_axis("date").rename("price")
 
 
@@ -1554,11 +1544,7 @@ def backtest_accumulation_strategy(
         .fillna(0)
         .to_numpy()
     )
-    us_cpi = load_us_cpi().reindex(strategy_series.index).to_numpy()
-    sg_cpi = load_sg_cpi().reindex(strategy_series.index).to_numpy()
-    cpi = us_cpi if currency == "USD" else sg_cpi if currency == "SGD" else None
-    if cpi is None:
-        raise ValueError("Invalid currency")
+    cpi = load_cpi(currency).reindex(strategy_series.index).to_numpy()
 
     portfolio_values = pd.DataFrame(
         calculate_dca_portfolio_value_with_fees_and_interest_vector(
@@ -1880,14 +1866,10 @@ def backtest_withdrawal_strategy(
     annualised_holding_fees /= 100
 
     strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
-    us_cpi = load_us_cpi().reindex(strategy_series.index).to_numpy()
-    sg_cpi = load_sg_cpi().reindex(strategy_series.index).to_numpy()
     cpi = (
         np.ones(len(strategy_series))
         if not adjust_for_inflation
-        else us_cpi
-        if currency == "USD"
-        else sg_cpi
+        else load_cpi(currency).reindex(strategy_series.index).to_numpy()
     )
 
     portfolio_values = pd.DataFrame(
