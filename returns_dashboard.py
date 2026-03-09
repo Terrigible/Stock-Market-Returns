@@ -1384,10 +1384,21 @@ def update_portfolio_graph(
 @app.callback(
     Output("accumulation-strategy-portfolio", "options"),
     Output("withdrawal-strategy-portfolio", "options"),
+    Output("accumulation-strategy-portfolio", "value"),
+    Output("withdrawal-strategy-portfolio", "value"),
     Input("portfolios", "options"),
+    prevent_initial_call=True,
 )
 def update_strategy_portfolios(portfolio_options: dict[str, str]):
-    return portfolio_options, portfolio_options
+    selected_value = (
+        next(iter(portfolio_options)) if len(portfolio_options) == 1 else no_update
+    )
+    return (
+        portfolio_options,
+        portfolio_options,
+        selected_value,
+        selected_value,
+    )
 
 
 @app.callback(
