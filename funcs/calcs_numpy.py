@@ -1,50 +1,5 @@
 import numpy as np
-from numba import bool_, float64, int64, njit, optional
-
-
-@njit(float64(int64, int64, float64[:], optional(int64)))
-def calculate_return(
-    ending_index: int,
-    dca_length: int,
-    monthly_returns: np.ndarray,
-    investment_horizon=None,
-):
-    if investment_horizon is None:
-        investment_horizon = dca_length
-    if ending_index < dca_length:
-        return np.nan
-    monthly_returns = 1 + monthly_returns
-    share_value = 0
-    cash = 1
-    for i in range(
-        ending_index - investment_horizon,
-        ending_index - investment_horizon + dca_length,
-    ):
-        cash -= 1 / dca_length
-        share_value += 1 / dca_length
-        share_value *= monthly_returns[i + 1]
-    for i in range(ending_index - investment_horizon + dca_length, ending_index):
-        share_value *= monthly_returns[i + 1]
-    return share_value - 1
-
-
-@njit(float64[:](float64[:], int64, int64))
-def calculate_return_vector(
-    monthly_returns: np.ndarray, dca_length: int, investment_horizon: int
-):
-    res = np.full_like(monthly_returns, np.nan)
-    monthly_returns = 1 + monthly_returns
-    for i in range(investment_horizon, len(monthly_returns)):
-        share_value = 0
-        cash = 1
-        for j in range(i - investment_horizon, i - investment_horizon + dca_length):
-            cash -= 1 / dca_length
-            share_value += 1 / dca_length
-            share_value *= monthly_returns[j + 1]
-        for j in range(i - investment_horizon + dca_length, i):
-            share_value *= monthly_returns[j + 1]
-        res[i] = share_value - 1
-    return res
+from numba import bool_, float64, int64, njit
 
 
 @njit(
