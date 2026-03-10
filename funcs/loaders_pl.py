@@ -751,6 +751,7 @@ def load_sg_cpi():
     sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
     if (
         sg_cpi.get_column("date")
+        .dt.offset_by("1mo")
         .dt.month_end()
         .dt.offset_by("23d")
         .lt(datetime.date.today())
@@ -808,8 +809,9 @@ def load_us_cpi():
     us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
     if (
         us_cpi.get_column("date")
+        .dt.offset_by("1mo")
         .dt.month_end()
-        .dt.add_business_days(10, roll="backward")
+        .dt.offset_by("15d")
         .lt(datetime.date.today())
         .last()
         and "BLS_API_KEY" in os.environ

@@ -621,7 +621,7 @@ def load_us_cpi():
         "us_cpi"
     ]
     if (
-        us_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(10) < pd.to_datetime("today")
+        us_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(15) < pd.to_datetime("today")
     ) and os.environ.get("BLS_API_KEY", None):
         us_cpi = asyncio.run(download_us_cpi_async())
         us_cpi.to_csv("data/us_cpi.csv")
