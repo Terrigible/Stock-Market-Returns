@@ -265,7 +265,7 @@ def update_price_graph(
             name=trace_options[column],
             line=go.scatter.Line(color=trace_colourmap[column]),
             hoverinfo=hoverinfo,
-            hovertext=df[column].apply(lambda x: f"{x:+.2%}")
+            hovertext=np.array([f"{x:+.2%}" for x in df[column].values])
             if log_scale and percent_scale
             else None,
         )
