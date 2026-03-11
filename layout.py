@@ -498,6 +498,7 @@ app_layout = html.Div(
                                 dcc.Graph(
                                     responsive=True,
                                     id="graph",
+                                    config={"toImageButtonOptions": {"scale": 4}},
                                 ),
                                 dcc.Store(
                                     id="graph-last-layout-state-store",
@@ -705,6 +706,7 @@ app_layout = html.Div(
                                 dcc.Graph(
                                     responsive=True,
                                     id="portfolio-graph",
+                                    config={"toImageButtonOptions": {"scale": 4}},
                                 ),
                                 dcc.Store(
                                     id="portfolio-graph-last-layout-state-store",
@@ -899,6 +901,7 @@ app_layout = html.Div(
                                         },
                                     },
                                     id="accumulation-strategy-graph",
+                                    config={"toImageButtonOptions": {"scale": 4}},
                                 ),
                                 dcc.Store(
                                     id="accumulation-strategy-clicked-date-store"
@@ -919,6 +922,7 @@ app_layout = html.Div(
                                     dcc.Graph(
                                         id="accumulation-strategy-modal-graph",
                                         style={"height": "100%"},
+                                        config={"toImageButtonOptions": {"scale": 4}},
                                     )
                                 ),
                             ],
@@ -1096,6 +1100,7 @@ app_layout = html.Div(
                                         },
                                     },
                                     id="withdrawal-strategy-graph",
+                                    config={"toImageButtonOptions": {"scale": 4}},
                                 ),
                                 dcc.Store(id="withdrawal-strategy-clicked-date-store"),
                                 dbc.Button(
@@ -1114,6 +1119,7 @@ app_layout = html.Div(
                                     dcc.Graph(
                                         id="withdrawal-strategy-modal-graph",
                                         style={"height": "100%"},
+                                        config={"toImageButtonOptions": {"scale": 4}},
                                     )
                                 ),
                             ],
