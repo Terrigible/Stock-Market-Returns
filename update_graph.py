@@ -489,7 +489,7 @@ def update_graph(
         uirevision=y_var,
         yaxis_side="right",
         yaxis_uirevision=False if auto_scale else uirevision,
-        margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+        margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
     )
 
     if ctx.triggered_id not in ["graph", "portfolio-graph"]:

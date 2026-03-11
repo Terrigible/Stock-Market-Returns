@@ -1658,7 +1658,7 @@ def update_accumulation_strategy_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
 
@@ -1758,7 +1758,7 @@ def show_accumulation_strategy_modal(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
 
@@ -1980,7 +1980,7 @@ def update_withdrawal_strategy_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
 
@@ -2072,7 +2072,7 @@ def show_withdrawal_strategy_modal(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            margin=go.layout.Margin(t=60, b=30, l=10, r=90, autoexpand=True),
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
 
