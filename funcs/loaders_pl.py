@@ -764,47 +764,6 @@ def load_sg_cpi():
     return sg_cpi
 
 
-async def download_us_cpi_async():
-    async with httpx.AsyncClient() as client:
-        tasks = (
-            client.post(
-                "https://api.bls.gov/publicAPI/v2/timeseries/data/",
-                json={
-                    "seriesid": ["CUSR0000SA0"],
-                    "startyear": f"{year}",
-                    "endyear": f"{year + 9}",
-                    "catalog": "true",
-                    "registrationkey": os.environ["BLS_API_KEY"],
-                },
-                headers={"Content-Type": "application/json"},
-            )
-            for year in range(1947, datetime.date.today().year, 10)
-        )
-        responses = await asyncio.gather(*tasks)
-    responses = responses[::-1]
-    us_cpi = (
-        pl.DataFrame(
-            chain.from_iterable(
-                [
-                    response.json()["Results"]["series"][0]["data"]
-                    for response in responses
-                ]
-            )
-        )
-        .select(
-            pl.col("year")
-            .add(pl.col("period").str.slice(-2))
-            .str.to_date("%Y%m")
-            .dt.month_end()
-            .dt.add_business_days(0, roll="backward")
-            .alias("date"),
-            pl.col("value").cast(pl.Float64).alias("us_cpi"),
-        )
-        .sort("date")
-    )
-    return us_cpi
-
-
 def load_us_cpi():
     us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
     if (
@@ -814,11 +773,14 @@ def load_us_cpi():
         .dt.offset_by("15d")
         .lt(datetime.date.today())
         .last()
-        and "BLS_API_KEY" in os.environ
+        and "FRED_API_KEY" in os.environ
     ):
-        us_cpi = asyncio.run(download_us_cpi_async())
+        us_cpi = get_fred_series("CPIAUCNS").select(
+            pl.col("date").dt.month_end().dt.add_business_days(0, roll="backward"),
+            pl.col("CPIAUCNS").alias("us_cpi"),
+        )
         us_cpi.write_csv("data/us_cpi.csv")
-    return us_cpi
+    return us_cpi.interpolate()
 
 
 def load_cpi(currency: str):

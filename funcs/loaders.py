@@ -582,48 +582,14 @@ def load_sg_cpi():
     return sg_cpi
 
 
-async def download_us_cpi_async():
-    async with httpx.AsyncClient() as client:
-        tasks = (
-            client.post(
-                "https://api.bls.gov/publicAPI/v2/timeseries/data/",
-                json={
-                    "seriesid": ["CUSR0000SA0"],
-                    "startyear": f"{year}",
-                    "endyear": f"{year + 9}",
-                    "catalog": "true",
-                    "registrationkey": os.environ["BLS_API_KEY"],
-                },
-                headers={"Content-Type": "application/json"},
-            )
-            for year in range(1947, pd.to_datetime("today").year, 10)
-        )
-        responses = await asyncio.gather(*tasks)
-    responses = responses[::-1]
-    us_cpi = pd.DataFrame(
-        chain.from_iterable(
-            [response.json()["Results"]["series"][0]["data"] for response in responses]
-        )
-    ).iloc[::-1]
-    us_cpi["date"] = (
-        pd.to_datetime(us_cpi["year"].str[:] + us_cpi["period"].str[1:], format="%Y%m")
-        + pd.offsets.BMonthEnd()
-    )
-    us_cpi["value"] = us_cpi["value"].replace("-", np.nan).astype(float)
-    us_cpi = us_cpi[["date", "value"]]
-    us_cpi = us_cpi.set_axis(["date", "us_cpi"], axis=1)
-    us_cpi = us_cpi.set_index("date")["us_cpi"]
-    return us_cpi
-
-
 def load_us_cpi():
     us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")[
         "us_cpi"
     ]
     if (
         us_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(15) < pd.to_datetime("today")
-    ) and os.environ.get("BLS_API_KEY", None):
-        us_cpi = asyncio.run(download_us_cpi_async())
+    ) and os.environ.get("FRED_API_KEY", None):
+        us_cpi = get_fred_series("CPIAUCNS").rename("us_cpi").resample("BME").last()
         us_cpi.to_csv("data/us_cpi.csv")
     return us_cpi.interpolate()
 
