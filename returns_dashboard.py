@@ -265,7 +265,10 @@ server = app.server
 app.layout = app_layout
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateSecuritySelectionVisibility"
+    ),
     Output("index-selection-container", "style"),
     Output("fund-selection-container", "style"),
     Output("yf-security-selection-container", "style"),
@@ -273,18 +276,12 @@ app.layout = app_layout
     Input("security-type-selection", "value"),
     Input("security-type-selection", "options"),
 )
-def update_security_selection_visibility(
-    security_type: str, security_type_options: list[str]
-):
-    return tuple(
-        {"display": "block"}
-        if security_type == security_type_option
-        else {"display": "none"}
-        for security_type_option in security_type_options
-    )
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateIndexSelectionVisibility"
+    ),
     Output("msci-index-selection-container", "style"),
     Output("fred-index-selection-container", "style"),
     Output("mas-index-selection-container", "style"),
@@ -292,15 +289,6 @@ def update_security_selection_visibility(
     Input("index-provider-selection", "value"),
     Input("index-provider-selection", "options"),
 )
-def update_index_selection_visibility(
-    index_provider: str, index_provider_options: dict[str, str]
-):
-    return tuple(
-        {"display": "block"}
-        if index_provider == index_provider_option
-        else {"display": "none"}
-        for index_provider_option in index_provider_options
-    )
 
 
 @app.callback(
@@ -347,43 +335,40 @@ def update_msci_index_options(index_type: str):
         }, "AUSTRALIA"
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility",
+        function_name="updateOthersTaxTreatmentSelectionVisibility",
+    ),
     Output("others-tax-treatment-selection-container", "style"),
     Input("others-index-selection", "value"),
 )
-def update_others_tax_treatment_selection_visibility(others_index: str):
-    if others_index in ["STI", "AWORLDS", "SREIT"]:
-        return {"display": "none"}
-    return {"display": "block"}
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateFredDurationSelectionVisibility"
+    ),
     Output("us-treasury-index-selection-container", "style"),
     Input("fred-index-selection", "value"),
 )
-def update_fred_duration_selection_visibility(fred_index: str):
-    if fred_index == "FFR":
-        return {"display": "none"}
-    return {"display": "block"}
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateMasDurationSelectionVisibility"
+    ),
     Output("sgs-index-selection-container", "style"),
     Input("mas-index-selection", "value"),
 )
-def update_mas_duration_selection_visibility(mas_index: str):
-    if mas_index == "SORA":
-        return {"display": "none"}
-    return {"display": "block"}
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(namespace="toast", function_name="updateToast"),
     Output("toast", "children"),
     Output("toast", "is_open"),
     Input("toast-store", "data"),
 )
-def update_toast(toast):
-    return toast, True if toast else False
 
 
 @app.callback(
@@ -856,35 +841,16 @@ def add_fund(
     return selected_securities, selected_securities_options
 
 
-def update_selection_visibility(y_var: str):
-    show = {"display": "block"}
-    hide = {"display": "none"}
-
-    price_visibility = show if y_var == "price" else hide
-
-    return_selection_style = (
-        show if y_var in ["rolling_returns", "calendar_returns"] else hide
-    )
-    rolling_return_selection_style = show if y_var == "rolling_returns" else hide
-    calendar_return_selection_style = show if y_var == "calendar_returns" else hide
-
-    return (
-        price_visibility,
-        return_selection_style,
-        rolling_return_selection_style,
-        calendar_return_selection_style,
-    )
-
-
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateSelectionVisibility"
+    ),
     Output("price-selection-container", "style"),
     Output("return-selection", "style"),
     Output("rolling-return-selection-container", "style"),
     Output("calendar-return-selection-container", "style"),
     Input("y-var-selection", "value"),
 )
-def update_returns_dashboard_selection_visibility(y_var: str):
-    return update_selection_visibility(y_var)
 
 
 @app.callback(
@@ -917,7 +883,7 @@ def update_baseline_security_selection_options(
 
 
 app.clientside_callback(
-    ClientsideFunction(namespace="clientside", function_name="updateLastLayoutStore"),
+    ClientsideFunction(namespace="state", function_name="updateLastLayoutStore"),
     Output("graph-last-layout-state-store", "data"),
     Input("graph", "figure"),
     State("y-var-selection", "value"),
@@ -1170,15 +1136,16 @@ def add_portfolio(
     )
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateSelectionVisibility"
+    ),
     Output("portfolio-price-selection-container", "style"),
     Output("portfolio-return-selection", "style"),
     Output("portfolio-rolling-return-selection-container", "style"),
     Output("portfolio-calendar-return-selection-container", "style"),
     Input("portfolio-y-var-selection", "value"),
 )
-def update_portfolio_selection_visibility(y_var: str):
-    return update_selection_visibility(y_var)
 
 
 @app.callback(
@@ -1257,7 +1224,7 @@ def load_portfolio(
 
 
 app.clientside_callback(
-    ClientsideFunction(namespace="clientside", function_name="updateLastLayoutStore"),
+    ClientsideFunction(namespace="state", function_name="updateLastLayoutStore"),
     Output("portfolio-graph-last-layout-state-store", "data"),
     Input("portfolio-graph", "figure"),
     State("portfolio-y-var-selection", "value"),
@@ -1396,20 +1363,22 @@ def update_strategy_portfolios(portfolio_options: dict[str, str]):
     )
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
+    ),
     Output("accumulation-drawdown-type-container", "style"),
     Input("accumulation-y-var-selection", "value"),
 )
-def update_accumulation_drawdown_type_visibility(y_var: str):
-    return {"display": "block"} if y_var == "max_drawdown" else {"display": "none"}
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
+    ),
     Output("withdrawal-drawdown-type-container", "style"),
     Input("withdrawal-y-var-selection", "value"),
 )
-def update_withdrawal_drawdown_type_visibility(y_var: str):
-    return {"display": "block"} if y_var == "max_drawdown" else {"display": "none"}
 
 
 @app.callback(
