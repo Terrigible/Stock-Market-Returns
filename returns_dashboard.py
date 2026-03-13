@@ -15,6 +15,7 @@ import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
+from yfinance.exceptions import YFException
 
 from funcs.calcs_numpy import (
     calculate_dca_portfolio_value_with_fees_and_interest_vector,
@@ -40,6 +41,8 @@ from funcs.loaders import (
 )
 from layout import app_layout
 from update_graph import PrevLayout, update_graph
+
+yf.config.debug.hide_exceptions = False
 
 
 def resample_bme(series: pd.Series):
@@ -609,8 +612,13 @@ def add_yf_security(
     selected_securities_options[new_yf_security] = (
         f"yfinance: {ticker_symbol} {tax_treatment}"
     )
-
-    df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
+    try:
+        df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
+    except YFException as e:
+        yf_invalid_securities_store.append(yf_security)
+        set_props("toast-store", {"data": f"The selected ticker is not available: {e}"})
+        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
+        return no_update
     if tax_treatment == "Net" and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
