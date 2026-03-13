@@ -1707,13 +1707,13 @@ def show_accumulation_strategy_modal(
         row = portfolio_values.loc[clicked_date]
 
         if index_by_start_date:
-            start_date = clicked_date
+            dates = pd.date_range(
+                start=clicked_date, periods=investment_horizon + 1, freq="BME"
+            )
         else:
-            start_date = clicked_date - pd.offsets.BMonthEnd(investment_horizon)
-
-        dates = pd.date_range(
-            start=start_date, periods=investment_horizon + 1, freq="BME"
-        )
+            dates = pd.date_range(
+                end=clicked_date, periods=investment_horizon + 1, freq="BME"
+            )
 
         traces.append(
             go.Scatter(
@@ -2021,13 +2021,13 @@ def show_withdrawal_strategy_modal(
         row = portfolio_values.loc[clicked_date]
 
         if index_by_start_date:
-            start_date = clicked_date
+            dates = pd.date_range(
+                start=clicked_date, periods=withdrawal_horizon + 1, freq="BME"
+            )
         else:
-            start_date = clicked_date - pd.offsets.BMonthEnd(withdrawal_horizon)
-
-        dates = pd.date_range(
-            start=start_date, periods=withdrawal_horizon + 1, freq="BME"
-        )
+            dates = pd.date_range(
+                end=clicked_date, periods=withdrawal_horizon + 1, freq="BME"
+            )
 
         traces.append(
             go.Scatter(
