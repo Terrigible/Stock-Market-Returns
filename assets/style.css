@@ -17,6 +17,11 @@
     flex-grow: 1;
 }
 
+#toast {
+    width: 0;
+    flex-grow: 1;
+}
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;

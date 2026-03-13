@@ -322,14 +322,19 @@ app_layout = html.Div(
                                     id="toast-store", storage_type="memory", data=""
                                 ),
                                 html.P(),
-                                dbc.Toast(
-                                    "",
-                                    id="toast",
-                                    header="Info",
-                                    is_open=False,
-                                    dismissable=True,
-                                    duration=2000,
-                                    color="info",
+                                html.Div(
+                                    [
+                                        dbc.Toast(
+                                            "",
+                                            id="toast",
+                                            header="Info",
+                                            is_open=False,
+                                            dismissable=True,
+                                            duration=5000,
+                                            color="info",
+                                        ),
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 html.P(),
                                 dbc.Label(
