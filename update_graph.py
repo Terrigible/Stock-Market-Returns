@@ -173,11 +173,19 @@ def update_price_graph(
             price_adj = 1
             hoverinfo = "text+name+x"
             max_val = df.loc[start_date:end_date].max().max()
-            ytickvals = [n / 10 for n in range(0, 20)] + [
-                base * 10**exp + 1
-                for exp in range(math.floor(math.log10(max_val + 1)) + 1)
-                for base in range(1, 10)
-            ]
+            min_val = df.loc[start_date:end_date].min().min()
+            if (math.log10(max_val + 1) - math.log10(min_val + 1)) < 2:
+                ytickvals = [n / 10 for n in range(0, 20)] + [
+                    base * 10**exp + 1
+                    for exp in range(math.floor(math.log10(max_val + 1)) + 1)
+                    for base in range(1, 10)
+                ]
+            else:
+                ytickvals = [0.1, 0.5, 0.8, 1, 1.2, 1.5, 2] + [
+                    base * 10**exp + 1
+                    for exp in range(math.floor(math.log10(max_val + 1)) + 1)
+                    for base in [1, 2, 5]
+                ]
             yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
             layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
