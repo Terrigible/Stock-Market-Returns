@@ -151,23 +151,6 @@ def update_price_graph(
                         .iloc[0, 0],
                     ]
                 )
-            elif (
-                ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
-                and "xaxis.range[0]" not in relayout_data
-                and prev_layout
-            ):
-                yaxis_min = None
-                yaxis_max = None
-                if "yaxis.range[0]" in relayout_data:
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                if "yaxis.range[1]" in relayout_data:
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                layout.update(
-                    yaxis_range=[
-                        yaxis_min or prev_layout["yaxis"]["range"][0],
-                        yaxis_max or prev_layout["yaxis"]["range"][1],
-                    ]
-                )
 
         else:
             price_adj = 1
@@ -227,23 +210,24 @@ def update_price_graph(
                         .iloc[0, 0],
                     ]
                 )
-            elif (
-                ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
-                and "xaxis.range[0]" not in relayout_data
-                and prev_layout
-            ):
-                yaxis_min = None
-                yaxis_max = None
-                if "yaxis.range[0]" in relayout_data:
-                    yaxis_min = float(relayout_data["yaxis.range[0]"])
-                if "yaxis.range[1]" in relayout_data:
-                    yaxis_max = float(relayout_data["yaxis.range[1]"])
-                layout.update(
-                    yaxis_range=[
-                        yaxis_min or prev_layout["yaxis"]["range"][0],
-                        yaxis_max or prev_layout["yaxis"]["range"][1],
-                    ]
-                )
+
+        if (
+            ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
+            and "xaxis.range[0]" not in relayout_data
+            and prev_layout
+        ):
+            yaxis_min = None
+            yaxis_max = None
+            if "yaxis.range[0]" in relayout_data:
+                yaxis_min = float(relayout_data["yaxis.range[0]"])
+            if "yaxis.range[1]" in relayout_data:
+                yaxis_max = float(relayout_data["yaxis.range[1]"])
+            layout.update(
+                yaxis_range=[
+                    yaxis_min or prev_layout["yaxis"]["range"][0],
+                    yaxis_max or prev_layout["yaxis"]["range"][1],
+                ]
+            )
 
     if log_scale:
         layout.update(yaxis_type="log")
