@@ -82,14 +82,9 @@ def update_price_graph(
             if series.empty:
                 df[column] = np.nan
                 continue
-            baseline_value = None
-            if start_date:
-                visible_series = series[series.index >= start_date]
-                if not visible_series.empty:
-                    baseline_value = visible_series.iloc[0]
-            if baseline_value is None:
-                baseline_value = series.iloc[0]
-            if baseline_value != 0:
+            visible_series = series[start_date:]
+            if not visible_series.empty:
+                baseline_value = visible_series.iloc[0]
                 df[column] = df[column].div(baseline_value).sub(1)
             else:
                 df[column] = np.nan
@@ -99,14 +94,9 @@ def update_price_graph(
             if series.empty:
                 prev_zoom_df[column] = np.nan
                 continue
-            baseline_value = None
-            if prev_start_date:
-                visible_series = series[series.index >= prev_start_date]
-                if not visible_series.empty:
-                    baseline_value = visible_series.iloc[0]
-            if baseline_value is None:
-                baseline_value = series.iloc[0]
-            if baseline_value != 0:
+            visible_series = series[prev_start_date:]
+            if not visible_series.empty:
+                baseline_value = visible_series.iloc[0]
                 prev_zoom_df[column] = prev_zoom_df[column].div(baseline_value).sub(1)
             else:
                 prev_zoom_df[column] = np.nan
