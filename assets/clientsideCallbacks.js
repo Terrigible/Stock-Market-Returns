@@ -41,7 +41,6 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * @returns {Array} Array of style objects for each container.
              */
             function (indexProvider, indexProviderOptions) {
-                console.log(indexProviderOptions);
                 return Object.keys(indexProviderOptions).map(function (option) {
                     return {
                         display: indexProvider === option ? "block" : "none",
