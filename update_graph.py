@@ -116,18 +116,24 @@ def update_price_graph(
             ):
                 yaxis_min = float(relayout_data["yaxis.range[0]"])
                 yaxis_max = float(relayout_data["yaxis.range[1]"])
+                zoom_basis = (
+                    prev_zoom_df.loc[start_date:end_date]
+                    .apply(lambda col: col.between(yaxis_min, yaxis_max))
+                    .sum()
+                    .idxmax()
+                )
                 layout.update(
                     yaxis_range=[
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_min + 1)
                         .sub(1)
-                        .loc[start_date:]
-                        .iloc[0, 0],
+                        .loc[start_date:, zoom_basis]
+                        .iloc[0],
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_max + 1)
                         .sub(1)
-                        .loc[start_date:]
-                        .iloc[0, 0],
+                        .loc[start_date:, zoom_basis]
+                        .iloc[0],
                     ]
                 )
             elif (
@@ -175,18 +181,25 @@ def update_price_graph(
             if "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data:
                 yaxis_min = 10 ** float(relayout_data["yaxis.range[0]"])
                 yaxis_max = 10 ** float(relayout_data["yaxis.range[1]"])
+                zoom_basis = (
+                    prev_zoom_df.add(1)
+                    .loc[start_date:end_date]
+                    .apply(lambda col: col.between(yaxis_min, yaxis_max))
+                    .sum()
+                    .idxmax()
+                )
                 layout.update(
                     yaxis_range=[
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_min)
-                        .loc[start_date:]
+                        .loc[start_date:, zoom_basis]
                         .apply(np.log10)
-                        .iloc[0, 0],
+                        .iloc[0],
                         prev_zoom_df.add(1)
                         .rdiv(yaxis_max)
-                        .loc[start_date:]
+                        .loc[start_date:, zoom_basis]
                         .apply(np.log10)
-                        .iloc[0, 0],
+                        .iloc[0],
                     ]
                 )
             elif (
