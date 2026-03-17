@@ -4,7 +4,6 @@ import os
 import re
 from glob import glob
 from io import StringIO
-from itertools import chain
 from json import JSONDecodeError
 
 import httpx
