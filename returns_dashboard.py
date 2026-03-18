@@ -919,7 +919,7 @@ app.clientside_callback(
     Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
-    Input("chart-type-selection", "value"),
+    Input("rolling-returns-presentation-selection", "value"),
     Input("graph", "relayoutData"),
     State("graph-last-layout-state-store", "data"),
 )
@@ -942,7 +942,7 @@ def update_security_graph(
     interval: str,
     baseline_security: str,
     baseline_security_options: dict[str, str],
-    chart_type: str,
+    rolling_returns_presentation: str,
     relayout_data: dict[str, str | float],
     prev_layout: PrevLayout | None,
 ):
@@ -983,7 +983,7 @@ def update_security_graph(
         + return_interval
         + return_annualisation
         + baseline_security
-        + chart_type
+        + rolling_returns_presentation
     )
 
     data, layout = update_graph(
@@ -1002,7 +1002,7 @@ def update_security_graph(
         return_annualisation_options,
         baseline_security,
         baseline_security_options,
-        chart_type,
+        rolling_returns_presentation,
         relayout_data,
         uirevision,
         prev_layout,
@@ -1257,7 +1257,7 @@ app.clientside_callback(
     Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-auto-scale-switch", "value"),
-    Input("portfolio-chart-type-selection", "value"),
+    Input("portfolio-rolling-returns-presentation-selection", "value"),
     Input("portfolio-graph", "relayoutData"),
     State("portfolios", "options"),
     State("cached-securities-store", "data"),
@@ -1279,7 +1279,7 @@ def update_portfolio_graph(
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    chart_type: str,
+    rolling_returns_presentation: str,
     relayout_data: dict[str, str | float],
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
@@ -1324,7 +1324,7 @@ def update_portfolio_graph(
         + return_interval
         + return_annualisation
         + baseline_portfolio
-        + chart_type
+        + rolling_returns_presentation
     )
 
     data, layout = update_graph(
@@ -1343,7 +1343,7 @@ def update_portfolio_graph(
         return_annualisation_options,
         baseline_portfolio,
         baseline_portfolio_options,
-        chart_type,
+        rolling_returns_presentation,
         relayout_data,
         uirevision,
         prev_layout,

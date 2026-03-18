@@ -467,8 +467,8 @@ app_layout = html.Div(
                                                     id="return-annualisation-selection",
                                                 ),
                                                 dbc.Label(
-                                                    "Chart Type",
-                                                    html_for="chart-type-selection",
+                                                    "Presentation",
+                                                    html_for="rolling-returns-presentation-selection",
                                                 ),
                                                 dbc.Select(
                                                     {
@@ -476,7 +476,7 @@ app_layout = html.Div(
                                                         "dist": "Distribution",
                                                     },
                                                     value="timeseries",
-                                                    id="chart-type-selection",
+                                                    id="rolling-returns-presentation-selection",
                                                 ),
                                             ],
                                             id="rolling-return-selection-container",
@@ -675,8 +675,8 @@ app_layout = html.Div(
                                                     id="portfolio-return-annualisation-selection",
                                                 ),
                                                 dbc.Label(
-                                                    "Chart Type",
-                                                    html_for="portfolio-chart-type-selection",
+                                                    "Presentation",
+                                                    html_for="portfolio-rolling-returns-presentation-selection",
                                                 ),
                                                 dbc.Select(
                                                     {
@@ -684,7 +684,7 @@ app_layout = html.Div(
                                                         "dist": "Distribution",
                                                     },
                                                     value="timeseries",
-                                                    id="portfolio-chart-type-selection",
+                                                    id="portfolio-rolling-returns-presentation-selection",
                                                 ),
                                             ],
                                             id="portfolio-rolling-return-selection-container",

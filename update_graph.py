@@ -304,7 +304,7 @@ def update_rolling_returns_graph(
     return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
-    chart_type: str,
+    rolling_returns_presentation: str,
     layout: go.Layout,
 ):
     layout.update(yaxis_tickformat=".2%")
@@ -324,7 +324,7 @@ def update_rolling_returns_graph(
         title=title,
     )
 
-    if chart_type == "timeseries":
+    if rolling_returns_presentation == "timeseries":
         data = [
             go.Scatter(
                 x=df.index,
@@ -338,7 +338,7 @@ def update_rolling_returns_graph(
             for column in df.columns
         ]
 
-    elif chart_type == "dist":
+    elif rolling_returns_presentation == "dist":
         vertical_line = go.layout.Shape(
             type="line",
             x0=0,
@@ -471,7 +471,7 @@ def update_graph(
     return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
-    chart_type: str,
+    rolling_returns_presentation: str,
     relayout_data: dict[str, str | float],
     uirevision: str,
     prev_layout: PrevLayout | None,
@@ -520,7 +520,7 @@ def update_graph(
             return_annualisation_options,
             baseline_trace,
             baseline_trace_options,
-            chart_type,
+            rolling_returns_presentation,
             layout,
         )
         return data, layout
