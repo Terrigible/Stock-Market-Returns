@@ -861,6 +861,16 @@ app.clientside_callback(
 )
 
 
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility",
+        function_name="updateRollingReturnsDistributionChartTypeVisibility",
+    ),
+    Output("rolling-returns-distribution-chart-type-selection-container", "style"),
+    Input("rolling-returns-presentation-selection", "value"),
+)
+
+
 @app.callback(
     Output("baseline-security-selection", "options"),
     Output("baseline-security-selection", "value"),
@@ -920,6 +930,7 @@ app.clientside_callback(
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
     Input("rolling-returns-presentation-selection", "value"),
+    Input("rolling-returns-distribution-chart-type-selection", "value"),
     Input("graph", "relayoutData"),
     State("graph-last-layout-state-store", "data"),
 )
@@ -943,6 +954,7 @@ def update_security_graph(
     baseline_security: str,
     baseline_security_options: dict[str, str],
     rolling_returns_presentation: str,
+    rolling_returns_distribution_chart_type: str,
     relayout_data: dict[str, str | float],
     prev_layout: PrevLayout | None,
 ):
@@ -984,6 +996,7 @@ def update_security_graph(
         + return_annualisation
         + baseline_security
         + rolling_returns_presentation
+        + rolling_returns_distribution_chart_type
     )
 
     data, layout = update_graph(
@@ -1003,6 +1016,7 @@ def update_security_graph(
         baseline_security,
         baseline_security_options,
         rolling_returns_presentation,
+        rolling_returns_distribution_chart_type,
         relayout_data,
         uirevision,
         prev_layout,
@@ -1156,6 +1170,18 @@ app.clientside_callback(
 )
 
 
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="visibility",
+        function_name="updateRollingReturnsDistributionChartTypeVisibility",
+    ),
+    Output(
+        "portfolio-rolling-returns-distribution-chart-type-selection-container", "style"
+    ),
+    Input("portfolio-rolling-returns-presentation-selection", "value"),
+)
+
+
 @app.callback(
     Output("portfolio-baseline-security-selection", "options"),
     Output("portfolio-baseline-security-selection", "value"),
@@ -1258,6 +1284,7 @@ app.clientside_callback(
     Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-auto-scale-switch", "value"),
     Input("portfolio-rolling-returns-presentation-selection", "value"),
+    Input("portfolio-rolling-returns-distribution-chart-type-selection", "value"),
     Input("portfolio-graph", "relayoutData"),
     State("portfolios", "options"),
     State("cached-securities-store", "data"),
@@ -1280,6 +1307,7 @@ def update_portfolio_graph(
     percent_scale: bool,
     auto_scale: bool,
     rolling_returns_presentation: str,
+    rolling_returns_distribution_chart_type: str,
     relayout_data: dict[str, str | float],
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
@@ -1325,6 +1353,7 @@ def update_portfolio_graph(
         + return_annualisation
         + baseline_portfolio
         + rolling_returns_presentation
+        + rolling_returns_distribution_chart_type
     )
 
     data, layout = update_graph(
@@ -1344,6 +1373,7 @@ def update_portfolio_graph(
         baseline_portfolio,
         baseline_portfolio_options,
         rolling_returns_presentation,
+        rolling_returns_distribution_chart_type,
         relayout_data,
         uirevision,
         prev_layout,

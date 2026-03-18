@@ -276,7 +276,7 @@ def update_drawdown_graph(
     trace_options: dict[str, str],
     layout: go.Layout,
 ):
-    layout = layout.update(
+    layout.update(
         title="Drawdown",
         yaxis_tickformat=".2%",
     )
@@ -305,6 +305,7 @@ def update_rolling_returns_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     rolling_returns_presentation: str,
+    rolling_returns_distribution_chart_type: str,
     layout: go.Layout,
 ):
     layout.update(yaxis_tickformat=".2%")
@@ -320,7 +321,7 @@ def update_rolling_returns_graph(
         )
         title += f" vs {baseline_trace_options[baseline_trace]}"
 
-    layout = layout.update(
+    layout.update(
         title=title,
     )
 
@@ -339,53 +340,89 @@ def update_rolling_returns_graph(
         ]
 
     elif rolling_returns_presentation == "dist":
-        vertical_line = go.layout.Shape(
-            type="line",
-            x0=0,
-            x1=0,
-            y0=0,
-            y1=1,
-            yref="paper",
-            line=go.layout.shape.Line(
-                color=trace_colourmap[baseline_trace]
-                if baseline_trace != "None"
-                else "grey",
-                width=1,
-                dash="dash",
-            ),
-            opacity=0.7,
-        )
         layout.update(
-            barmode="overlay",
-            shapes=[vertical_line],
             xaxis_tickformat="+.2%",
         )
 
-        data = [
-            go.Histogram(
-                x=df[column],
-                name=trace_options[column],
-                marker=go.histogram.Marker(color=trace_colourmap[column]),
-                histnorm="probability",
+        if rolling_returns_distribution_chart_type == "hist":
+            vertical_line = go.layout.Shape(
+                type="line",
+                x0=0,
+                x1=0,
+                y0=0,
+                y1=1,
+                yref="paper",
+                line=go.layout.shape.Line(
+                    color=trace_colourmap[baseline_trace]
+                    if baseline_trace != "None"
+                    else "grey",
+                    width=1,
+                    dash="dash",
+                ),
                 opacity=0.7,
-                showlegend=True,
             )
-            for column in df.columns
-            if column != baseline_trace
-        ]
-
-        if baseline_trace != "None":
-            data.insert(
-                0,
+            layout.update(
+                barmode="overlay",
+                shapes=[vertical_line],
+            )
+            data = [
                 go.Histogram(
-                    x=[None],
-                    name=trace_options[baseline_trace],
-                    marker=go.histogram.Marker(color=trace_colourmap[baseline_trace]),
+                    x=df[column],
+                    name=trace_options[column],
+                    marker=go.histogram.Marker(color=trace_colourmap[column]),
                     histnorm="probability",
                     opacity=0.7,
                     showlegend=True,
-                ),
+                )
+                for column in df.columns
+                if column != baseline_trace
+            ]
+
+            if baseline_trace != "None":
+                data.insert(
+                    0,
+                    go.Histogram(
+                        x=[None],
+                        name=trace_options[baseline_trace],
+                        marker=go.histogram.Marker(
+                            color=trace_colourmap[baseline_trace]
+                        ),
+                        histnorm="probability",
+                        opacity=0.7,
+                        showlegend=True,
+                    ),
+                )
+        elif rolling_returns_distribution_chart_type == "box":
+            layout.update(
+                hovermode="closest",
+                yaxis_autorange="reversed",
             )
+
+            data = [
+                go.Box(
+                    x=df[column],
+                    name=trace_options[column],
+                    marker=go.box.Marker(color=trace_colourmap[column]),
+                    boxpoints="outliers",
+                    showlegend=True,
+                )
+                for column in df.columns
+                if column != baseline_trace
+            ]
+
+            if baseline_trace != "None":
+                data.insert(
+                    0,
+                    go.Box(
+                        x=[None],
+                        name=trace_options[baseline_trace],
+                        marker=go.box.Marker(color=trace_colourmap[baseline_trace]),
+                        boxpoints="outliers",
+                        showlegend=True,
+                    ),
+                )
+        else:
+            raise ValueError("Invalid rolling_returns_distribution_chart_type")
 
     else:
         raise ValueError("Invalid chart_type")
@@ -472,6 +509,7 @@ def update_graph(
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     rolling_returns_presentation: str,
+    rolling_returns_distribution_chart_type: str,
     relayout_data: dict[str, str | float],
     uirevision: str,
     prev_layout: PrevLayout | None,
@@ -483,7 +521,8 @@ def update_graph(
         legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
         uirevision=y_var,
         yaxis_side="right",
-        yaxis_uirevision=False if auto_scale else uirevision,
+        yaxis_automargin=True,
+        yaxis_uirevision=uirevision,
         margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
     )
 
@@ -521,6 +560,7 @@ def update_graph(
             baseline_trace,
             baseline_trace_options,
             rolling_returns_presentation,
+            rolling_returns_distribution_chart_type,
             layout,
         )
         return data, layout

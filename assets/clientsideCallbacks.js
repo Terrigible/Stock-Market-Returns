@@ -124,6 +124,17 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             function (yVar) {
                 return { display: yVar === "max_drawdown" ? "block" : "none" };
             },
+
+        updateRollingReturnsDistributionChartTypeVisibility:
+            /**
+             * Shows chart type container for distribution presentation.
+             *
+             * @param {string} presentation The selected presentation type.
+             * @returns {Object} Style object for the container.
+             */
+            function (presentation) {
+                return { display: presentation === "dist" ? "block" : "none" };
+            },
     },
     toast: {
         updateToast:

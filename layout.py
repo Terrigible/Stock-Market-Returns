@@ -478,6 +478,23 @@ app_layout = html.Div(
                                                     value="timeseries",
                                                     id="rolling-returns-presentation-selection",
                                                 ),
+                                                html.Div(
+                                                    [
+                                                        dbc.Label(
+                                                            "Chart Type",
+                                                            html_for="rolling-returns-distribution-chart-type-selection",
+                                                        ),
+                                                        dbc.Select(
+                                                            {
+                                                                "hist": "Histogram",
+                                                                "box": "Box Plot",
+                                                            },
+                                                            value="hist",
+                                                            id="rolling-returns-distribution-chart-type-selection",
+                                                        ),
+                                                    ],
+                                                    id="rolling-returns-distribution-chart-type-selection-container",
+                                                ),
                                             ],
                                             id="rolling-return-selection-container",
                                         ),
@@ -685,6 +702,23 @@ app_layout = html.Div(
                                                     },
                                                     value="timeseries",
                                                     id="portfolio-rolling-returns-presentation-selection",
+                                                ),
+                                                html.Div(
+                                                    [
+                                                        dbc.Label(
+                                                            "Chart Type",
+                                                            html_for="portfolio-rolling-returns-distribution-chart-type-selection",
+                                                        ),
+                                                        dbc.Select(
+                                                            {
+                                                                "hist": "Histogram",
+                                                                "box": "Box Plot",
+                                                            },
+                                                            value="hist",
+                                                            id="portfolio-rolling-returns-distribution-chart-type-selection",
+                                                        ),
+                                                    ],
+                                                    id="portfolio-rolling-returns-distribution-chart-type-selection-container",
                                                 ),
                                             ],
                                             id="portfolio-rolling-return-selection-container",
