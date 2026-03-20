@@ -50,7 +50,8 @@ def update_price_graph(
             end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
         elif prev_layout:
             end_date = pd.to_datetime(prev_layout["xaxis"]["range"][1])
-        layout.update(xaxis_range=[start_date, end_date])
+        if start_date and end_date:
+            layout.update(xaxis_range=[start_date, end_date])
 
     if prev_layout:
         prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
