@@ -511,7 +511,7 @@ def update_graph(
     baseline_trace_options: dict[str, str],
     rolling_returns_presentation: str,
     rolling_returns_distribution_chart_type: str,
-    relayout_data: dict[str, str | float],
+    relayout_data: dict[str, Any] | None,
     uirevision: str,
     prev_layout: PrevLayout | None,
 ):
@@ -527,7 +527,7 @@ def update_graph(
         margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
     )
 
-    if ctx.triggered_id not in ["graph", "portfolio-graph"]:
+    if relayout_data is None or ctx.triggered_id not in ["graph", "portfolio-graph"]:
         relayout_data = {"autosize": True}
 
     if y_var == "price":
