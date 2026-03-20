@@ -1620,12 +1620,10 @@ def update_accumulation_strategy_graph(
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
-    ending_values = pd.concat(
-        [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
-    )
-
     if y_var == "ending_values":
-        values = ending_values
+        values = pd.concat(
+            [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
+        )
     elif y_var == "max_drawdown":
         if drawdown_type == "percent":
             values = pd.concat(
@@ -1937,12 +1935,10 @@ def update_withdrawal_strategy_graph(
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
-    ending_values = pd.concat(
-        [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
-    )
-
     if y_var == "ending_values":
-        values = ending_values
+        values = pd.concat(
+            [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
+        )
     elif y_var == "max_drawdown":
         if drawdown_type == "percent":
             values = pd.concat(
@@ -2014,7 +2010,7 @@ def handle_withdrawal_graph_interaction(click_data: ClickData, _):
     prevent_initial_call=True,
 )
 def show_withdrawal_strategy_modal(
-    n_clicks,
+    _,
     clicked_date_str: str,
     strategy_strs: list[str],
     strategy_options: dict[str, str],
