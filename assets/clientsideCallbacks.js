@@ -136,6 +136,91 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 return { display: presentation === "dist" ? "block" : "none" };
             },
     },
+    options: {
+        updateSecuritySelectionOptions:
+            /**
+             * Updates portfolio security selection based on selected securities options.
+             *
+             * @param {Object} securityOptions Dictionary of security options.
+             * @returns {Array} [options, value]
+             */
+            function (securityOptions) {
+                var keys = Object.keys(securityOptions);
+                var newValue =
+                    keys.length === 1
+                        ? keys[0]
+                        : window.dash_clientside.no_update;
+                return [securityOptions, newValue];
+            },
+
+        updateBaselineSecuritySelectionOptions:
+            /**
+             * Updates baseline selection options based on selected items.
+             *
+             * @param {Array} selectedItems List of selected item keys.
+             * @param {Object} selectedItemsOptions Dictionary of selected item options.
+             * @param {string} baselineItem Current baseline item value.
+             * @returns {Array} [options, value, disabled]
+             */
+            function (selectedItems, selectedItemsOptions, baselineItem) {
+                var options = { None: "None" };
+                for (var key in selectedItemsOptions) {
+                    if (selectedItems.includes(key)) {
+                        options[key] = selectedItemsOptions[key];
+                    }
+                }
+                var newValue =
+                    selectedItems.includes(baselineItem) &&
+                    selectedItems.length > 1
+                        ? baselineItem
+                        : "None";
+                var disabled = selectedItems.length <= 1;
+                return [options, newValue, disabled];
+            },
+
+        updateStrategyPortfolioOptions:
+            /**
+             * Updates strategy portfolio selections based on available portfolios.
+             *
+             * @param {Object} portfolioOptions Dictionary of portfolio options.
+             * @returns {Array} [options1, options2, value1, value2]
+             */
+            function (portfolioOptions) {
+                var keys = Object.keys(portfolioOptions);
+                var selectedValue =
+                    keys.length === 1
+                        ? keys[0]
+                        : window.dash_clientside.no_update;
+                return [
+                    portfolioOptions,
+                    portfolioOptions,
+                    selectedValue,
+                    selectedValue,
+                ];
+            },
+    },
+    update_values: {
+        portfolioWeightsSum:
+            /**
+             * Calculates the sum of portfolio weights.
+             *
+             * @param {Array} allocationStrings Array of JSON-encoded allocation strings.
+             * @returns {string} Display string with sum of weights.
+             */
+            function (allocationStrings) {
+                if (!allocationStrings || allocationStrings.length === 0) {
+                    return "Sum of Weights: ";
+                }
+                var total = 0;
+                for (var i = 0; i < allocationStrings.length; i++) {
+                    var allocation = JSON.parse(allocationStrings[i]);
+                    for (var key in allocation) {
+                        total += allocation[key];
+                    }
+                }
+                return "Sum of Weights: " + total + "%";
+            },
+    },
     toast: {
         updateToast:
             /**

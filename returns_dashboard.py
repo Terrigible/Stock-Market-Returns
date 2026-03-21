@@ -871,7 +871,11 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="options",
+        function_name="updateBaselineSecuritySelectionOptions",
+    ),
     Output("baseline-security-selection", "options"),
     Output("baseline-security-selection", "value"),
     Output("baseline-security-selection", "disabled"),
@@ -880,25 +884,6 @@ app.clientside_callback(
     Input("baseline-security-selection", "value"),
     prevent_initial_call=True,
 )
-def update_baseline_security_selection_options(
-    selected_securities: list[str],
-    selected_securities_options: dict[str, str],
-    baseline_security: str,
-):
-    return (
-        {
-            "None": "None",
-            **{
-                k: v
-                for k, v in selected_securities_options.items()
-                if k in selected_securities
-            },
-        },
-        baseline_security
-        if baseline_security in selected_securities and len(selected_securities) > 1
-        else "None",
-        len(selected_securities) <= 1,
-    )
 
 
 app.clientside_callback(
@@ -1025,19 +1010,15 @@ def update_security_graph(
     return dict(data=data, layout=layout)
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="options",
+        function_name="updateSecuritySelectionOptions",
+    ),
     Output("portfolio-security-selection", "options"),
     Output("portfolio-security-selection", "value"),
     Input("selected-securities", "options"),
-    State("portfolio-security-selection", "value"),
 )
-def update_security_options(
-    security_options: dict[str, str], current_value: str | None
-):
-    return (
-        security_options,
-        next(iter(security_options)) if current_value is None else no_update,
-    )
 
 
 @app.callback(
@@ -1093,18 +1074,15 @@ def add_allocation(
     return no_update
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="update_values",
+        function_name="portfolioWeightsSum",
+    ),
     Output("portfolio-weights-sum", "children"),
     Input("portfolio-allocations", "value"),
     prevent_initial_call=True,
 )
-def portfolio_weights_sum(portfolio_allocation_strs: list[str]):
-    if not portfolio_allocation_strs:
-        return "Sum of Weights: "
-    portfolio_allocations: dict[str, int | float] = reduce(
-        dict.__or__, map(json.loads, portfolio_allocation_strs)
-    )
-    return f"Sum of Weights: {sum(portfolio_allocations.values())}%"
 
 
 @app.callback(
@@ -1185,7 +1163,11 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="options",
+        function_name="updateBaselineSecuritySelectionOptions",
+    ),
     Output("portfolio-baseline-security-selection", "options"),
     Output("portfolio-baseline-security-selection", "value"),
     Output("portfolio-baseline-security-selection", "disabled"),
@@ -1194,25 +1176,6 @@ app.clientside_callback(
     Input("portfolio-baseline-security-selection", "value"),
     prevent_initial_call=True,
 )
-def update_portfolio_baseline_security_selection_options(
-    selected_securities: list[str],
-    selected_securities_options: dict[str, str],
-    baseline_security: str,
-):
-    return (
-        {
-            "None": "None",
-            **{
-                k: v
-                for k, v in selected_securities_options.items()
-                if k in selected_securities
-            },
-        },
-        baseline_security
-        if baseline_security in selected_securities and len(selected_securities) > 1
-        else "None",
-        len(selected_securities) <= 1,
-    )
 
 
 def load_portfolio(
@@ -1384,7 +1347,11 @@ def update_portfolio_graph(
     return dict(data=data, layout=layout)
 
 
-@app.callback(
+app.clientside_callback(
+    ClientsideFunction(
+        namespace="options",
+        function_name="updateStrategyPortfolioOptions",
+    ),
     Output("accumulation-strategy-portfolio", "options"),
     Output("withdrawal-strategy-portfolio", "options"),
     Output("accumulation-strategy-portfolio", "value"),
@@ -1392,16 +1359,6 @@ def update_portfolio_graph(
     Input("portfolios", "options"),
     prevent_initial_call=True,
 )
-def update_strategy_portfolios(portfolio_options: dict[str, str]):
-    selected_value = (
-        next(iter(portfolio_options)) if len(portfolio_options) == 1 else no_update
-    )
-    return (
-        portfolio_options,
-        portfolio_options,
-        selected_value,
-        selected_value,
-    )
 
 
 app.clientside_callback(
