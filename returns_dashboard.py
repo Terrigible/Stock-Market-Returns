@@ -878,6 +878,7 @@ app.clientside_callback(
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
     Input("baseline-security-selection", "value"),
+    prevent_initial_call=True,
 )
 def update_baseline_security_selection_options(
     selected_securities: list[str],
@@ -1049,6 +1050,7 @@ def update_security_options(
     State("portfolio-security-selection", "options"),
     State("security-weight", "value"),
     allow_duplicate=True,
+    prevent_initial_call=True,
 )
 def add_allocation(
     _,
@@ -1094,6 +1096,7 @@ def add_allocation(
 @app.callback(
     Output("portfolio-weights-sum", "children"),
     Input("portfolio-allocations", "value"),
+    prevent_initial_call=True,
 )
 def portfolio_weights_sum(portfolio_allocation_strs: list[str]):
     if not portfolio_allocation_strs:
@@ -1189,14 +1192,13 @@ app.clientside_callback(
     Input("portfolios", "value"),
     Input("portfolios", "options"),
     Input("portfolio-baseline-security-selection", "value"),
+    prevent_initial_call=True,
 )
 def update_portfolio_baseline_security_selection_options(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     baseline_security: str,
 ):
-    if not selected_securities:
-        return {"None": "None"}, "None", True
     return (
         {
             "None": "None",
@@ -1289,6 +1291,7 @@ app.clientside_callback(
     State("portfolios", "options"),
     State("cached-securities-store", "data"),
     State("portfolio-graph-last-layout-state-store", "data"),
+    prevent_initial_call=True,
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
