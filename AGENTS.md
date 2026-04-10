@@ -6,8 +6,8 @@ Before running any commands, ensure the virtual environment is activated:
 
 **Windows:**
 
-```bash
-source .venv/Scripts/activate
+```powershell
+.venv/Scripts/Activate.ps1
 ```
 
 **macOS/Linux:**
