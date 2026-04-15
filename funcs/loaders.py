@@ -196,7 +196,7 @@ def read_shiller_sp500_data(tax_treatment: str):
         skiprows=7,
         skipfooter=1,
         dtype={"Date": str},
-    )
+    ).head(-1)
     df["Date"] = (
         df["Date"]
         .str.pad(7, "right", "0")

@@ -219,29 +219,33 @@ def load_us_treasury_returns():
 
 
 def read_shiller_sp500_data(tax_treatment: str):
-    return pl.read_excel(
-        "data/ie_data.xls",
-        sheet_name="Data",
-        columns=["Date", "P", "D"],
-        read_options=dict(header_row=7),
-        schema_overrides={"Date": pl.String},
-    ).select(
-        pl.col("Date")
-        .str.pad_end(7, "0")
-        .str.to_date("%Y.%m")
-        .dt.offset_by("2w")
-        .alias("date"),
-        pl.col("P")
-        .add(
-            pl.col("D")
-            .forward_fill()
-            .truediv(12)
-            .mul(0.7 if tax_treatment == "Net" else 1)
+    return (
+        pl.read_excel(
+            "data/ie_data.xls",
+            sheet_name="Data",
+            columns=["Date", "P", "D"],
+            read_options=dict(header_row=7),
+            schema_overrides={"Date": pl.String},
         )
-        .truediv(pl.col("P").shift(1))
-        .fill_null(1)
-        .cum_prod()
-        .alias("price"),
+        .head(-1)
+        .select(
+            pl.col("Date")
+            .str.pad_end(7, "0")
+            .str.to_date("%Y.%m")
+            .dt.offset_by("2w")
+            .alias("date"),
+            pl.col("P")
+            .add(
+                pl.col("D")
+                .forward_fill()
+                .truediv(12)
+                .mul(0.7 if tax_treatment == "Net" else 1)
+            )
+            .truediv(pl.col("P").shift(1))
+            .fill_null(1)
+            .cum_prod()
+            .alias("price"),
+        )
     )
 
 
