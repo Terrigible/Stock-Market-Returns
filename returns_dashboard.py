@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
+import python_calamine  # noqa: F401 # Reduces latency for first pd.read_excel call
 import scipy.interpolate  # noqa: F401 # Reduces latency for first pd.Resampler.interpolate call
 import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
