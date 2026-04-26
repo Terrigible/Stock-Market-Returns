@@ -59,19 +59,6 @@ def update_price_graph(
     price_adj = 0
     hoverinfo = None
 
-    if (
-        not percent_scale
-        and not log_scale
-        and (auto_scale or ctx.triggered_id == "auto-scale-switch")
-    ):
-        min_val = df.loc[start_date:end_date].min().min()
-        max_val = df.loc[start_date:end_date].max().max()
-        layout.update(
-            yaxis_range=[
-                min_val - (max_val - min_val) * 0.055,
-                max_val + (max_val - min_val) * 0.055,
-            ]
-        )
     if percent_scale:
         layout.update(title="% Change")
         layout.update(yaxis_tickformat="+.2~%")
@@ -104,14 +91,7 @@ def update_price_graph(
 
         if not log_scale:
             if auto_scale or ctx.triggered_id == "auto-scale-switch":
-                min_val = df.loc[start_date:end_date].min().min()
-                max_val = df.loc[start_date:end_date].max().max()
-                layout.update(
-                    yaxis_range=[
-                        min_val - (max_val - min_val) * 0.055,
-                        max_val + (max_val - min_val) * 0.055,
-                    ]
-                )
+                pass
             elif (
                 "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data
             ):
@@ -179,7 +159,11 @@ def update_price_graph(
             yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
             layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
-            if "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data:
+            if auto_scale or ctx.triggered_id == "auto-scale-switch":
+                pass
+            elif (
+                "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data
+            ):
                 yaxis_min = 10 ** float(relayout_data["yaxis.range[0]"])
                 yaxis_max = 10 ** float(relayout_data["yaxis.range[1]"])
                 zoom_basis = (
@@ -224,8 +208,9 @@ def update_price_graph(
                         .iloc[0, 0],
                     ]
                 )
-
-        if (
+        if auto_scale or ctx.triggered_id == "auto-scale-switch":
+            pass
+        elif (
             ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
             and "xaxis.range[0]" not in relayout_data
             and prev_layout
@@ -245,14 +230,18 @@ def update_price_graph(
 
     if log_scale:
         layout.update(yaxis_type="log")
-        if auto_scale or ctx.triggered_id == "auto-scale-switch":
-            min_val = np.log10(df.loc[start_date:end_date].min().min() + price_adj)
-            max_val = np.log10(df.loc[start_date:end_date].max().max() + price_adj)
-            yaxis_range = [
-                min_val - (max_val - min_val) * 0.055,
-                max_val + (max_val - min_val) * 0.055,
-            ]
-            layout.update(yaxis_range=yaxis_range)
+
+    if auto_scale or ctx.triggered_id == "auto-scale-switch":
+        min_val = df.loc[start_date:end_date].min().min() + price_adj
+        max_val = df.loc[start_date:end_date].max().max() + price_adj
+        if log_scale:
+            min_val = np.log10(min_val)
+            max_val = np.log10(max_val)
+        yaxis_range = [
+            min_val - (max_val - min_val) * 0.055,
+            max_val + (max_val - min_val) * 0.055,
+        ]
+        layout.update(yaxis_range=yaxis_range)
 
     data = [
         go.Scatter(
