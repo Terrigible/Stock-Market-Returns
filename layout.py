@@ -878,7 +878,7 @@ app_layout = html.Div(
                                 html.P(),
                                 dbc.Button(
                                     "Add Strategy",
-                                    id="add-accumulation-strategy-button",
+                                    id="accumulation-add-strategy-button",
                                 ),
                                 html.P(),
                                 dbc.Label(
@@ -1015,10 +1015,10 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label(
                                     "Monthly Withdrawal Amount",
-                                    html_for="monthly-withdrawal-input",
+                                    html_for="withdrawal-monthly-amount-input",
                                 ),
                                 dbc.Input(
-                                    id="monthly-withdrawal-input",
+                                    id="withdrawal-monthly-amount-input",
                                     type="number",
                                     min=0.01,
                                 ),
@@ -1077,7 +1077,7 @@ app_layout = html.Div(
                                 ),
                                 html.P(),
                                 dbc.Button(
-                                    "Add Strategy", id="add-withdrawal-strategy-button"
+                                    "Add Strategy", id="withdrawal-add-strategy-button"
                                 ),
                                 html.P(),
                                 dbc.Label(
