@@ -20,6 +20,34 @@ class PrevLayout(TypedDict):
     yaxis: YAxis
 
 
+def get_scaling_factor(
+    prev_zoom_df: pd.DataFrame,
+    start_date: pd.Timestamp | None,
+    end_date: pd.Timestamp | None,
+    yaxis_min: float,
+    yaxis_max: float,
+) -> float:
+    masked_df = (
+        prev_zoom_df.loc[start_date:end_date]
+        .where(lambda x: (x >= yaxis_min) & (x <= yaxis_max))
+        .apply(lambda col: col.max() - col.min(), result_type="reduce")
+    )
+    if masked_df.isna().all():
+        masked_df = prev_zoom_df.loc[start_date:end_date].apply(
+            lambda col: col.max() - col.min(), result_type="reduce"
+        )
+    if masked_df.isna().all():
+        masked_df = prev_zoom_df.apply(
+            lambda col: col.max() - col.min(), result_type="reduce"
+        )
+    if masked_df.isna().all():
+        zoom_basis = prev_zoom_df.columns[0]
+    else:
+        zoom_basis = masked_df.idxmax()
+    scaling_factor = prev_zoom_df.add(1).loc[start_date:, zoom_basis].iloc[0]
+    return scaling_factor
+
+
 def update_price_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
@@ -89,14 +117,8 @@ def update_price_graph(
             ):
                 yaxis_min = float(relayout_data["yaxis.range[0]"])
                 yaxis_max = float(relayout_data["yaxis.range[1]"])
-                zoom_basis = (
-                    prev_zoom_df.loc[start_date:end_date]
-                    .apply(lambda col: col.between(yaxis_min, yaxis_max))
-                    .sum()
-                    .idxmax()
-                )
-                scaling_factor = (
-                    prev_zoom_df.add(1).loc[start_date:, zoom_basis].iloc[0]
+                scaling_factor = get_scaling_factor(
+                    prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
                 )
                 layout.update(
                     yaxis_range=[
@@ -146,20 +168,18 @@ def update_price_graph(
             ):
                 yaxis_min = 10 ** float(relayout_data["yaxis.range[0]"])
                 yaxis_max = 10 ** float(relayout_data["yaxis.range[1]"])
-                zoom_basis = (
-                    prev_zoom_df.add(1)
-                    .loc[start_date:end_date]
-                    .apply(lambda col: col.between(yaxis_min, yaxis_max))
-                    .sum()
-                    .idxmax()
+                scaling_factor = get_scaling_factor(
+                    prev_zoom_df.add(1).apply(np.log10),
+                    start_date,
+                    end_date,
+                    np.log10(yaxis_min),
+                    np.log10(yaxis_max),
                 )
-                scaling_factor = (
-                    prev_zoom_df.add(1).loc[start_date:, zoom_basis].iloc[0]
-                )
+
                 layout.update(
                     yaxis_range=[
-                        np.log10(yaxis_min / scaling_factor),
-                        np.log10(yaxis_max / scaling_factor),
+                        np.log10(yaxis_min / (10 ** (scaling_factor - 1))),
+                        np.log10(yaxis_max / (10 ** (scaling_factor - 1))),
                     ]
                 )
             elif (
