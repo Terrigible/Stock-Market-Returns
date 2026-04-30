@@ -66,11 +66,7 @@ def update_price_graph(
         prev_zoom_df = df.copy(deep=True)
 
         for column in df.columns:
-            series = df[column].dropna()
-            if series.empty:
-                df[column] = np.nan
-                continue
-            visible_series = series[start_date:]
+            visible_series = df.loc[start_date:, column].dropna()
             if not visible_series.empty:
                 baseline_value = visible_series.iloc[0]
                 df[column] = df[column].div(baseline_value).sub(1)
@@ -78,11 +74,7 @@ def update_price_graph(
                 df[column] = np.nan
 
         for column in prev_zoom_df.columns:
-            series = prev_zoom_df[column].dropna()
-            if series.empty:
-                prev_zoom_df[column] = np.nan
-                continue
-            visible_series = series[prev_start_date:]
+            visible_series = prev_zoom_df.loc[prev_start_date:, column].dropna()
             if not visible_series.empty:
                 baseline_value = visible_series.iloc[0]
                 prev_zoom_df[column] = prev_zoom_df[column].div(baseline_value).sub(1)
