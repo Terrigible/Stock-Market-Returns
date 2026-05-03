@@ -15,11 +15,3 @@ Before running any commands, ensure the virtual environment is activated:
 ```bash
 source .venv/bin/activate
 ```
-
-## Linting and Foramtting
-
-After editing any Python file, run ruff check and ruff format:
-
-```bash
-ruff check --fix && ruff format
-```
