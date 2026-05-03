@@ -1089,7 +1089,6 @@ app.clientside_callback(
 @app.callback(
     Output("portfolios", "value"),
     Output("portfolios", "options"),
-    Output("portfolios", "optionHeight"),
     Output("portfolio-allocations", "value", allow_duplicate=True),
     Output("portfolio-allocations", "options", allow_duplicate=True),
     Input("add-portfolio-button", "n_clicks"),
@@ -1123,7 +1122,6 @@ def add_portfolio(
         return (
             [portfolio_str],
             {portfolio_str: portfolio_title},
-            12 + 24 * (1 + portfolio_title.count("\n")),
             [],
             {},
         )
@@ -1134,7 +1132,6 @@ def add_portfolio(
     return (
         portfolio_strs,
         portfolio_options,
-        12 + 24 * (1 + max(title.count("\n") for title in portfolio_options.values())),
         [],
         {},
     )

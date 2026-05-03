@@ -341,11 +341,17 @@ app_layout = html.Div(
                                     "Selected Securities",
                                     html_for="selected-securities",
                                 ),
-                                dcc.Dropdown(
-                                    {},
-                                    multi=True,
-                                    searchable=False,
-                                    id="selected-securities",
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            multi=True,
+                                            searchable=False,
+                                            id="selected-securities",
+                                            style={"width": 0, "flexGrow": 1},
+                                        ),
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 dcc.Store(
                                     id="securities-colourmap-store",
@@ -560,11 +566,18 @@ app_layout = html.Div(
                                     "Portfolio Allocations",
                                     html_for="portfolio-allocations",
                                 ),
-                                dcc.Dropdown(
-                                    {},
-                                    id="portfolio-allocations",
-                                    multi=True,
-                                    searchable=False,
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            id="portfolio-allocations",
+                                            multi=True,
+                                            searchable=False,
+                                            className="show-all-dropdown-value-items",
+                                            style={"width": 0, "flexGrow": 1},
+                                        )
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 html.P(
                                     "Sum of Weights: ",
@@ -573,11 +586,17 @@ app_layout = html.Div(
                                 html.P(),
                                 dbc.Button("Add Portfolio", id="add-portfolio-button"),
                                 html.P(),
-                                dcc.Dropdown(
-                                    {},
-                                    id="portfolios",
-                                    multi=True,
-                                    searchable=False,
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            id="portfolios",
+                                            multi=True,
+                                            searchable=False,
+                                            style={"width": 0, "flexGrow": 1},
+                                        )
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 dbc.Label(
                                     "Currency", html_for="portfolio-currency-selection"
@@ -884,12 +903,17 @@ app_layout = html.Div(
                                 dbc.Label(
                                     "Strategies", html_for="accumulation-strategies"
                                 ),
-                                dcc.Dropdown(
-                                    {},
-                                    multi=True,
-                                    searchable=False,
-                                    id="accumulation-strategies",
-                                    optionHeight=200,
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            multi=True,
+                                            searchable=False,
+                                            id="accumulation-strategies",
+                                            style={"width": 0, "flexGrow": 1},
+                                        )
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 dbc.Switch(
                                     "accumulation-index-by-start-date",
@@ -1083,12 +1107,17 @@ app_layout = html.Div(
                                 dbc.Label(
                                     "Strategies", html_for="withdrawal-strategies"
                                 ),
-                                dcc.Dropdown(
-                                    {},
-                                    multi=True,
-                                    searchable=False,
-                                    id="withdrawal-strategies",
-                                    optionHeight=150,
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            multi=True,
+                                            searchable=False,
+                                            id="withdrawal-strategies",
+                                            style={"width": 0, "flexGrow": 1},
+                                        )
+                                    ],
+                                    style={"display": "flex"},
                                 ),
                                 dbc.Switch(
                                     id="withdrawal-index-by-start-date",
