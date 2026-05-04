@@ -20,7 +20,7 @@ class PrevLayout(TypedDict):
     yaxis: YAxis
 
 
-def get_scaling_factor(
+def _get_scaling_factor(
     prev_zoom_df: pd.DataFrame,
     start_date: pd.Timestamp | None,
     end_date: pd.Timestamp | None,
@@ -46,6 +46,21 @@ def get_scaling_factor(
         zoom_basis = masked_df.idxmax()
     scaling_factor = prev_zoom_df.loc[start_date:, zoom_basis].iloc[0]
     return scaling_factor
+
+
+def _get_zoom_y_range(
+    relayout_data: dict[str, Any],
+    prev_layout: PrevLayout | None,
+) -> tuple[float | None, float | None]:
+    if "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data:
+        return relayout_data["yaxis.range[0]"], relayout_data["yaxis.range[1]"]
+    elif (
+        ("xaxis.range[0]" in relayout_data or "xaxis.range[1]" in relayout_data)
+        and "yaxis.range[0]" not in relayout_data
+        and prev_layout
+    ):
+        return prev_layout["yaxis"]["range"][0], prev_layout["yaxis"]["range"][1]
+    return None, None
 
 
 def update_price_graph(
@@ -111,36 +126,6 @@ def update_price_graph(
             else:
                 prev_zoom_df[column] = np.nan
 
-        if not log_scale and not auto_scale and ctx.triggered_id != "auto-scale-switch":
-            if "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data:
-                yaxis_min = relayout_data["yaxis.range[0]"]
-                yaxis_max = relayout_data["yaxis.range[1]"]
-                scaling_factor = get_scaling_factor(
-                    prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
-                )
-                layout.update(
-                    yaxis_range=[
-                        (yaxis_min + 1) / (scaling_factor + 1) - 1,
-                        (yaxis_max + 1) / (scaling_factor + 1) - 1,
-                    ]
-                )
-            elif (
-                ("xaxis.range[0]" in relayout_data or "xaxis.range[1]" in relayout_data)
-                and "yaxis.range[0]" not in relayout_data
-                and prev_layout
-            ):
-                yaxis_min = prev_layout["yaxis"]["range"][0]
-                yaxis_max = prev_layout["yaxis"]["range"][1]
-                scaling_factor = get_scaling_factor(
-                    prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
-                )
-                layout.update(
-                    yaxis_range=[
-                        (yaxis_min + 1) / (scaling_factor + 1) - 1,
-                        (yaxis_max + 1) / (scaling_factor + 1) - 1,
-                    ]
-                )
-
         if log_scale:
             price_adj = 1
             hoverinfo = "text+name+x"
@@ -157,38 +142,24 @@ def update_price_graph(
             yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
             layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
-            if not auto_scale and ctx.triggered_id != "auto-scale-switch":
-                if (
-                    "xaxis.range[0]" in relayout_data
-                    and "yaxis.range[0]" in relayout_data
-                ):
-                    yaxis_min = relayout_data["yaxis.range[0]"]
-                    yaxis_max = relayout_data["yaxis.range[1]"]
-                    scaling_factor = get_scaling_factor(
-                        prev_zoom_df.add(1).apply(np.log10),
-                        start_date,
-                        end_date,
-                        yaxis_min,
-                        yaxis_max,
+        if not auto_scale and ctx.triggered_id != "auto-scale-switch":
+            if not log_scale:
+                yaxis_min, yaxis_max = _get_zoom_y_range(relayout_data, prev_layout)
+                if yaxis_min is not None and yaxis_max is not None:
+                    scaling_factor = _get_scaling_factor(
+                        prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
                     )
-
                     layout.update(
                         yaxis_range=[
-                            yaxis_min - scaling_factor,
-                            yaxis_max - scaling_factor,
+                            (yaxis_min + 1) / (scaling_factor + 1) - 1,
+                            (yaxis_max + 1) / (scaling_factor + 1) - 1,
                         ]
                     )
-                elif (
-                    (
-                        "xaxis.range[0]" in relayout_data
-                        or "xaxis.range[1]" in relayout_data
-                    )
-                    and "yaxis.range[0]" not in relayout_data
-                    and prev_layout
-                ):
-                    yaxis_min = prev_layout["yaxis"]["range"][0]
-                    yaxis_max = prev_layout["yaxis"]["range"][1]
-                    scaling_factor = get_scaling_factor(
+
+            if log_scale:
+                yaxis_min, yaxis_max = _get_zoom_y_range(relayout_data, prev_layout)
+                if yaxis_min is not None and yaxis_max is not None:
+                    scaling_factor = _get_scaling_factor(
                         prev_zoom_df.add(1).apply(np.log10),
                         start_date,
                         end_date,
@@ -202,20 +173,18 @@ def update_price_graph(
                         ]
                     )
 
-        if (
-            not auto_scale
-            and ctx.triggered_id != "auto-scale-switch"
-            and ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
-            and "xaxis.range[0]" not in relayout_data
-            and prev_layout
-        ):
-            yaxis_min = relayout_data.get(
-                "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
-            )
-            yaxis_max = relayout_data.get(
-                "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
-            )
-            layout.update(yaxis_range=[yaxis_min, yaxis_max])
+            if (
+                ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
+                and "xaxis.range[0]" not in relayout_data
+                and prev_layout
+            ):
+                yaxis_min = relayout_data.get(
+                    "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
+                )
+                yaxis_max = relayout_data.get(
+                    "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
+                )
+                layout.update(yaxis_range=[yaxis_min, yaxis_max])
 
         if (
             "autosize" in relayout_data
