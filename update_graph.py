@@ -131,7 +131,9 @@ def update_price_graph(
             ):
                 yaxis_min = prev_layout["yaxis"]["range"][0]
                 yaxis_max = prev_layout["yaxis"]["range"][1]
-                scaling_factor = prev_zoom_df.loc[start_date:].iloc[0].iloc[0]
+                scaling_factor = get_scaling_factor(
+                    prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
+                )
                 layout.update(
                     yaxis_range=[
                         (yaxis_min + 1) / (scaling_factor + 1) - 1,
@@ -186,12 +188,12 @@ def update_price_graph(
                 ):
                     yaxis_min = prev_layout["yaxis"]["range"][0]
                     yaxis_max = prev_layout["yaxis"]["range"][1]
-                    scaling_factor = (
-                        prev_zoom_df.add(1)
-                        .apply(np.log10)
-                        .loc[start_date:]
-                        .iloc[0]
-                        .iloc[0]
+                    scaling_factor = get_scaling_factor(
+                        prev_zoom_df.add(1).apply(np.log10),
+                        start_date,
+                        end_date,
+                        yaxis_min,
+                        yaxis_max,
                     )
                     layout.update(
                         yaxis_range=[
