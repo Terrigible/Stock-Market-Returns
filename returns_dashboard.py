@@ -1350,10 +1350,10 @@ app.clientside_callback(
         namespace="options",
         function_name="updateStrategyPortfolioOptions",
     ),
-    Output("accumulation-strategy-portfolio", "options"),
-    Output("withdrawal-strategy-portfolio", "options"),
-    Output("accumulation-strategy-portfolio", "value"),
-    Output("withdrawal-strategy-portfolio", "value"),
+    Output("backtest-accumulation-strategy-portfolio", "options"),
+    Output("backtest-withdrawal-strategy-portfolio", "options"),
+    Output("backtest-accumulation-strategy-portfolio", "value"),
+    Output("backtest-withdrawal-strategy-portfolio", "value"),
     Input("portfolios", "options"),
     prevent_initial_call=True,
 )
@@ -1363,8 +1363,8 @@ app.clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
     ),
-    Output("accumulation-drawdown-type-container", "style"),
-    Input("accumulation-y-var-selection", "value"),
+    Output("backtest-accumulation-drawdown-type-container", "style"),
+    Input("backtest-accumulation-y-var-selection", "value"),
 )
 
 
@@ -1372,33 +1372,35 @@ app.clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
     ),
-    Output("withdrawal-drawdown-type-container", "style"),
-    Input("withdrawal-y-var-selection", "value"),
+    Output("backtest-withdrawal-drawdown-type-container", "style"),
+    Input("backtest-withdrawal-y-var-selection", "value"),
 )
 
 
 @app.callback(
-    Output("accumulation-strategies", "value"),
-    Output("accumulation-strategies", "options"),
-    Input("accumulation-add-strategy-button", "n_clicks"),
-    State("accumulation-strategies", "value"),
-    State("accumulation-strategies", "options"),
-    State("accumulation-strategy-portfolio", "value"),
-    State("accumulation-strategy-portfolio", "options"),
-    State("accumulation-strategy-currency-selection", "value"),
-    State("accumulation-investment-amount-input", "value"),
-    State("accumulation-monthly-investment-input", "value"),
-    State("accumulation-monthly-investment-inflation-adjustment-switch", "value"),
-    State("accumulation-investment-horizon-input", "value"),
-    State("accumulation-dca-length-input", "value"),
-    State("accumulation-dca-interval-input", "value"),
-    State("accumulation-variable-transaction-fees-input", "value"),
-    State("accumulation-fixed-transaction-fees-input", "value"),
-    State("accumulation-annualised-holding-fees-input", "value"),
-    State("accumulation-portfolio-value-inflation-adjustment-switch", "value"),
+    Output("backtest-accumulation-strategies", "value"),
+    Output("backtest-accumulation-strategies", "options"),
+    Input("backtest-accumulation-add-strategy-button", "n_clicks"),
+    State("backtest-accumulation-strategies", "value"),
+    State("backtest-accumulation-strategies", "options"),
+    State("backtest-accumulation-strategy-portfolio", "value"),
+    State("backtest-accumulation-strategy-portfolio", "options"),
+    State("backtest-accumulation-strategy-currency-selection", "value"),
+    State("backtest-accumulation-investment-amount-input", "value"),
+    State("backtest-accumulation-monthly-investment-input", "value"),
+    State(
+        "backtest-accumulation-monthly-investment-inflation-adjustment-switch", "value"
+    ),
+    State("backtest-accumulation-investment-horizon-input", "value"),
+    State("backtest-accumulation-dca-length-input", "value"),
+    State("backtest-accumulation-dca-interval-input", "value"),
+    State("backtest-accumulation-variable-transaction-fees-input", "value"),
+    State("backtest-accumulation-fixed-transaction-fees-input", "value"),
+    State("backtest-accumulation-annualised-holding-fees-input", "value"),
+    State("backtest-accumulation-portfolio-value-inflation-adjustment-switch", "value"),
     prevent_initial_call=True,
 )
-def update_accumulation_strategies(
+def update_backtest_accumulation_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
@@ -1477,7 +1479,9 @@ def update_accumulation_strategies(
     return strategies, strategy_options
 
 
-def backtest_accumulation_strategy(yf_securities: dict[str, str], strategy_str: str):
+def simulate_backtest_accumulation_strategy(
+    yf_securities: dict[str, str], strategy_str: str
+):
     strategy: dict[str, str | int | float] = json.loads(strategy_str)
     strategy_portfolio = str(strategy["strategy_portfolio"])
     currency = str(strategy["currency"])
@@ -1539,16 +1543,16 @@ def backtest_accumulation_strategy(yf_securities: dict[str, str], strategy_str: 
 
 
 @app.callback(
-    Output("accumulation-strategy-graph", "figure"),
-    Input("accumulation-strategies", "value"),
-    State("accumulation-strategies", "options"),
-    Input("accumulation-index-by-start-date", "value"),
-    Input("accumulation-y-var-selection", "value"),
-    Input("accumulation-drawdown-type-selection", "value"),
+    Output("backtest-accumulation-strategy-graph", "figure"),
+    Input("backtest-accumulation-strategies", "value"),
+    State("backtest-accumulation-strategies", "options"),
+    Input("backtest-accumulation-index-by-start-date", "value"),
+    Input("backtest-accumulation-y-var-selection", "value"),
+    Input("backtest-accumulation-drawdown-type-selection", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
-def update_accumulation_strategy_graph(
+def update_backtest_accumulation_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
@@ -1571,7 +1575,9 @@ def update_accumulation_strategy_graph(
     )
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
-        portfolio_values = backtest_accumulation_strategy(yf_securities, strategy_str)
+        portfolio_values = simulate_backtest_accumulation_strategy(
+            yf_securities, strategy_str
+        )
         investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
@@ -1633,15 +1639,15 @@ class ClickData(TypedDict):
 
 
 @app.callback(
-    Output("accumulation-strategy-clicked-date-store", "data"),
-    Output("accumulation-strategy-show-details-button", "children"),
-    Output("accumulation-strategy-show-details-button", "disabled"),
-    Input("accumulation-strategy-graph", "clickData"),
-    Input("accumulation-strategies", "value"),
+    Output("backtest-accumulation-strategy-clicked-date-store", "data"),
+    Output("backtest-accumulation-strategy-show-details-button", "children"),
+    Output("backtest-accumulation-strategy-show-details-button", "disabled"),
+    Input("backtest-accumulation-strategy-graph", "clickData"),
+    Input("backtest-accumulation-strategies", "value"),
     prevent_initial_call=True,
 )
-def handle_accumulation_graph_interaction(click_data: ClickData, _):
-    if ctx.triggered_id == "accumulation-strategies":
+def handle_backtest_accumulation_strategy_graph_interaction(click_data: ClickData, _):
+    if ctx.triggered_id == "backtest-accumulation-strategies":
         return None, "Click a data point to view portfolio growth", True
 
     clicked_date = pd.to_datetime(click_data["points"][0]["x"])
@@ -1650,17 +1656,17 @@ def handle_accumulation_graph_interaction(click_data: ClickData, _):
 
 
 @app.callback(
-    Output("accumulation-strategy-modal", "is_open"),
-    Output("accumulation-strategy-modal-graph", "figure"),
-    Input("accumulation-strategy-show-details-button", "n_clicks"),
-    State("accumulation-strategy-clicked-date-store", "data"),
-    State("accumulation-strategies", "value"),
-    State("accumulation-strategies", "options"),
-    State("accumulation-index-by-start-date", "value"),
+    Output("backtest-accumulation-strategy-modal", "is_open"),
+    Output("backtest-accumulation-strategy-modal-graph", "figure"),
+    Input("backtest-accumulation-strategy-show-details-button", "n_clicks"),
+    State("backtest-accumulation-strategy-clicked-date-store", "data"),
+    State("backtest-accumulation-strategies", "value"),
+    State("backtest-accumulation-strategies", "options"),
+    State("backtest-accumulation-index-by-start-date", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
-def show_accumulation_strategy_modal(
+def show_backtest_accumulation_strategy_modal(
     _,
     clicked_date_str: str,
     strategy_strs: list[str],
@@ -1679,7 +1685,9 @@ def show_accumulation_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
-        portfolio_values = backtest_accumulation_strategy(yf_securities, strategy_str)
+        portfolio_values = simulate_backtest_accumulation_strategy(
+            yf_securities, strategy_str
+        )
         investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
@@ -1723,25 +1731,25 @@ def show_accumulation_strategy_modal(
 
 
 @app.callback(
-    Output("withdrawal-strategies", "value"),
-    Output("withdrawal-strategies", "options"),
-    Input("withdrawal-add-strategy-button", "n_clicks"),
-    State("withdrawal-strategies", "value"),
-    State("withdrawal-strategies", "options"),
-    State("withdrawal-strategy-portfolio", "value"),
-    State("withdrawal-strategy-portfolio", "options"),
-    State("withdrawal-strategy-currency-selection", "value"),
-    State("withdrawal-initial-capital-input", "value"),
-    State("withdrawal-monthly-amount-input", "value"),
-    State("withdrawal-monthly-inflation-adjustment-switch", "value"),
-    State("withdrawal-horizon-input", "value"),
-    State("withdrawal-interval-input", "value"),
-    State("withdrawal-variable-transaction-fees-input", "value"),
-    State("withdrawal-fixed-transaction-fees-input", "value"),
-    State("withdrawal-annualised-holding-fees-input", "value"),
+    Output("backtest-withdrawal-strategies", "value"),
+    Output("backtest-withdrawal-strategies", "options"),
+    Input("backtest-withdrawal-add-strategy-button", "n_clicks"),
+    State("backtest-withdrawal-strategies", "value"),
+    State("backtest-withdrawal-strategies", "options"),
+    State("backtest-withdrawal-strategy-portfolio", "value"),
+    State("backtest-withdrawal-strategy-portfolio", "options"),
+    State("backtest-withdrawal-strategy-currency-selection", "value"),
+    State("backtest-withdrawal-initial-capital-input", "value"),
+    State("backtest-withdrawal-monthly-amount-input", "value"),
+    State("backtest-withdrawal-monthly-inflation-adjustment-switch", "value"),
+    State("backtest-withdrawal-horizon-input", "value"),
+    State("backtest-withdrawal-interval-input", "value"),
+    State("backtest-withdrawal-variable-transaction-fees-input", "value"),
+    State("backtest-withdrawal-fixed-transaction-fees-input", "value"),
+    State("backtest-withdrawal-annualised-holding-fees-input", "value"),
     prevent_initial_call=True,
 )
-def update_withdrawal_strategies(
+def update_backtest_withdrawal_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
@@ -1811,7 +1819,9 @@ def update_withdrawal_strategies(
     return strategies, strategy_options
 
 
-def backtest_withdrawal_strategy(yf_securities: dict[str, str], strategy_str: str):
+def simulate_backtest_withdrawal_strategy(
+    yf_securities: dict[str, str], strategy_str: str
+):
     strategy: dict[str, str | int | float] = json.loads(strategy_str)
     strategy_portfolio = str(strategy["strategy_portfolio"])
     currency = str(strategy["currency"])
@@ -1854,16 +1864,16 @@ def backtest_withdrawal_strategy(yf_securities: dict[str, str], strategy_str: st
 
 
 @app.callback(
-    Output("withdrawal-strategy-graph", "figure"),
-    Input("withdrawal-strategies", "value"),
-    State("withdrawal-strategies", "options"),
-    Input("withdrawal-index-by-start-date", "value"),
-    Input("withdrawal-y-var-selection", "value"),
-    Input("withdrawal-drawdown-type-selection", "value"),
+    Output("backtest-withdrawal-strategy-graph", "figure"),
+    Input("backtest-withdrawal-strategies", "value"),
+    State("backtest-withdrawal-strategies", "options"),
+    Input("backtest-withdrawal-index-by-start-date", "value"),
+    Input("backtest-withdrawal-y-var-selection", "value"),
+    Input("backtest-withdrawal-drawdown-type-selection", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
-def update_withdrawal_strategy_graph(
+def update_backtest_withdrawal_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
@@ -1886,7 +1896,9 @@ def update_withdrawal_strategy_graph(
     )
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
-        portfolio_values = backtest_withdrawal_strategy(yf_securities, strategy_str)
+        portfolio_values = simulate_backtest_withdrawal_strategy(
+            yf_securities, strategy_str
+        )
         withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)
@@ -1940,15 +1952,15 @@ def update_withdrawal_strategy_graph(
 
 
 @app.callback(
-    Output("withdrawal-strategy-clicked-date-store", "data"),
-    Output("withdrawal-strategy-show-details-button", "children"),
-    Output("withdrawal-strategy-show-details-button", "disabled"),
-    Input("withdrawal-strategy-graph", "clickData"),
-    Input("withdrawal-strategies", "value"),
+    Output("backtest-withdrawal-strategy-clicked-date-store", "data"),
+    Output("backtest-withdrawal-strategy-show-details-button", "children"),
+    Output("backtest-withdrawal-strategy-show-details-button", "disabled"),
+    Input("backtest-withdrawal-strategy-graph", "clickData"),
+    Input("backtest-withdrawal-strategies", "value"),
     prevent_initial_call=True,
 )
-def handle_withdrawal_graph_interaction(click_data: ClickData, _):
-    if ctx.triggered_id == "withdrawal-strategies":
+def handle_backtest_withdrawal_strategy_graph_interaction(click_data: ClickData, _):
+    if ctx.triggered_id == "backtest-withdrawal-strategies":
         return None, "Click a data point to view portfolio value", True
 
     clicked_date = pd.to_datetime(click_data["points"][0]["x"])
@@ -1957,17 +1969,17 @@ def handle_withdrawal_graph_interaction(click_data: ClickData, _):
 
 
 @app.callback(
-    Output("withdrawal-strategy-modal", "is_open"),
-    Output("withdrawal-strategy-modal-graph", "figure"),
-    Input("withdrawal-strategy-show-details-button", "n_clicks"),
-    State("withdrawal-strategy-clicked-date-store", "data"),
-    State("withdrawal-strategies", "value"),
-    State("withdrawal-strategies", "options"),
-    State("withdrawal-index-by-start-date", "value"),
+    Output("backtest-withdrawal-strategy-modal", "is_open"),
+    Output("backtest-withdrawal-strategy-modal-graph", "figure"),
+    Input("backtest-withdrawal-strategy-show-details-button", "n_clicks"),
+    State("backtest-withdrawal-strategy-clicked-date-store", "data"),
+    State("backtest-withdrawal-strategies", "value"),
+    State("backtest-withdrawal-strategies", "options"),
+    State("backtest-withdrawal-index-by-start-date", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
-def show_withdrawal_strategy_modal(
+def show_backtest_withdrawal_strategy_modal(
     _,
     clicked_date_str: str,
     strategy_strs: list[str],
@@ -1986,7 +1998,9 @@ def show_withdrawal_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
-        portfolio_values = backtest_withdrawal_strategy(yf_securities, strategy_str)
+        portfolio_values = simulate_backtest_withdrawal_strategy(
+            yf_securities, strategy_str
+        )
         withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)

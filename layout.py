@@ -777,20 +777,20 @@ app_layout = html.Div(
                 ),
             ),
             dbc.Tab(
-                label="Accumulation Strategy Tester",
+                label="Accumulation Strategy Backtester",
                 children=html.Div(
                     [
                         html.Div(
                             [
                                 dbc.Label(
                                     "Portfolio",
-                                    html_for="accumulation-strategy-portfolio",
+                                    html_for="backtest-accumulation-strategy-portfolio",
                                 ),
                                 html.Div(
                                     [
                                         dbc.Select(
                                             {},
-                                            id="accumulation-strategy-portfolio",
+                                            id="backtest-accumulation-strategy-portfolio",
                                             style={"width": 0, "flexGrow": 1},
                                         ),
                                     ],
@@ -798,7 +798,7 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label(
                                     "Currency",
-                                    html_for="accumulation-strategy-currency-selection",
+                                    html_for="backtest-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Select(
                                     [
@@ -806,102 +806,103 @@ app_layout = html.Div(
                                         "USD",
                                     ],
                                     value="SGD",
-                                    id="accumulation-strategy-currency-selection",
+                                    id="backtest-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Label(
                                     "Initial Portfolio Value",
-                                    html_for="accumulation-investment-amount-input",
+                                    html_for="backtest-accumulation-investment-amount-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-investment-amount-input",
+                                    id="backtest-accumulation-investment-amount-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Label(
                                     "Monthly Investment Amount",
-                                    html_for="accumulation-monthly-investment-input",
+                                    html_for="backtest-accumulation-monthly-investment-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-monthly-investment-input",
+                                    id="backtest-accumulation-monthly-investment-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Switch(
-                                    "accumulation-monthly-investment-inflation-adjustment-switch",
+                                    "backtest-accumulation-monthly-investment-inflation-adjustment-switch",
                                     value=False,
                                     label="Adjust for Inflation",
                                     style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
                                     "Investment Horizon (Months)",
-                                    html_for="accumulation-investment-horizon-input",
+                                    html_for="backtest-accumulation-investment-horizon-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-investment-horizon-input",
+                                    id="backtest-accumulation-investment-horizon-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
                                 dbc.Label(
                                     "DCA Length (Months)",
-                                    html_for="accumulation-dca-length-input",
+                                    html_for="backtest-accumulation-dca-length-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-dca-length-input",
+                                    id="backtest-accumulation-dca-length-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
                                 dbc.Label(
                                     "DCA Interval (Months)",
-                                    html_for="accumulation-dca-interval-input",
+                                    html_for="backtest-accumulation-dca-interval-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-dca-interval-input",
+                                    id="backtest-accumulation-dca-interval-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
                                 dbc.Label(
                                     "Variable Transaction Fees (%)",
-                                    html_for="accumulation-variable-transaction-fees-input",
+                                    html_for="backtest-accumulation-variable-transaction-fees-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-variable-transaction-fees-input",
+                                    id="backtest-accumulation-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Label(
                                     "Fixed Transaction Fees ($)",
-                                    html_for="accumulation-fixed-transaction-fees-input",
+                                    html_for="backtest-accumulation-fixed-transaction-fees-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-fixed-transaction-fees-input",
+                                    id="backtest-accumulation-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Label(
                                     "Annualised Holding Fees (% p.a.)",
-                                    html_for="accumulation-annualised-holding-fees-input",
+                                    html_for="backtest-accumulation-annualised-holding-fees-input",
                                 ),
                                 dbc.Input(
-                                    id="accumulation-annualised-holding-fees-input",
+                                    id="backtest-accumulation-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Switch(
-                                    "accumulation-portfolio-value-inflation-adjustment-switch",
+                                    "backtest-accumulation-portfolio-value-inflation-adjustment-switch",
                                     value=False,
                                     label="Adjust Portfolio Value for Inflation",
                                 ),
                                 html.P(),
                                 dbc.Button(
                                     "Add Strategy",
-                                    id="accumulation-add-strategy-button",
+                                    id="backtest-accumulation-add-strategy-button",
                                 ),
                                 html.P(),
                                 dbc.Label(
-                                    "Strategies", html_for="accumulation-strategies"
+                                    "Strategies",
+                                    html_for="backtest-accumulation-strategies",
                                 ),
                                 html.Div(
                                     [
@@ -909,19 +910,21 @@ app_layout = html.Div(
                                             {},
                                             multi=True,
                                             searchable=False,
-                                            id="accumulation-strategies",
+                                            id="backtest-accumulation-strategies",
+                                            optionHeight=200,
                                             style={"width": 0, "flexGrow": 1},
                                         )
                                     ],
                                     style={"display": "flex"},
                                 ),
                                 dbc.Switch(
-                                    "accumulation-index-by-start-date",
+                                    "backtest-accumulation-index-by-start-date",
                                     value=False,
                                     label="Index by Start Date",
                                 ),
                                 dbc.Label(
-                                    "Value", html_for="accumulation-y-var-selection"
+                                    "Value",
+                                    html_for="backtest-accumulation-y-var-selection",
                                 ),
                                 dbc.Select(
                                     {
@@ -929,13 +932,13 @@ app_layout = html.Div(
                                         "max_drawdown": "Max Drawdown",
                                     },
                                     value="ending_values",
-                                    id="accumulation-y-var-selection",
+                                    id="backtest-accumulation-y-var-selection",
                                 ),
                                 html.Div(
                                     [
                                         dbc.Label(
                                             "Drawdown Type",
-                                            html_for="accumulation-drawdown-type-selection",
+                                            html_for="backtest-accumulation-drawdown-type-selection",
                                         ),
                                         dbc.Select(
                                             {
@@ -943,10 +946,10 @@ app_layout = html.Div(
                                                 "dollar": "Dollar Drawdown",
                                             },
                                             value="percent",
-                                            id="accumulation-drawdown-type-selection",
+                                            id="backtest-accumulation-drawdown-type-selection",
                                         ),
                                     ],
-                                    id="accumulation-drawdown-type-container",
+                                    id="backtest-accumulation-drawdown-type-container",
                                     style={"display": "none"},
                                 ),
                             ],
@@ -963,15 +966,15 @@ app_layout = html.Div(
                                             "title": "Strategy Performance",
                                         },
                                     },
-                                    id="accumulation-strategy-graph",
+                                    id="backtest-accumulation-strategy-graph",
                                     config={"toImageButtonOptions": {"scale": 4}},
                                 ),
                                 dcc.Store(
-                                    id="accumulation-strategy-clicked-date-store"
+                                    id="backtest-accumulation-strategy-clicked-date-store"
                                 ),
                                 dbc.Button(
                                     "Click a data point to view portfolio growth",
-                                    id="accumulation-strategy-show-details-button",
+                                    id="backtest-accumulation-strategy-show-details-button",
                                     disabled=True,
                                     style={"marginTop": "10px", "borderRadius": "0"},
                                 ),
@@ -983,13 +986,13 @@ app_layout = html.Div(
                                 dbc.ModalHeader("Portfolio Growth"),
                                 dbc.ModalBody(
                                     dcc.Graph(
-                                        id="accumulation-strategy-modal-graph",
+                                        id="backtest-accumulation-strategy-modal-graph",
                                         style={"height": "100%"},
                                         config={"toImageButtonOptions": {"scale": 4}},
                                     )
                                 ),
                             ],
-                            id="accumulation-strategy-modal",
+                            id="backtest-accumulation-strategy-modal",
                             fullscreen=True,
                             is_open=False,
                         ),
@@ -997,20 +1000,20 @@ app_layout = html.Div(
                 ),
             ),
             dbc.Tab(
-                label="Withdrawal Strategy Tester",
+                label="Withdrawal Strategy Backtester",
                 children=html.Div(
                     [
                         html.Div(
                             [
                                 dbc.Label(
                                     "Portfolio",
-                                    html_for="withdrawal-strategy-portfolio",
+                                    html_for="backtest-withdrawal-strategy-portfolio",
                                 ),
                                 html.Div(
                                     [
                                         dbc.Select(
                                             {},
-                                            id="withdrawal-strategy-portfolio",
+                                            id="backtest-withdrawal-strategy-portfolio",
                                             style={"width": 0, "flexGrow": 1},
                                         ),
                                     ],
@@ -1018,7 +1021,7 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label(
                                     "Currency",
-                                    html_for="withdrawal-strategy-currency-selection",
+                                    html_for="backtest-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Select(
                                     [
@@ -1026,86 +1029,88 @@ app_layout = html.Div(
                                         "USD",
                                     ],
                                     value="SGD",
-                                    id="withdrawal-strategy-currency-selection",
+                                    id="backtest-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Label(
                                     "Initial Capital",
-                                    html_for="withdrawal-initial-capital-input",
+                                    html_for="backtest-withdrawal-initial-capital-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-initial-capital-input",
+                                    id="backtest-withdrawal-initial-capital-input",
                                     type="number",
                                     min=0.01,
                                 ),
                                 dbc.Label(
                                     "Monthly Withdrawal Amount",
-                                    html_for="withdrawal-monthly-amount-input",
+                                    html_for="backtest-withdrawal-monthly-amount-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-monthly-amount-input",
+                                    id="backtest-withdrawal-monthly-amount-input",
                                     type="number",
                                     min=0.01,
                                 ),
                                 dbc.Switch(
-                                    "withdrawal-monthly-inflation-adjustment-switch",
+                                    "backtest-withdrawal-monthly-inflation-adjustment-switch",
                                     value=False,
                                     label="Adjust for Inflation",
                                     style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
                                     "Withdrawal Horizon (Months)",
-                                    html_for="withdrawal-horizon-input",
+                                    html_for="backtest-withdrawal-horizon-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-horizon-input",
+                                    id="backtest-withdrawal-horizon-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
                                 dbc.Label(
                                     "Withdrawal Interval (Months)",
-                                    html_for="withdrawal-interval-input",
+                                    html_for="backtest-withdrawal-interval-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-interval-input",
+                                    id="backtest-withdrawal-interval-input",
                                     type="number",
                                     min=1,
                                     step=1,
                                 ),
                                 dbc.Label(
                                     "Variable Transaction Fees (%)",
-                                    html_for="withdrawal-variable-transaction-fees-input",
+                                    html_for="backtest-withdrawal-variable-transaction-fees-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-variable-transaction-fees-input",
+                                    id="backtest-withdrawal-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Label(
                                     "Fixed Transaction Fees ($)",
-                                    html_for="withdrawal-fixed-transaction-fees-input",
+                                    html_for="backtest-withdrawal-fixed-transaction-fees-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-fixed-transaction-fees-input",
+                                    id="backtest-withdrawal-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
                                 ),
                                 dbc.Label(
                                     "Annualised Holding Fees (% p.a.)",
-                                    html_for="withdrawal-annualised-holding-fees-input",
+                                    html_for="backtest-withdrawal-annualised-holding-fees-input",
                                 ),
                                 dbc.Input(
-                                    id="withdrawal-annualised-holding-fees-input",
+                                    id="backtest-withdrawal-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
                                 ),
                                 html.P(),
                                 dbc.Button(
-                                    "Add Strategy", id="withdrawal-add-strategy-button"
+                                    "Add Strategy",
+                                    id="backtest-withdrawal-add-strategy-button",
                                 ),
                                 html.P(),
                                 dbc.Label(
-                                    "Strategies", html_for="withdrawal-strategies"
+                                    "Strategies",
+                                    html_for="backtest-withdrawal-strategies",
                                 ),
                                 html.Div(
                                     [
@@ -1113,19 +1118,21 @@ app_layout = html.Div(
                                             {},
                                             multi=True,
                                             searchable=False,
-                                            id="withdrawal-strategies",
+                                            id="backtest-withdrawal-strategies",
+                                            optionHeight=150,
                                             style={"width": 0, "flexGrow": 1},
                                         )
                                     ],
                                     style={"display": "flex"},
                                 ),
                                 dbc.Switch(
-                                    id="withdrawal-index-by-start-date",
+                                    id="backtest-withdrawal-index-by-start-date",
                                     value=False,
                                     label="Index by Start Date",
                                 ),
                                 dbc.Label(
-                                    "Value", html_for="withdrawal-y-var-selection"
+                                    "Value",
+                                    html_for="backtest-withdrawal-y-var-selection",
                                 ),
                                 dbc.Select(
                                     {
@@ -1133,13 +1140,13 @@ app_layout = html.Div(
                                         "max_drawdown": "Max Drawdown",
                                     },
                                     value="ending_values",
-                                    id="withdrawal-y-var-selection",
+                                    id="backtest-withdrawal-y-var-selection",
                                 ),
                                 html.Div(
                                     [
                                         dbc.Label(
                                             "Drawdown Type",
-                                            html_for="withdrawal-drawdown-type-selection",
+                                            html_for="backtest-withdrawal-drawdown-type-selection",
                                         ),
                                         dbc.Select(
                                             {
@@ -1147,10 +1154,10 @@ app_layout = html.Div(
                                                 "dollar": "Dollar Drawdown",
                                             },
                                             value="percent",
-                                            id="withdrawal-drawdown-type-selection",
+                                            id="backtest-withdrawal-drawdown-type-selection",
                                         ),
                                     ],
-                                    id="withdrawal-drawdown-type-container",
+                                    id="backtest-withdrawal-drawdown-type-container",
                                     style={"display": "none"},
                                 ),
                             ],
@@ -1167,13 +1174,15 @@ app_layout = html.Div(
                                             "title": "Strategy Performance",
                                         },
                                     },
-                                    id="withdrawal-strategy-graph",
+                                    id="backtest-withdrawal-strategy-graph",
                                     config={"toImageButtonOptions": {"scale": 4}},
                                 ),
-                                dcc.Store(id="withdrawal-strategy-clicked-date-store"),
+                                dcc.Store(
+                                    id="backtest-withdrawal-strategy-clicked-date-store"
+                                ),
                                 dbc.Button(
                                     "Click a data point to view details",
-                                    id="withdrawal-strategy-show-details-button",
+                                    id="backtest-withdrawal-strategy-show-details-button",
                                     disabled=True,
                                     style={"marginTop": "10px", "borderRadius": "0"},
                                 ),
@@ -1185,13 +1194,13 @@ app_layout = html.Div(
                                 dbc.ModalHeader("Portfolio Value"),
                                 dbc.ModalBody(
                                     dcc.Graph(
-                                        id="withdrawal-strategy-modal-graph",
+                                        id="backtest-withdrawal-strategy-modal-graph",
                                         style={"height": "100%"},
                                         config={"toImageButtonOptions": {"scale": 4}},
                                     )
                                 ),
                             ],
-                            id="withdrawal-strategy-modal",
+                            id="backtest-withdrawal-strategy-modal",
                             fullscreen=True,
                             is_open=False,
                         ),
