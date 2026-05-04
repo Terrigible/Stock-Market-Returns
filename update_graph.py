@@ -215,6 +215,11 @@ def update_price_graph(
             )
             layout.update(yaxis_range=[yaxis_min, yaxis_max])
 
+        if ctx.triggered_id in ["graph", "portfolio-graph"] and not layout.yaxis.range:
+            layout.update(
+                yaxis_range=prev_layout["yaxis"]["range"] if prev_layout else None
+            )
+
     if log_scale:
         layout.update(yaxis_type="log")
 
