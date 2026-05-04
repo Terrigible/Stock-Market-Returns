@@ -52,15 +52,20 @@ def _get_zoom_y_range(
     relayout_data: dict[str, Any],
     prev_layout: PrevLayout | None,
 ) -> tuple[float | None, float | None]:
-    if "xaxis.range[0]" in relayout_data and "yaxis.range[0]" in relayout_data:
-        return relayout_data["yaxis.range[0]"], relayout_data["yaxis.range[1]"]
-    elif (
-        ("xaxis.range[0]" in relayout_data or "xaxis.range[1]" in relayout_data)
-        and "yaxis.range[0]" not in relayout_data
-        and prev_layout
-    ):
-        return prev_layout["yaxis"]["range"][0], prev_layout["yaxis"]["range"][1]
-    return None, None
+    if not prev_layout:
+        return None, None
+    if "autosize" in relayout_data and ctx.triggered_id not in [
+        "selected-securities",
+        "portfolios",
+        "graph",
+        "portfolio-graph",
+    ]:
+        return None, None
+    if "yaxis.autorange" in relayout_data:
+        return None, None
+    yaxis_min = relayout_data.get("yaxis.range[0]", prev_layout["yaxis"]["range"][0])
+    yaxis_max = relayout_data.get("yaxis.range[1]", prev_layout["yaxis"]["range"][1])
+    return yaxis_min, yaxis_max
 
 
 def update_price_graph(
@@ -143,58 +148,24 @@ def update_price_graph(
             layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
         if not auto_scale and ctx.triggered_id != "auto-scale-switch":
-            if not log_scale:
-                yaxis_min, yaxis_max = _get_zoom_y_range(relayout_data, prev_layout)
-                if yaxis_min is not None and yaxis_max is not None:
-                    scaling_factor = _get_scaling_factor(
-                        prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
-                    )
-                    layout.update(
-                        yaxis_range=[
-                            (yaxis_min + 1) / (scaling_factor + 1) - 1,
-                            (yaxis_max + 1) / (scaling_factor + 1) - 1,
-                        ]
-                    )
-
-            if log_scale:
-                yaxis_min, yaxis_max = _get_zoom_y_range(relayout_data, prev_layout)
-                if yaxis_min is not None and yaxis_max is not None:
-                    scaling_factor = _get_scaling_factor(
-                        prev_zoom_df.add(1).apply(np.log10),
-                        start_date,
-                        end_date,
-                        yaxis_min,
-                        yaxis_max,
-                    )
-                    layout.update(
-                        yaxis_range=[
-                            yaxis_min - scaling_factor,
-                            yaxis_max - scaling_factor,
-                        ]
-                    )
-
-            if (
-                ("yaxis.range[0]" in relayout_data or "yaxis.range[1]" in relayout_data)
-                and "xaxis.range[0]" not in relayout_data
-                and prev_layout
-            ):
-                yaxis_min = relayout_data.get(
-                    "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
+            yaxis_min, yaxis_max = _get_zoom_y_range(relayout_data, prev_layout)
+            if yaxis_min is not None and yaxis_max is not None:
+                if log_scale:
+                    prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
+                scaling_factor = _get_scaling_factor(
+                    prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
                 )
-                yaxis_max = relayout_data.get(
-                    "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
-                )
-                layout.update(yaxis_range=[yaxis_min, yaxis_max])
-
-        if (
-            "autosize" in relayout_data
-            and ctx.triggered_id
-            in ["selected-securities", "portfolios", "graph", "portfolio-graph"]
-            and not layout.yaxis.range
-        ):
-            layout.update(
-                yaxis_range=prev_layout["yaxis"]["range"] if prev_layout else None
-            )
+                if not log_scale:
+                    yaxis_range = [
+                        (yaxis_min + 1) / (scaling_factor + 1) - 1,
+                        (yaxis_max + 1) / (scaling_factor + 1) - 1,
+                    ]
+                else:
+                    yaxis_range = [
+                        yaxis_min - scaling_factor,
+                        yaxis_max - scaling_factor,
+                    ]
+                layout.update(yaxis_range=yaxis_range)
 
     if log_scale:
         layout.update(yaxis_type="log")
