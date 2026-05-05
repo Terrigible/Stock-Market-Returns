@@ -198,13 +198,11 @@ app_layout = html.Div(
                                                 ),
                                                 dbc.Select(
                                                     {
-                                                        "STI": "STI",
                                                         "SPX": "S&P 500",
                                                         "SHILLER_SPX": "Shiller S&P 500",
-                                                        "AWORLDS": "FTSE All-World",
                                                         "SREIT": "iEdge S-REIT Leaders",
                                                     },
-                                                    value="STI",
+                                                    value="SPX",
                                                     id="others-index-selection",
                                                 ),
                                                 html.Div(

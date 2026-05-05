@@ -57,9 +57,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              */
             function (othersIndex) {
                 return {
-                    display: ["STI", "AWORLDS", "SREIT"].includes(othersIndex)
-                        ? "none"
-                        : "block",
+                    display: ["SREIT"].includes(othersIndex) ? "none" : "block",
                 };
             },
 

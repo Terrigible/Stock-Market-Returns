@@ -135,9 +135,7 @@ def load_data(
         else:
             raise ValueError(f"Invalid index: {security}")
     elif source == "Others":
-        if security["others_index"] == "STI":
-            series = read_ft_data("Straits Times Index USD Gross")
-        elif security["others_index"] == "SPX":
+        if security["others_index"] == "SPX":
             series = read_ft_data(f"S&P 500 USD {security['others_tax_treatment']}")
             if interval == "Daily":
                 series = series.pipe(fast_bday_upsample)
@@ -145,8 +143,6 @@ def load_data(
             series = read_shiller_sp500_data(security["others_tax_treatment"])
             if interval == "Daily":
                 series = series.pipe(fast_bday_upsample)
-        elif security["others_index"] == "AWORLDS":
-            series = read_ft_data("FTSE All-World USD Gross")
         elif security["others_index"] == "SREIT":
             series = read_ft_data("iEdge S-REIT Leaders USD Gross")
         else:
@@ -516,9 +512,7 @@ def add_index(
 
     else:
         others_tax_treatment = (
-            "Gross"
-            if others_index in ["STI", "AWORLDS", "SREIT"]
-            else others_tax_treatment
+            "Gross" if others_index in ["SREIT"] else others_tax_treatment
         )
         index_json = json.dumps(
             {
