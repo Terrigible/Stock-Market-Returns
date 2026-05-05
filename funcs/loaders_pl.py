@@ -807,44 +807,9 @@ def load_cpi(currency: str):
 
 
 def read_greatlink_data(fund_name: str):
-    price = (
-        pl.read_excel(
-            f"data/GreatLink/{fund_name}.xlsx",
-            engine="calamine",
-            columns=["Price Date", "Price"],
-        )
-        .select(
-            pl.col("Price Date").str.to_date("%d/%m/%Y").alias("date"),
-            pl.col("Price").replace(".", None).cast(pl.Float64).alias("price"),
-        )
-        .sort("date")
+    return pl.read_csv(f"data/GreatLink/{fund_name}.csv").with_columns(
+        pl.col("date").str.to_date()
     )
-    if glob(f"data/GreatLink/{fund_name}_Dividends.xlsx"):
-        dividends = (
-            pl.read_excel(
-                f"data/GreatLink/{fund_name}_Dividends.xlsx",
-                engine="calamine",
-                columns=["XD Date", "Gross Dividend"],
-            )
-            .select(
-                pl.col("XD Date").str.to_date("%d/%m/%Y").alias("date"),
-                pl.col("Gross Dividend")
-                .replace(".", None)
-                .cast(pl.Float64)
-                .alias("dividend"),
-            )
-            .sort("date")
-        )
-        price = price.join(dividends, "date", "full").select(
-            pl.col("date"),
-            pl.col("price")
-            .add(pl.col("dividend").fill_null(0))
-            .truediv(pl.col("price").shift(1))
-            .fill_null(1)
-            .cum_prod()
-            .alias("price"),
-        )
-    return price
 
 
 def get_ft_api_key():

@@ -614,47 +614,11 @@ def load_cpi(currency: str):
 
 
 def read_greatlink_data(fund_name: str):
-    df = (
-        pd.read_excel(
-            f"data/GreatLink/{fund_name}.xlsx",
-            engine="calamine",
-            index_col="Price Date",
-            usecols=["Price Date", "Price"],
-            na_values=["."],
-            parse_dates=["Price Date"],
-            date_format="%d/%m/%Y",
-        )
-        .sort_index()
-        .rename_axis("date")
-        .rename(columns={"Price": "price"})
-    )
-    if glob(f"data/GreatLink/{fund_name}_Dividends.xlsx"):
-        dividends = (
-            pd.read_excel(
-                f"data/GreatLink/{fund_name}_Dividends.xlsx",
-                engine="calamine",
-                index_col="XD Date",
-                usecols=["XD Date", "Gross Dividend"],
-                na_values=["."],
-                parse_dates=["XD Date"],
-                date_format="%d/%m/%Y",
-            )
-            .sort_index()
-            .rename_axis("date")
-            .rename(columns={"Gross Dividend": "dividend"})
-            .ffill()
-        )
-        df = df.join(dividends)
-        df = (
-            df["price"]
-            .add(df["dividend"].fillna(0))
-            .div(df["price"].shift(1))
-            .fillna(1)
-            .cumprod()
-            .rename("price")
-            .to_frame()
-        )
-    return df["price"]
+    return pd.read_csv(
+        f"data/GreatLink/{fund_name}.csv",
+        index_col="date",
+        parse_dates=["date"],
+    )["price"]
 
 
 def get_ft_api_key():
