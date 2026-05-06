@@ -48,26 +48,6 @@ def _get_scaling_factor(
     return scaling_factor
 
 
-def _get_zoom_y_range(
-    relayout_data: dict[str, Any],
-    prev_layout: PrevLayout | None,
-) -> tuple[float | None, float | None]:
-    if not prev_layout:
-        return None, None
-    if "autosize" in relayout_data and ctx.triggered_id not in [
-        "selected-securities",
-        "portfolios",
-        "graph",
-        "portfolio-graph",
-    ]:
-        return None, None
-    if "yaxis.autorange" in relayout_data:
-        return None, None
-    yaxis_min = relayout_data.get("yaxis.range[0]", prev_layout["yaxis"]["range"][0])
-    yaxis_max = relayout_data.get("yaxis.range[1]", prev_layout["yaxis"]["range"][1])
-    return yaxis_min, yaxis_max
-
-
 def update_price_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
@@ -83,6 +63,9 @@ def update_price_graph(
         title="Price",
         yaxis_tickformat="5~g",
     )
+
+    if log_scale:
+        layout.update(yaxis_type="log")
 
     start_date = None
     end_date = None
@@ -103,6 +86,7 @@ def update_price_graph(
 
     price_adj = 0
     hoverinfo = None
+    scaling_factor = 0
 
     if percent_scale:
         layout.update(title="% Change")
@@ -147,28 +131,51 @@ def update_price_graph(
             yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
             layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
-        if not auto_scale and ctx.triggered_id != "auto-scale-switch":
-            yaxis_min, yaxis_max = _get_zoom_y_range(relayout_data, prev_layout)
-            if yaxis_min is not None and yaxis_max is not None:
-                if log_scale:
-                    prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
-                scaling_factor = _get_scaling_factor(
-                    prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
-                )
-                if not log_scale:
-                    yaxis_range = [
-                        (yaxis_min + 1) / (scaling_factor + 1) - 1,
-                        (yaxis_max + 1) / (scaling_factor + 1) - 1,
-                    ]
-                else:
-                    yaxis_range = [
-                        yaxis_min - scaling_factor,
-                        yaxis_max - scaling_factor,
-                    ]
-                layout.update(yaxis_range=yaxis_range)
+            prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
 
-    if log_scale:
-        layout.update(yaxis_type="log")
+        if prev_layout:
+            yaxis_min = relayout_data.get(
+                "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
+            )
+            yaxis_max = relayout_data.get(
+                "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
+            )
+            scaling_factor = _get_scaling_factor(
+                prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
+            )
+
+    if (
+        not auto_scale
+        and prev_layout
+        and "yaxis.autorange" not in relayout_data
+        and (
+            "autosize" not in relayout_data
+            or ctx.triggered_id
+            in [
+                "selected-securities",
+                "portfolios",
+                "graph",
+                "portfolio-graph",
+            ]
+        )
+    ):
+        yaxis_min = relayout_data.get(
+            "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
+        )
+        yaxis_max = relayout_data.get(
+            "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
+        )
+        if not log_scale:
+            yaxis_range = [
+                (yaxis_min + 1) / (scaling_factor + 1) - 1,
+                (yaxis_max + 1) / (scaling_factor + 1) - 1,
+            ]
+        else:
+            yaxis_range = [
+                yaxis_min - scaling_factor,
+                yaxis_max - scaling_factor,
+            ]
+        layout.update(yaxis_range=yaxis_range)
 
     if auto_scale or ctx.triggered_id == "auto-scale-switch":
         min_val = df.loc[start_date:end_date].min().min() + price_adj

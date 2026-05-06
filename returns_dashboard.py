@@ -971,7 +971,6 @@ def update_security_graph(
         + y_var
         + str(log_scale)
         + str(percent_scale)
-        + str(auto_scale)
         + return_duration
         + return_interval
         + return_annualisation
@@ -1305,7 +1304,6 @@ def update_portfolio_graph(
         + y_var
         + str(log_scale)
         + str(percent_scale)
-        + str(auto_scale)
         + return_duration
         + return_interval
         + return_annualisation
