@@ -44,7 +44,7 @@ def _get_scaling_factor(
         zoom_basis = prev_zoom_df.columns[0]
     else:
         zoom_basis = masked_df.idxmax()
-    scaling_factor = prev_zoom_df.loc[start_date:, zoom_basis].iloc[0]
+    scaling_factor = prev_zoom_df.loc[start_date:, zoom_basis].dropna().iloc[0]
     return scaling_factor
 
 
