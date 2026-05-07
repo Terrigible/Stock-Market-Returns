@@ -84,7 +84,6 @@ def update_price_graph(
         if start_date and end_date:
             layout.update(xaxis_range=[start_date, end_date])
 
-    price_adj = 0
     hoverinfo = None
     scaling_factor = 0
 
@@ -116,16 +115,15 @@ def update_price_graph(
                 prev_zoom_df[column] = np.nan
 
         if log_scale:
-            price_adj = 1
+            df = df.add(1)
             hoverinfo = "text+name+x"
             max_val = df.loc[start_date:end_date].max().max()
-            min_val = df.loc[start_date:end_date].min().min()
-            if max_val < 2:
+            if max_val < 3:
                 ytickvals = [n / 10 for n in range(0, 20)] + [2, 2.2, 2.5, 3]
             else:
                 ytickvals = [0.1, 0.5, 0.8, 1, 1.2, 1.5, 2] + [
                     base * 10**exp + 1
-                    for exp in range(math.ceil(math.log10(max_val + 1)) + 1)
+                    for exp in range(math.ceil(math.log10(max_val)) + 1)
                     for base in [1, 2, 5]
                 ]
             yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
@@ -178,8 +176,8 @@ def update_price_graph(
         layout.update(yaxis_range=yaxis_range)
 
     if auto_scale or ctx.triggered_id == "auto-scale-switch":
-        min_val = df.loc[start_date:end_date].min().min() + price_adj
-        max_val = df.loc[start_date:end_date].max().max() + price_adj
+        min_val = df.loc[start_date:end_date].min().min()
+        max_val = df.loc[start_date:end_date].max().max()
         if log_scale:
             min_val = np.log10(min_val)
             max_val = np.log10(max_val)
@@ -192,7 +190,7 @@ def update_price_graph(
     data = [
         go.Scatter(
             x=df.index,
-            y=df[column].add(price_adj),
+            y=df[column],
             name=trace_options[column],
             line=go.scatter.Line(color=trace_colourmap[column]),
             hoverinfo=hoverinfo,
