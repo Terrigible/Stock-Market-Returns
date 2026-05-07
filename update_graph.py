@@ -84,14 +84,11 @@ def update_price_graph(
         if start_date and end_date:
             layout.update(xaxis_range=[start_date, end_date])
 
-    hoverinfo = None
-    scaling_factor = 0
+    prev_zoom_df = df.copy(deep=True)
 
     if percent_scale:
         layout.update(title="% Change")
         layout.update(yaxis_tickformat="+.2~%")
-
-        prev_zoom_df = df.copy(deep=True)
 
         for column in df.columns:
             visible_series = df.loc[start_date:, column].dropna()
@@ -101,22 +98,8 @@ def update_price_graph(
             else:
                 df[column] = np.nan
 
-        if prev_layout:
-            prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
-        else:
-            prev_start_date = None
-
-        for column in prev_zoom_df.columns:
-            visible_series = prev_zoom_df.loc[prev_start_date:, column].dropna()
-            if not visible_series.empty:
-                baseline_value = visible_series.iloc[0]
-                prev_zoom_df[column] = prev_zoom_df[column].div(baseline_value).sub(1)
-            else:
-                prev_zoom_df[column] = np.nan
-
         if log_scale:
             df = df.add(1)
-            hoverinfo = "text+name+x"
             max_val = df.loc[start_date:end_date].max().max()
             if max_val < 3:
                 ytickvals = [n / 10 for n in range(0, 20)] + [2, 2.2, 2.5, 3]
@@ -129,50 +112,34 @@ def update_price_graph(
             yticktexts = [f"{tick - 1:+.0%}" for tick in ytickvals]
             layout.update(yaxis_tickvals=ytickvals, yaxis_ticktext=yticktexts)
 
-            prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
-
-        if prev_layout:
-            yaxis_min = relayout_data.get(
-                "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
+    data = [
+        go.Scatter(
+            x=df.index,
+            y=df[column],
+            name=trace_options[column],
+            line=go.scatter.Line(color=trace_colourmap[column]),
+            hoverinfo="text+name+x" if log_scale and percent_scale else None,
+            hovertext=np.array(
+                ["%+.2f%%" % x for x in df[column].sub(1).mul(100).values]
             )
-            yaxis_max = relayout_data.get(
-                "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
-            )
-            scaling_factor = _get_scaling_factor(
-                prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
-            )
+            if log_scale and percent_scale
+            else None,
+        )
+        for column in df.columns
+    ]
 
     if (
-        not auto_scale
-        and prev_layout
-        and "yaxis.autorange" not in relayout_data
-        and ctx.triggered_id
-        in [
+        auto_scale
+        or not prev_layout
+        or "yaxis.autorange" in relayout_data
+        or ctx.triggered_id
+        not in [
             "selected-securities",
             "portfolios",
             "graph",
             "portfolio-graph",
         ]
     ):
-        yaxis_min = relayout_data.get(
-            "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
-        )
-        yaxis_max = relayout_data.get(
-            "yaxis.range[1]", prev_layout["yaxis"]["range"][1]
-        )
-        if not log_scale:
-            yaxis_range = [
-                (yaxis_min + 1) / (scaling_factor + 1) - 1,
-                (yaxis_max + 1) / (scaling_factor + 1) - 1,
-            ]
-        else:
-            yaxis_range = [
-                yaxis_min - scaling_factor,
-                yaxis_max - scaling_factor,
-            ]
-        layout.update(yaxis_range=yaxis_range)
-
-    else:
         min_val = df.loc[start_date:end_date].min().min()
         max_val = df.loc[start_date:end_date].max().max()
         if log_scale:
@@ -184,21 +151,43 @@ def update_price_graph(
         ]
         layout.update(yaxis_range=yaxis_range)
 
-    data = [
-        go.Scatter(
-            x=df.index,
-            y=df[column],
-            name=trace_options[column],
-            line=go.scatter.Line(color=trace_colourmap[column]),
-            hoverinfo=hoverinfo,
-            hovertext=np.array(
-                ["%+.2f%%" % x for x in df[column].sub(1).mul(100).values]
-            )
-            if log_scale and percent_scale
-            else None,
-        )
-        for column in df.columns
-    ]
+        return data, layout
+
+    yaxis_min = relayout_data.get("yaxis.range[0]", prev_layout["yaxis"]["range"][0])
+    yaxis_max = relayout_data.get("yaxis.range[1]", prev_layout["yaxis"]["range"][1])
+
+    if not percent_scale:
+        layout.update(yaxis_range=[yaxis_min, yaxis_max])
+        return data, layout
+
+    prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
+
+    for column in prev_zoom_df.columns:
+        visible_series = prev_zoom_df.loc[prev_start_date:, column].dropna()
+        if not visible_series.empty:
+            baseline_value = visible_series.iloc[0]
+            prev_zoom_df[column] = prev_zoom_df[column].div(baseline_value).sub(1)
+        else:
+            prev_zoom_df[column] = np.nan
+
+    if log_scale:
+        prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
+
+    scaling_factor = _get_scaling_factor(
+        prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
+    )
+
+    if not log_scale:
+        yaxis_range = [
+            (yaxis_min + 1) / (scaling_factor + 1) - 1,
+            (yaxis_max + 1) / (scaling_factor + 1) - 1,
+        ]
+    else:
+        yaxis_range = [
+            yaxis_min - scaling_factor,
+            yaxis_max - scaling_factor,
+        ]
+    layout.update(yaxis_range=yaxis_range)
 
     return data, layout
 
