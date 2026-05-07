@@ -146,16 +146,13 @@ def update_price_graph(
         not auto_scale
         and prev_layout
         and "yaxis.autorange" not in relayout_data
-        and (
-            "autosize" not in relayout_data
-            or ctx.triggered_id
-            in [
-                "selected-securities",
-                "portfolios",
-                "graph",
-                "portfolio-graph",
-            ]
-        )
+        and ctx.triggered_id
+        in [
+            "selected-securities",
+            "portfolios",
+            "graph",
+            "portfolio-graph",
+        ]
     ):
         yaxis_min = relayout_data.get(
             "yaxis.range[0]", prev_layout["yaxis"]["range"][0]
@@ -175,7 +172,7 @@ def update_price_graph(
             ]
         layout.update(yaxis_range=yaxis_range)
 
-    if auto_scale or ctx.triggered_id == "auto-scale-switch":
+    else:
         min_val = df.loc[start_date:end_date].min().min()
         max_val = df.loc[start_date:end_date].max().max()
         if log_scale:
@@ -460,7 +457,7 @@ def update_graph(
         margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
     )
 
-    if relayout_data is None or ctx.triggered_id not in ["graph", "portfolio-graph"]:
+    if relayout_data is None:
         relayout_data = {"autosize": True}
 
     if y_var == "price":
