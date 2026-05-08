@@ -90,13 +90,7 @@ def update_price_graph(
         layout.update(title="% Change")
         layout.update(yaxis_tickformat="+.2~%")
 
-        for column in df.columns:
-            visible_series = df.loc[start_date:, column].dropna()
-            if not visible_series.empty:
-                baseline_value = visible_series.iloc[0]
-                df[column] = df[column].div(baseline_value).sub(1)
-            else:
-                df[column] = np.nan
+        df = df.div(df.loc[start_date:].bfill().iloc[0]).sub(1)
 
         if log_scale:
             df = df.add(1)
@@ -162,13 +156,9 @@ def update_price_graph(
 
     prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
 
-    for column in prev_zoom_df.columns:
-        visible_series = prev_zoom_df.loc[prev_start_date:, column].dropna()
-        if not visible_series.empty:
-            baseline_value = visible_series.iloc[0]
-            prev_zoom_df[column] = prev_zoom_df[column].div(baseline_value).sub(1)
-        else:
-            prev_zoom_df[column] = np.nan
+    prev_zoom_df = prev_zoom_df.div(
+        prev_zoom_df.loc[prev_start_date:].bfill().iloc[0]
+    ).sub(1)
 
     if log_scale:
         prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
