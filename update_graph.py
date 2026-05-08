@@ -75,19 +75,17 @@ def update_price_graph(
     start_date = None
     end_date = None
 
-    if not relayout_data.get("xaxis.autorange"):
-        if "xaxis.range[0]" in relayout_data:
-            start_date = pd.to_datetime(relayout_data["xaxis.range[0]"])
-        elif prev_layout:
-            start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
+    if (
+        prev_layout
+        and "xaxis.autorange" not in relayout_data
+        and ctx.triggered_id not in ["y-var-selection"]
+    ):
+        start_date = relayout_data.get(
+            "xaxis.range[0]", prev_layout["xaxis"]["range"][0]
+        )
+        end_date = relayout_data.get("xaxis.range[1]", prev_layout["xaxis"]["range"][1])
 
-        if "xaxis.range[1]" in relayout_data:
-            end_date = pd.to_datetime(relayout_data["xaxis.range[1]"])
-        elif prev_layout:
-            end_date = pd.to_datetime(prev_layout["xaxis"]["range"][1])
-
-        if start_date and end_date:
-            layout.update(xaxis_range=[start_date, end_date])
+        layout.update(xaxis_range=[start_date, end_date])
 
     prev_zoom_df = df.copy(deep=True)
 
