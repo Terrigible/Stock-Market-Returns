@@ -117,12 +117,10 @@ def update_price_graph(
             y=df[column],
             name=trace_options[column],
             line=go.scatter.Line(color=trace_colourmap[column]),
-            hoverinfo="text+name+x" if log_scale and percent_scale else None,
-            hovertext=np.array(
-                ["%+.2f%%" % x for x in df[column].sub(1).mul(100).values]
-            )
+            customdata=df[column].sub(1).round(4)
             if log_scale and percent_scale
             else None,
+            hovertemplate="%{customdata:+.2%}" if log_scale and percent_scale else None,
         )
         for column in df.columns
     ]
