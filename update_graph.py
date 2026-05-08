@@ -29,16 +29,21 @@ def _get_scaling_factor(
 ) -> float:
     masked_df = (
         prev_zoom_df.loc[start_date:end_date]
-        .where(lambda x: (x >= yaxis_min) & (x <= yaxis_max))
-        .apply(lambda col: col.max() - col.min(), result_type="reduce")
+        .where(lambda y: (y >= yaxis_min) & (y <= yaxis_max))
+        .apply(
+            lambda col: (col.max() - col.min()) * len(col.dropna()),
+            result_type="reduce",
+        )
     )
     if masked_df.isna().all():
         masked_df = prev_zoom_df.loc[start_date:end_date].apply(
-            lambda col: col.max() - col.min(), result_type="reduce"
+            lambda col: (col.max() - col.min()) * len(col.dropna()),
+            result_type="reduce",
         )
     if masked_df.isna().all():
         masked_df = prev_zoom_df.apply(
-            lambda col: col.max() - col.min(), result_type="reduce"
+            lambda col: (col.max() - col.min()) * len(col.dropna()),
+            result_type="reduce",
         )
     if masked_df.isna().all():
         zoom_basis = prev_zoom_df.columns[0]
