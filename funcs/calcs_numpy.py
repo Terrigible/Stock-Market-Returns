@@ -34,7 +34,8 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     cpi: np.ndarray,
     cash_returns: np.ndarray,
 ):
-    res = np.full((monthly_returns.shape[0], investment_horizon), np.nan)
+    res = np.full((monthly_returns.shape[0], investment_horizon + 1), np.nan)
+    res[investment_horizon:, 0] = initial_portfolio_value
     monthly_returns_with_fees = (1 + monthly_returns) * (
         1 - annualised_holding_fees
     ) ** (1 / 12)
@@ -65,14 +66,12 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 funds_to_invest = 0
             else:
                 funds_to_invest *= 1 + cash_returns[j + 1]
-            res[i, index] = share_value + funds_to_invest
+            res[i, index + 1] = share_value + funds_to_invest
         for index, j in enumerate(range(i - investment_horizon + dca_length, i)):
             share_value *= monthly_returns_with_fees[j + 1]
-            res[i, dca_length + index] = share_value
+            res[i, dca_length + index + 1] = share_value
         if adjust_portfolio_value_for_inflation:
-            res[i] /= (
-                cpi[i - investment_horizon + 1 : i + 1] / cpi[i - investment_horizon]
-            )
+            res[i] /= cpi[i - investment_horizon : i + 1] / cpi[i - investment_horizon]
     return res
 
 
@@ -104,7 +103,8 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns_with_fees = (1 + monthly_returns) * (
         1 - annualised_holding_fees
     ) ** (1 / 12)
-    res = np.full((monthly_returns.shape[0], withdrawal_horizon), np.nan)
+    res = np.full((monthly_returns.shape[0], withdrawal_horizon + 1), np.nan)
+    res[withdrawal_horizon:, 0] = initial_portfolio_value
     for i in range(withdrawal_horizon, len(monthly_returns)):
         share_value = initial_portfolio_value
         withdrawal_amounts = (
@@ -118,8 +118,8 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             if index % withdrawal_interval == 0:
                 share_value -= withdrawal_amounts[index]
                 if share_value <= 0:
-                    res[i, index:] = 0
+                    res[i, index + 1 :] = 0
                     break
             share_value *= monthly_returns_with_fees[j + 1]
-            res[i, index] = share_value
+            res[i, index + 1] = share_value
     return res

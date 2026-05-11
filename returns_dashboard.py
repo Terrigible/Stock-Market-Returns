@@ -1527,10 +1527,8 @@ def simulate_backtest_accumulation_strategy(
             cash_returns,
         ),
         index=strategy_series.index,
-        columns=range(1, investment_horizon + 1),
+        columns=range(investment_horizon + 1),
     )
-    portfolio_values.insert(0, 0, investment_amount)
-    portfolio_values.iloc[:investment_horizon, 0] = np.nan
     return portfolio_values
 
 
@@ -1848,10 +1846,8 @@ def simulate_backtest_withdrawal_strategy(
             annualised_holding_fees,
         ),
         index=strategy_series.index,
-        columns=range(1, withdrawal_horizon + 1),
+        columns=range(withdrawal_horizon + 1),
     )
-    portfolio_values.insert(0, 0, initial_capital)
-    portfolio_values.iloc[:withdrawal_horizon, 0] = np.nan
     return portfolio_values
 
 
