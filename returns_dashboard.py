@@ -21,6 +21,10 @@ from yfinance.exceptions import YFException
 from funcs.calcs_numpy import (
     calculate_dca_portfolio_value_with_fees_and_interest_vector,
     calculate_withdrawal_portfolio_value_with_fees_vector,
+    compute_bootstrap_max_drawdown,
+    generate_bootstrap_indices,
+    simulate_bootstrap_accumulation,
+    simulate_bootstrap_withdrawal,
 )
 from funcs.loaders import (
     download_ft_data,
@@ -1344,8 +1348,12 @@ app.clientside_callback(
     ),
     Output("backtest-accumulation-strategy-portfolio", "options"),
     Output("backtest-withdrawal-strategy-portfolio", "options"),
+    Output("bootstrap-accumulation-strategy-portfolio", "options"),
+    Output("bootstrap-withdrawal-strategy-portfolio", "options"),
     Output("backtest-accumulation-strategy-portfolio", "value"),
     Output("backtest-withdrawal-strategy-portfolio", "value"),
+    Output("bootstrap-accumulation-strategy-portfolio", "value"),
+    Output("bootstrap-withdrawal-strategy-portfolio", "value"),
     Input("portfolios", "options"),
     prevent_initial_call=True,
 )
@@ -2022,6 +2030,533 @@ def show_backtest_withdrawal_strategy_modal(
         "data": traces,
         "layout": go.Layout(
             title=f"Portfolio Value {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
+            hovermode="x",
+            showlegend=True,
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
+        ),
+    }
+
+
+def _to_rgba(color: str, opacity: float) -> str:
+    if color.startswith("rgb("):
+        return color.replace("rgb(", "rgba(").rstrip(")") + f", {opacity})"
+    if color.startswith("#"):
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+        return f"rgba({r},{g},{b},{opacity})"
+    return color
+
+
+QUANTILE_KEYS = [0.01, 0.05, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99]
+BANDS = [(0.01, 0.99, 0.15), (0.05, 0.95, 0.25), (0.25, 0.75, 0.40)]
+
+
+def _build_quantile_fan_traces(
+    months: np.ndarray,
+    quantiles: dict[float, np.ndarray],
+    color: str,
+    strategy_name: str,
+) -> list[go.Scatter]:
+    traces = []
+    for lo, hi, opacity in BANDS:
+        traces.append(
+            go.Scatter(
+                x=months,
+                y=quantiles[lo],
+                mode="lines",
+                line=dict(width=0),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+        traces.append(
+            go.Scatter(
+                x=months,
+                y=quantiles[hi],
+                mode="lines",
+                line=dict(width=0),
+                fill="tonexty",
+                fillcolor=_to_rgba(color, opacity),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+    traces.append(
+        go.Scatter(
+            x=months,
+            y=quantiles[0.50],
+            mode="lines",
+            line=dict(color=color, width=2),
+            name=strategy_name.replace("\n", "<br>"),
+            showlegend=True,
+        )
+    )
+    return traces
+
+
+def simulate_bootstrap_accumulation_strategy(
+    yf_securities: dict[str, str],
+    strategy_str: str,
+):
+    strategy: dict[str, str | int | float] = json.loads(strategy_str)
+    strategy_portfolio = str(strategy["strategy_portfolio"])
+    currency = str(strategy["currency"])
+    investment_amount = float(strategy["investment_amount"])
+    investment_horizon = int(strategy["investment_horizon"])
+    monthly_investment = float(strategy["monthly_investment"])
+    adjust_monthly_investment_for_inflation = bool(
+        strategy["adjust_monthly_investment_for_inflation"]
+    )
+    dca_length = int(strategy["dca_length"])
+    dca_interval = int(strategy["dca_interval"])
+    variable_transaction_fees = float(strategy["variable_transaction_fees"])
+    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+    annualised_holding_fees = float(strategy["annualised_holding_fees"])
+    adjust_portfolio_value_for_inflation = bool(
+        strategy["adjust_portfolio_value_for_inflation"]
+    )
+    num_samples = int(strategy["num_bootstrap_samples"])
+    avg_block_len = float(strategy["avg_block_length"])
+    variable_transaction_fees /= 100
+    annualised_holding_fees /= 100
+
+    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    cpi_series = load_cpi(currency)
+    common_idx = strategy_series.index.intersection(cpi_series.index)
+    strategy_series = strategy_series.loc[common_idx]
+    cpi = cpi_series.loc[common_idx].to_numpy()
+    cash_returns = (
+        (
+            load_fed_funds_returns()
+            if currency == "USD"
+            else load_sgd_interest_rates_returns()
+        )
+        .resample("BME")
+        .last()
+        .pct_change()
+        .reindex(strategy_series.index)
+        .fillna(0)
+        .to_numpy()
+    )
+
+    monthly_returns = strategy_series.pct_change().to_numpy()
+    n_data = len(monthly_returns) - 1
+    sample_length = investment_horizon + 1
+    indices = generate_bootstrap_indices(
+        num_samples, sample_length, n_data, avg_block_len
+    )
+    portfolio_values = simulate_bootstrap_accumulation(
+        monthly_returns[1:],
+        cpi[1:],
+        cash_returns[1:],
+        indices,
+        dca_length,
+        dca_interval,
+        investment_horizon,
+        investment_amount,
+        monthly_investment,
+        adjust_monthly_investment_for_inflation,
+        variable_transaction_fees,
+        fixed_transaction_fees,
+        annualised_holding_fees,
+        adjust_portfolio_value_for_inflation,
+    )
+    drawdown_values = compute_bootstrap_max_drawdown(portfolio_values)
+
+    p_quantiles = {
+        q: np.nanquantile(portfolio_values, q, axis=0) for q in QUANTILE_KEYS
+    }
+    d_quantiles = {q: np.nanquantile(drawdown_values, q, axis=0) for q in QUANTILE_KEYS}
+    return {
+        "portfolio_quantiles": p_quantiles,
+        "drawdown_quantiles": d_quantiles,
+    }
+
+
+def simulate_bootstrap_withdrawal_strategy(
+    yf_securities: dict[str, str],
+    strategy_str: str,
+):
+    strategy: dict[str, str | int | float] = json.loads(strategy_str)
+    strategy_portfolio = str(strategy["strategy_portfolio"])
+    currency = str(strategy["currency"])
+    initial_capital = float(strategy["initial_capital"])
+    withdrawal_horizon = int(strategy["withdrawal_horizon"])
+    monthly_withdrawal = float(strategy["monthly_withdrawal"])
+    adjust_for_inflation = bool(strategy["adjust_for_inflation"])
+    withdrawal_interval = int(strategy["withdrawal_interval"])
+    variable_transaction_fees = float(strategy["variable_transaction_fees"])
+    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
+    annualised_holding_fees = float(strategy["annualised_holding_fees"])
+    num_samples = int(strategy["num_bootstrap_samples"])
+    avg_block_len = float(strategy["avg_block_length"])
+    variable_transaction_fees /= 100
+    annualised_holding_fees /= 100
+
+    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    if adjust_for_inflation:
+        cpi_series = load_cpi(currency)
+        common_idx = strategy_series.index.intersection(cpi_series.index)
+        strategy_series = strategy_series.loc[common_idx]
+        cpi = cpi_series.loc[common_idx].to_numpy()
+    else:
+        cpi = np.ones(len(strategy_series))
+
+    monthly_returns = strategy_series.pct_change().to_numpy()
+    n_data = len(monthly_returns) - 1
+    sample_length = withdrawal_horizon + 1
+    indices = generate_bootstrap_indices(
+        num_samples, sample_length, n_data, avg_block_len
+    )
+    portfolio_values = simulate_bootstrap_withdrawal(
+        monthly_returns[1:],
+        cpi[1:],
+        indices,
+        withdrawal_horizon,
+        withdrawal_interval,
+        initial_capital,
+        monthly_withdrawal,
+        variable_transaction_fees,
+        fixed_transaction_fees,
+        annualised_holding_fees,
+    )
+    drawdown_values = compute_bootstrap_max_drawdown(portfolio_values)
+
+    p_quantiles = {
+        q: np.nanquantile(portfolio_values, q, axis=0) for q in QUANTILE_KEYS
+    }
+    d_quantiles = {q: np.nanquantile(drawdown_values, q, axis=0) for q in QUANTILE_KEYS}
+    return {
+        "portfolio_quantiles": p_quantiles,
+        "drawdown_quantiles": d_quantiles,
+    }
+
+
+@app.callback(
+    Output("bootstrap-accumulation-strategies", "value"),
+    Output("bootstrap-accumulation-strategies", "options"),
+    Input("bootstrap-accumulation-add-strategy-button", "n_clicks"),
+    State("bootstrap-accumulation-strategies", "value"),
+    State("bootstrap-accumulation-strategies", "options"),
+    State("bootstrap-accumulation-strategy-portfolio", "value"),
+    State("bootstrap-accumulation-strategy-portfolio", "options"),
+    State("bootstrap-accumulation-strategy-currency-selection", "value"),
+    State("bootstrap-accumulation-investment-amount-input", "value"),
+    State("bootstrap-accumulation-monthly-investment-input", "value"),
+    State(
+        "bootstrap-accumulation-monthly-investment-inflation-adjustment-switch", "value"
+    ),
+    State("bootstrap-accumulation-investment-horizon-input", "value"),
+    State("bootstrap-accumulation-dca-length-input", "value"),
+    State("bootstrap-accumulation-dca-interval-input", "value"),
+    State("bootstrap-accumulation-variable-transaction-fees-input", "value"),
+    State("bootstrap-accumulation-fixed-transaction-fees-input", "value"),
+    State("bootstrap-accumulation-annualised-holding-fees-input", "value"),
+    State(
+        "bootstrap-accumulation-portfolio-value-inflation-adjustment-switch", "value"
+    ),
+    State("bootstrap-accumulation-num-samples-input", "value"),
+    State("bootstrap-accumulation-avg-block-length-input", "value"),
+    prevent_initial_call=True,
+)
+def update_bootstrap_accumulation_strategies(
+    _,
+    strategies: list[str] | None,
+    strategy_options: dict[str, str],
+    strategy_portfolio: str | None,
+    strategy_portfolio_options: dict[str, str],
+    currency: str,
+    investment_amount: int | float | None,
+    monthly_investment: int | float | None,
+    adjust_monthly_investment_for_inflation: bool,
+    investment_horizon: int | None,
+    dca_length: int | None,
+    dca_interval: int | None,
+    variable_transaction_fees: int | float | None,
+    fixed_transaction_fees: int | float | None,
+    annualised_holding_fees: int | float | None,
+    adjust_portfolio_value_for_inflation: bool,
+    num_samples: int | None,
+    avg_block_len: int | float | None,
+):
+    if strategy_portfolio is None:
+        return no_update
+    if dca_interval is None:
+        dca_interval = 1
+    if dca_length is None:
+        return no_update
+    if investment_horizon is None:
+        investment_horizon = dca_length
+    if variable_transaction_fees is None:
+        variable_transaction_fees = 0
+    if fixed_transaction_fees is None:
+        fixed_transaction_fees = 0
+    if annualised_holding_fees is None:
+        annualised_holding_fees = 0
+    if num_samples is None:
+        num_samples = 1000
+    if avg_block_len is None:
+        avg_block_len = 120
+    if dca_length > investment_horizon:
+        return no_update
+
+    investment_amount = investment_amount or 0
+    monthly_investment = monthly_investment or 0
+    if investment_amount == 0 and monthly_investment == 0:
+        return no_update
+
+    strategy_str = json.dumps(
+        {
+            "strategy_portfolio": strategy_portfolio,
+            "currency": currency,
+            "investment_amount": investment_amount,
+            "investment_horizon": investment_horizon,
+            "monthly_investment": monthly_investment,
+            "adjust_monthly_investment_for_inflation": adjust_monthly_investment_for_inflation,
+            "dca_length": dca_length,
+            "dca_interval": dca_interval,
+            "variable_transaction_fees": variable_transaction_fees,
+            "fixed_transaction_fees": fixed_transaction_fees,
+            "annualised_holding_fees": annualised_holding_fees,
+            "adjust_portfolio_value_for_inflation": adjust_portfolio_value_for_inflation,
+            "num_bootstrap_samples": num_samples,
+            "avg_block_length": avg_block_len,
+        }
+    )
+    strategy_name = (
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
+        f"${investment_amount} initial capital\n"
+        f"${monthly_investment} invested monthly"
+        f"{', inflation adjusted' if adjust_monthly_investment_for_inflation else ''}\n"
+        f"for {dca_length} months every {dca_interval} months\n"
+        f"held for {investment_horizon} months\n"
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
+        f"{annualised_holding_fees}% p.a. Holding Fees\n"
+        f"Portfolio value {'' if adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation\n"
+        f"{num_samples} samples, {avg_block_len}mo avg block"
+    )
+
+    if strategies is None:
+        return [strategy_str], {strategy_str: strategy_name}
+    if strategy_str in strategies:
+        return no_update
+    strategies.append(strategy_str)
+    strategy_options.update({strategy_str: strategy_name})
+    return strategies, strategy_options
+
+
+@app.callback(
+    Output("bootstrap-accumulation-graph", "figure"),
+    Input("bootstrap-accumulation-strategies", "value"),
+    State("bootstrap-accumulation-strategies", "options"),
+    Input("bootstrap-accumulation-y-var-selection", "value"),
+    State("cached-securities-store", "data"),
+    prevent_initial_call=True,
+)
+def update_bootstrap_accumulation_graph(
+    strategy_strs: list[str],
+    strategy_options: dict[str, str],
+    y_var: str,
+    yf_securities: dict[str, str],
+):
+    if not strategy_strs:
+        return {
+            "data": [],
+            "layout": {
+                "title": "Bootstrap Accumulation Strategy",
+            },
+        }
+    strategies_colourmap = dict(
+        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    )
+    all_traces = []
+    for strategy_str in strategy_strs:
+        result = simulate_bootstrap_accumulation_strategy(yf_securities, strategy_str)
+        investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
+        months = np.arange(investment_horizon + 1)
+        quantiles = result[
+            "portfolio_quantiles"
+            if y_var == "portfolio_values"
+            else "drawdown_quantiles"
+        ]
+        all_traces.extend(
+            _build_quantile_fan_traces(
+                months,
+                quantiles,
+                strategies_colourmap[strategy_str],
+                strategy_options[strategy_str],
+            )
+        )
+
+    return {
+        "data": all_traces,
+        "layout": go.Layout(
+            title="Bootstrap Accumulation Strategy",
+            xaxis_title="Month",
+            yaxis_title="Portfolio Value ($)"
+            if y_var == "portfolio_values"
+            else "Max Drawdown ($)",
+            hovermode="x",
+            showlegend=True,
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
+        ),
+    }
+
+
+@app.callback(
+    Output("bootstrap-withdrawal-strategies", "value"),
+    Output("bootstrap-withdrawal-strategies", "options"),
+    Input("bootstrap-withdrawal-add-strategy-button", "n_clicks"),
+    State("bootstrap-withdrawal-strategies", "value"),
+    State("bootstrap-withdrawal-strategies", "options"),
+    State("bootstrap-withdrawal-strategy-portfolio", "value"),
+    State("bootstrap-withdrawal-strategy-portfolio", "options"),
+    State("bootstrap-withdrawal-strategy-currency-selection", "value"),
+    State("bootstrap-withdrawal-initial-capital-input", "value"),
+    State("bootstrap-withdrawal-monthly-amount-input", "value"),
+    State("bootstrap-withdrawal-monthly-inflation-adjustment-switch", "value"),
+    State("bootstrap-withdrawal-horizon-input", "value"),
+    State("bootstrap-withdrawal-interval-input", "value"),
+    State("bootstrap-withdrawal-variable-transaction-fees-input", "value"),
+    State("bootstrap-withdrawal-fixed-transaction-fees-input", "value"),
+    State("bootstrap-withdrawal-annualised-holding-fees-input", "value"),
+    State("bootstrap-withdrawal-num-samples-input", "value"),
+    State("bootstrap-withdrawal-avg-block-length-input", "value"),
+    prevent_initial_call=True,
+)
+def update_bootstrap_withdrawal_strategies(
+    _,
+    strategies: list[str] | None,
+    strategy_options: dict[str, str],
+    strategy_portfolio: str | None,
+    strategy_portfolio_options: dict[str, str],
+    currency: str,
+    initial_capital: int | float | None,
+    monthly_withdrawal: int | float | None,
+    adjust_for_inflation: bool,
+    withdrawal_horizon: int | None,
+    withdrawal_interval: int | None,
+    variable_transaction_fees: int | float | None,
+    fixed_transaction_fees: int | float | None,
+    annualised_holding_fees: int | float | None,
+    num_samples: int | None,
+    avg_block_len: int | float | None,
+):
+    if strategy_portfolio is None:
+        return no_update
+    if initial_capital is None:
+        return no_update
+    if monthly_withdrawal is None:
+        return no_update
+    if withdrawal_horizon is None:
+        return no_update
+    if withdrawal_interval is None:
+        withdrawal_interval = 1
+    if variable_transaction_fees is None:
+        variable_transaction_fees = 0
+    if fixed_transaction_fees is None:
+        fixed_transaction_fees = 0
+    if annualised_holding_fees is None:
+        annualised_holding_fees = 0
+    if num_samples is None:
+        num_samples = 1000
+    if avg_block_len is None:
+        avg_block_len = 120
+    if initial_capital <= monthly_withdrawal * withdrawal_interval:
+        return no_update
+
+    strategy_str = json.dumps(
+        {
+            "strategy_portfolio": strategy_portfolio,
+            "currency": currency,
+            "initial_capital": initial_capital,
+            "withdrawal_horizon": withdrawal_horizon,
+            "monthly_withdrawal": monthly_withdrawal,
+            "adjust_for_inflation": adjust_for_inflation,
+            "withdrawal_interval": withdrawal_interval,
+            "variable_transaction_fees": variable_transaction_fees,
+            "fixed_transaction_fees": fixed_transaction_fees,
+            "annualised_holding_fees": annualised_holding_fees,
+            "num_bootstrap_samples": num_samples,
+            "avg_block_length": avg_block_len,
+        }
+    )
+    strategy_name = (
+        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
+        f"${initial_capital} initial capital\n"
+        f"${monthly_withdrawal} withdrawn monthly"
+        f"{', inflation adjusted' if adjust_for_inflation else ''}\n"
+        f"every {withdrawal_interval} months for {withdrawal_horizon} months\n"
+        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
+        f"{annualised_holding_fees}% p.a. Holding Fees\n"
+        f"{num_samples} samples, {avg_block_len}mo avg block"
+    )
+
+    if strategies is None:
+        return [strategy_str], {strategy_str: strategy_name}
+    if strategy_str in strategies:
+        return no_update
+    strategies.append(strategy_str)
+    strategy_options.update({strategy_str: strategy_name})
+    return strategies, strategy_options
+
+
+@app.callback(
+    Output("bootstrap-withdrawal-graph", "figure"),
+    Input("bootstrap-withdrawal-strategies", "value"),
+    State("bootstrap-withdrawal-strategies", "options"),
+    Input("bootstrap-withdrawal-y-var-selection", "value"),
+    State("cached-securities-store", "data"),
+    prevent_initial_call=True,
+)
+def update_bootstrap_withdrawal_graph(
+    strategy_strs: list[str],
+    strategy_options: dict[str, str],
+    y_var: str,
+    yf_securities: dict[str, str],
+):
+    if not strategy_strs:
+        return {
+            "data": [],
+            "layout": {
+                "title": "Bootstrap Withdrawal Strategy",
+            },
+        }
+    strategies_colourmap = dict(
+        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    )
+    all_traces = []
+    for strategy_str in strategy_strs:
+        result = simulate_bootstrap_withdrawal_strategy(yf_securities, strategy_str)
+        withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
+        months = np.arange(withdrawal_horizon + 1)
+        quantiles = result[
+            "portfolio_quantiles"
+            if y_var == "portfolio_values"
+            else "drawdown_quantiles"
+        ]
+        all_traces.extend(
+            _build_quantile_fan_traces(
+                months,
+                quantiles,
+                strategies_colourmap[strategy_str],
+                strategy_options[strategy_str],
+            )
+        )
+
+    return {
+        "data": all_traces,
+        "layout": go.Layout(
+            title="Bootstrap Withdrawal Strategy",
+            xaxis_title="Month",
+            yaxis_title="Portfolio Value ($)"
+            if y_var == "portfolio_values"
+            else "Max Drawdown ($)",
             hovermode="x",
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
