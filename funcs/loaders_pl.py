@@ -623,7 +623,15 @@ def download_sgd_interest_rates():
 
 
 def load_sgd_interest_rates():
-    sgd_interest_rates = pl.read_csv(
+    cpf_oa_rate = (
+        pl.read_csv("data/cpf_oa_rate.csv", try_parse_dates=True)
+        .with_columns(pl.col("date").cast(pl.Date))
+        .sort("date")
+        .upsample("date", every="1d")
+        .fill_null(strategy="forward")
+        .select("date", pl.col("rate"))
+    )
+    mas_sgd_interest_rates = pl.read_csv(
         "data/sgd_interest_rates.csv",
         schema={
             "date": pl.Date,
@@ -632,7 +640,7 @@ def load_sgd_interest_rates():
         },
     )
     if (
-        sgd_interest_rates.get_column("date")
+        mas_sgd_interest_rates.get_column("date")
         .dt.add_business_days(1, roll="forward")
         .dt.month_end()
         .dt.add_business_days(1, roll="backward")
@@ -640,15 +648,16 @@ def load_sgd_interest_rates():
         .last()
         and "MAS_INTEREST_RATE_API_KEY" in os.environ
     ):
-        sgd_interest_rates = download_sgd_interest_rates()
+        mas_sgd_interest_rates = download_sgd_interest_rates()
 
-    return sgd_interest_rates.upsample("date", every="1d").select(
+    interbank_rates = mas_sgd_interest_rates.upsample("date", every="1d").select(
         "date",
-        sora=pl.col("sora")
+        rate=pl.col("sora")
         .fill_null(pl.col("interbank_overnight"))
         .fill_null(strategy="forward")
         .cast(pl.Float64),
     )
+    return pl.concat([cpf_oa_rate, interbank_rates], how="vertical")
 
 
 def load_sgd_interest_rates_returns():

@@ -487,24 +487,32 @@ def download_sgd_interest_rates():
 
 
 def load_sgd_interest_rates():
-    sgd_interest_rates = pd.read_csv(
+    cpf_oa_rate = (
+        pd.read_csv("data/cpf_oa_rate.csv", index_col=["date"], parse_dates=["date"])[
+            "rate"
+        ]
+        .resample("D")
+        .ffill()
+    )
+    mas_sgd_interest_rates = pd.read_csv(
         "data/sgd_interest_rates.csv", parse_dates=["date"], index_col="date"
     )
     if (
-        sgd_interest_rates.index[-1]
+        mas_sgd_interest_rates.index[-1]
         + pd.tseries.offsets.BMonthEnd()
         + pd.tseries.offsets.BDay()
         <= pd.to_datetime("today")
     ) and os.environ.get("MAS_INTEREST_RATE_API_KEY", None):
-        sgd_interest_rates = download_sgd_interest_rates()
+        mas_sgd_interest_rates = download_sgd_interest_rates()
 
-    return (
-        sgd_interest_rates["sora"]
-        .fillna(sgd_interest_rates["interbank_overnight"])
+    interbank_rates = (
+        mas_sgd_interest_rates["sora"]
+        .fillna(mas_sgd_interest_rates["interbank_overnight"])
         .resample("D")
         .ffill()
         .ffill()
     )
+    return pd.concat([cpf_oa_rate, interbank_rates])
 
 
 def load_sgd_interest_rates_returns():
