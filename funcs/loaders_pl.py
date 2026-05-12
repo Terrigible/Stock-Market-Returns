@@ -86,8 +86,34 @@ def get_fred_series(series_id: str):
     )
 
 
+def download_wsj_fed_funds_rate_data():
+    ffr_wsj_low = get_fred_series("FFWSJLOW").rename({"FFWSJLOW": "low"})
+    ffr_wsj_high = get_fred_series("FFWSJHIGH").rename({"FFWSJHIGH": "high"})
+    ffr_wsj = ffr_wsj_low.join(ffr_wsj_high, on="date", how="full", coalesce=True).sort(
+        "date"
+    )
+    ffr_wsj = ffr_wsj.with_columns(
+        pl.col("low").forward_fill(),
+        pl.col("high").forward_fill(),
+    ).with_columns(
+        pl.col("low").fill_null(pl.col("high").sub(0.125).clip(lower_bound=0)),
+        pl.col("high").fill_null(pl.col("low").add(0.125)),
+    )
+    effr_wsj = ffr_wsj.select(
+        "date",
+        pl.mean_horizontal("low", "high").round(5).alias("wsj_ffr"),
+    )
+    return effr_wsj
+
+
 def download_fed_funds_rate():
-    fed_funds_rate = get_fred_series("DFF").rename({"DFF": "ffr"})
+    wsj_ffr = download_wsj_fed_funds_rate_data()
+    ffr = get_fred_series("DFF")
+    fed_funds_rate = (
+        wsj_ffr.join(ffr, on="date", how="full", coalesce=True)
+        .sort("date")
+        .select("date", pl.coalesce("wsj_ffr", "DFF").alias("ffr"))
+    )
     fed_funds_rate.write_csv("data/fed_funds_rate.csv")
     return fed_funds_rate
 

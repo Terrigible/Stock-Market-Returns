@@ -73,8 +73,21 @@ def get_fred_series(series_id: str) -> pd.Series:
     )
 
 
+def download_wsj_fed_funds_rate_data():
+    ffr_wsj_low = get_fred_series("FFWSJLOW").rename("low")
+    ffr_wsj_high = get_fred_series("FFWSJHIGH").rename("high")
+    ffr_wsj = pd.concat([ffr_wsj_low, ffr_wsj_high], axis=1)
+    ffr_wsj = ffr_wsj.ffill()
+    ffr_wsj["low"] = ffr_wsj["low"].fillna(ffr_wsj["high"].sub(0.125).clip(0))
+    ffr_wsj["high"] = ffr_wsj["high"].fillna(ffr_wsj["low"].add(0.125))
+    effr_wsj = ffr_wsj.mean(axis=1).round(5)
+    return effr_wsj.rename("wsj_ffr")
+
+
 def download_fed_funds_rate():
-    fed_funds_rate = get_fred_series("DFF").rename("ffr")
+    wsj_ffr = download_wsj_fed_funds_rate_data()
+    ffr = get_fred_series("DFF")
+    fed_funds_rate = pd.concat([wsj_ffr, ffr]).rename("ffr")
     fed_funds_rate.to_csv("data/fed_funds_rate.csv")
     return fed_funds_rate
 
