@@ -1,5 +1,5 @@
 import math
-from typing import Any, TypedDict
+from typing import NotRequired, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -20,10 +20,24 @@ class PrevLayout(TypedDict):
     yaxis: YAxis
 
 
+RelayoutData = TypedDict(
+    "RelayoutData",
+    {
+        "autosize": NotRequired[bool],
+        "xaxis.range[0]": NotRequired[str],
+        "xaxis.range[1]": NotRequired[str],
+        "yaxis.range[0]": NotRequired[float],
+        "yaxis.range[1]": NotRequired[float],
+        "xaxis.autorange": NotRequired[bool],
+        "yaxis.autorange": NotRequired[bool],
+    },
+)
+
+
 def _get_scaling_factor(
     prev_zoom_df: pd.DataFrame,
-    start_date: pd.Timestamp | None,
-    end_date: pd.Timestamp | None,
+    start_date: str | None,
+    end_date: str | None,
     yaxis_min: float,
     yaxis_max: float,
 ) -> float:
@@ -60,7 +74,7 @@ def update_price_graph(
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    relayout_data: dict[str, Any],
+    relayout_data: RelayoutData,
     prev_layout: PrevLayout | None,
     layout: go.Layout,
 ):
@@ -423,7 +437,7 @@ def update_graph(
     baseline_trace_options: dict[str, str],
     rolling_returns_presentation: str,
     rolling_returns_distribution_chart_type: str,
-    relayout_data: dict[str, Any] | None,
+    relayout_data: RelayoutData | None,
     uirevision: str,
     prev_layout: PrevLayout | None,
 ):

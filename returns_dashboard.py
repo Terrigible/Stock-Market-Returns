@@ -41,7 +41,7 @@ from funcs.loaders import (
     read_shiller_sp500_data,
 )
 from layout import app_layout
-from update_graph import PrevLayout, update_graph
+from update_graph import PrevLayout, RelayoutData, update_graph
 
 yf.config.debug.hide_exceptions = False
 
@@ -936,7 +936,7 @@ def update_security_graph(
     baseline_security_options: dict[str, str],
     rolling_returns_presentation: str,
     rolling_returns_distribution_chart_type: str,
-    relayout_data: dict[str, str | float],
+    relayout_data: RelayoutData | None,
     prev_layout: PrevLayout | None,
 ):
     securities_colourmap = dict(
@@ -1265,7 +1265,7 @@ def update_portfolio_graph(
     auto_scale: bool,
     rolling_returns_presentation: str,
     rolling_returns_distribution_chart_type: str,
-    relayout_data: dict[str, str | float],
+    relayout_data: RelayoutData | None,
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
     prev_layout: PrevLayout | None,
