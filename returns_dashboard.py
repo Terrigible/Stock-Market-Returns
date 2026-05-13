@@ -1505,7 +1505,6 @@ def simulate_backtest_accumulation_strategy(
         .last()
         .pct_change()
         .reindex(strategy_series.index)
-        .fillna(0)
         .to_numpy()
     )
     cpi = load_cpi(currency).reindex(strategy_series.index).to_numpy()
