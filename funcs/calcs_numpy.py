@@ -185,11 +185,13 @@ def simulate_bootstrap_accumulation(
 ) -> np.ndarray:
     num_samples = bootstrap_indices.shape[0]
     res = np.zeros((num_samples, investment_horizon + 1))
-    annual_fee_factor = (1.0 - annualised_holding_fees) ** (1.0 / 12.0)
+    monthly_returns_with_fees = (1.0 + monthly_returns) * (
+        1.0 - annualised_holding_fees
+    ) ** (1.0 / 12.0)
     dca_len = dca_length if dca_length <= investment_horizon else investment_horizon
     for s in range(num_samples):
         idx = bootstrap_indices[s]
-        boot_ret_fees = (1.0 + monthly_returns[idx]) * annual_fee_factor
+        boot_ret = monthly_returns_with_fees[idx]
         boot_cpi = cpi[idx]
         boot_cash = cash_returns[idx]
         boot_cpi[0] = 0
@@ -201,7 +203,7 @@ def simulate_bootstrap_accumulation(
         if adjust_monthly_investment_for_inflation:
             monthly_amounts *= cum_cpi[: dca_len + 1] / cum_cpi[1]
         for t in range(1, dca_len + 1):
-            share_value *= boot_ret_fees[t]
+            share_value *= boot_ret[t]
             funds_to_invest += monthly_amounts[t]
             if (t % dca_interval == 0) or (t == dca_len):
                 share_value += (
@@ -213,7 +215,7 @@ def simulate_bootstrap_accumulation(
                 funds_to_invest *= 1.0 + boot_cash[t]
             res[s, t] = share_value + funds_to_invest
         for t in range(dca_len + 1, investment_horizon + 1):
-            share_value *= boot_ret_fees[t]
+            share_value *= boot_ret[t]
             res[s, t] = share_value
         if adjust_portfolio_value_for_inflation:
             res[s] /= cum_cpi
@@ -248,11 +250,13 @@ def simulate_bootstrap_withdrawal(
 ) -> np.ndarray:
     num_samples = bootstrap_indices.shape[0]
     res = np.zeros((num_samples, withdrawal_horizon + 1))
-    annual_fee_factor = (1.0 - annualised_holding_fees) ** (1.0 / 12.0)
+    monthly_returns_with_fees = (1.0 + monthly_returns) * (
+        1.0 - annualised_holding_fees
+    ) ** (1.0 / 12.0)
     initial_withdrawal_amount = initial_monthly_withdrawal * withdrawal_interval
     for s in range(num_samples):
         idx = bootstrap_indices[s]
-        boot_ret_fees = (1.0 + monthly_returns[idx]) * annual_fee_factor
+        boot_ret = monthly_returns_with_fees[idx]
         boot_cpi = cpi[idx]
         boot_cpi[0] = 0
         cum_cpi = (boot_cpi + 1).cumprod()
@@ -271,7 +275,7 @@ def simulate_bootstrap_withdrawal(
                 if share_value <= 0.0:
                     res[s, t:] = 0.0
                     break
-            share_value *= boot_ret_fees[t]
+            share_value *= boot_ret[t]
             res[s, t] = share_value
     return res
 
