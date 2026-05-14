@@ -40,38 +40,34 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         1 - annualised_holding_fees
     ) ** (1 / 12)
     for i in range(investment_horizon, len(monthly_returns)):
+        sample_slice = slice(i - investment_horizon, i + 1)
+        sample_monthly_returns = monthly_returns_with_fees[sample_slice]
+        sample_cash_returns = cash_returns[sample_slice]
+        sample_cpi = cpi[sample_slice]
         share_value = initial_portfolio_value
         funds_to_invest = 0
 
-        if not adjust_monthly_investment_for_inflation:
-            monthly_amounts = np.full(dca_length, initial_monthly_amount)
-        else:
-            monthly_amounts = (
-                cpi[
-                    i - investment_horizon + 1 : i - investment_horizon + dca_length + 1
-                ]
-                / cpi[i - investment_horizon + 1]
-                * initial_monthly_amount
-            )
-        for index, j in enumerate(
-            range(i - investment_horizon, i - investment_horizon + dca_length)
-        ):
-            share_value *= monthly_returns_with_fees[j + 1]
-            funds_to_invest += monthly_amounts[index]
-            if ((index + 1) % dca_interval == 0) or (index + 1 == dca_length):
+        monthly_amounts = np.full(dca_length + 1, initial_monthly_amount)
+        if adjust_monthly_investment_for_inflation:
+            monthly_amounts *= sample_cpi[: dca_length + 1] / sample_cpi[1]
+
+        for j in range(1, dca_length + 1):
+            share_value *= sample_monthly_returns[j]
+            funds_to_invest += monthly_amounts[j]
+            if (j % dca_interval == 0) or (j == dca_length):
                 share_value += (
                     funds_to_invest * (1 - variable_transaction_fees)
                     - fixed_transaction_fees
                 )
                 funds_to_invest = 0
             else:
-                funds_to_invest *= 1 + cash_returns[j + 1]
-            res[i, index + 1] = share_value + funds_to_invest
-        for index, j in enumerate(range(i - investment_horizon + dca_length, i)):
-            share_value *= monthly_returns_with_fees[j + 1]
-            res[i, dca_length + index + 1] = share_value
+                funds_to_invest *= 1 + sample_cash_returns[j]
+            res[i, j] = share_value + funds_to_invest
+        for j in range(dca_length + 1, investment_horizon + 1):
+            share_value *= sample_monthly_returns[j]
+            res[i, j] = share_value
         if adjust_portfolio_value_for_inflation:
-            res[i] /= cpi[i - investment_horizon : i + 1] / cpi[i - investment_horizon]
+            res[i] /= sample_cpi / sample_cpi[0]
     return res
 
 
@@ -106,20 +102,23 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     res = np.full((monthly_returns.shape[0], withdrawal_horizon + 1), np.nan)
     res[withdrawal_horizon:, 0] = initial_portfolio_value
     for i in range(withdrawal_horizon, len(monthly_returns)):
+        sample_slice = slice(i - withdrawal_horizon, i + 1)
+        sample_monthly_returns = monthly_returns_with_fees[sample_slice]
+        sample_cpi = cpi[sample_slice]
         share_value = initial_portfolio_value
         withdrawal_amounts = (
-            cpi[i - withdrawal_horizon : i]
-            / cpi[i - withdrawal_horizon]
+            sample_cpi
+            / sample_cpi[0]
             * initial_withdrawal_amount
             * (1 + variable_transaction_fees)
             + fixed_transaction_fees
         )
-        for index, j in enumerate(range(i - withdrawal_horizon, i)):
-            if index % withdrawal_interval == 0:
-                share_value -= withdrawal_amounts[index]
+        for j in range(1, withdrawal_horizon + 1):
+            if (j - 1) % withdrawal_interval == 0:
+                share_value -= withdrawal_amounts[j]
                 if share_value <= 0:
-                    res[i, index + 1 :] = 0
+                    res[i, j:] = 0
                     break
-            share_value *= monthly_returns_with_fees[j + 1]
-            res[i, index + 1] = share_value
+            share_value *= sample_monthly_returns[j]
+            res[i, j] = share_value
     return res
