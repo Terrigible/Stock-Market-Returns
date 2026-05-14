@@ -257,14 +257,17 @@ def simulate_bootstrap_withdrawal(
         boot_cpi[0] = 0
         cum_cpi = (boot_cpi + 1).cumprod()
         withdrawal_amounts = (
-            cum_cpi * initial_withdrawal_amount * (1.0 + variable_transaction_fees)
+            cum_cpi
+            / cum_cpi[1]
+            * initial_withdrawal_amount
+            * (1.0 + variable_transaction_fees)
             + fixed_transaction_fees
         )
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         for t in range(1, withdrawal_horizon + 1):
             if (t - 1) % withdrawal_interval == 0:
-                share_value -= withdrawal_amounts[t - 1]
+                share_value -= withdrawal_amounts[t]
                 if share_value <= 0.0:
                     res[s, t:] = 0.0
                     break
