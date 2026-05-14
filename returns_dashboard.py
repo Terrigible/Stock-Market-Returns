@@ -2123,11 +2123,10 @@ def simulate_bootstrap_accumulation_strategy(
     variable_transaction_fees /= 100
     annualised_holding_fees /= 100
 
-    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
-    cpi_series = load_cpi(currency)
-    common_idx = strategy_series.index.intersection(cpi_series.index)
-    strategy_series = strategy_series.loc[common_idx]
-    cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
+    strategy_series = load_portfolio(
+        strategy_portfolio, currency, "No", yf_securities
+    ).pct_change()
+    cpi = load_cpi(currency).pct_change()
     cash_returns = (
         (
             load_fed_funds_returns()
@@ -2137,21 +2136,23 @@ def simulate_bootstrap_accumulation_strategy(
         .resample("BME")
         .last()
         .pct_change()
-        .reindex(strategy_series.index)
-        .fillna(0)
-        .to_numpy()
     )
+    common_idx = strategy_series.index.intersection(cpi.index).intersection(
+        cash_returns.index
+    )[1:]
+    strategy_series = strategy_series.loc[common_idx].to_numpy()
+    cpi = cpi.loc[common_idx].to_numpy()
+    cash_returns = cash_returns.loc[common_idx].to_numpy()
 
-    monthly_returns = strategy_series.pct_change().to_numpy()
-    n_data = len(monthly_returns) - 1
+    n_data = len(strategy_series)
     sample_length = investment_horizon + 1
     indices = generate_bootstrap_indices(
         num_samples, sample_length, n_data, avg_block_len
     )
     portfolio_values = simulate_bootstrap_accumulation(
-        monthly_returns[1:],
-        cpi[1:],
-        cash_returns[1:],
+        strategy_series,
+        cpi,
+        cash_returns,
         indices,
         dca_length,
         dca_interval,
@@ -2205,15 +2206,17 @@ def simulate_bootstrap_withdrawal_strategy(
     else:
         cpi = np.zeros(len(strategy_series))
 
-    monthly_returns = strategy_series.pct_change().to_numpy()
-    n_data = len(monthly_returns) - 1
+    monthly_returns = strategy_series.pct_change().to_numpy()[1:]
+    cpi = cpi[1:]
+
+    n_data = len(monthly_returns)
     sample_length = withdrawal_horizon + 1
     indices = generate_bootstrap_indices(
         num_samples, sample_length, n_data, avg_block_len
     )
     portfolio_values = simulate_bootstrap_withdrawal(
-        monthly_returns[1:],
-        cpi[1:],
+        monthly_returns,
+        cpi,
         indices,
         withdrawal_horizon,
         withdrawal_interval,
