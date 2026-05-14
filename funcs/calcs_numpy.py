@@ -108,7 +108,7 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
         share_value = initial_portfolio_value
         withdrawal_amounts = (
             sample_cpi
-            / sample_cpi[0]
+            / sample_cpi[1]
             * initial_withdrawal_amount
             * (1 + variable_transaction_fees)
             + fixed_transaction_fees
