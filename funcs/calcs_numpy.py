@@ -192,10 +192,8 @@ def simulate_bootstrap_accumulation(
         boot_ret_fees = (1.0 + monthly_returns[idx]) * annual_fee_factor
         boot_cpi = cpi[idx]
         boot_cash = cash_returns[idx]
-        cum_cpi = np.empty(investment_horizon + 1)
-        cum_cpi[0] = 1.0
-        for t in range(investment_horizon):
-            cum_cpi[t + 1] = cum_cpi[t] * (1.0 + boot_cpi[t])
+        boot_cpi[0] = 0
+        cum_cpi = (boot_cpi + 1).cumprod()
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         funds_to_invest = 0.0
@@ -256,23 +254,17 @@ def simulate_bootstrap_withdrawal(
         idx = bootstrap_indices[s]
         boot_ret_fees = (1.0 + monthly_returns[idx]) * annual_fee_factor
         boot_cpi = cpi[idx]
-        cum_cpi = np.empty(withdrawal_horizon)
-        cum_cpi[0] = 1.0
-        for t in range(withdrawal_horizon - 1):
-            cum_cpi[t + 1] = cum_cpi[t] * (1.0 + boot_cpi[t])
-        withdrawal_amounts = np.zeros(withdrawal_horizon + 1)
-        for t in range(withdrawal_horizon):
-            withdrawal_amounts[t + 1] = (
-                cum_cpi[t]
-                * initial_withdrawal_amount
-                * (1.0 + variable_transaction_fees)
-                + fixed_transaction_fees
-            )
+        boot_cpi[0] = 0
+        cum_cpi = (boot_cpi + 1).cumprod()
+        withdrawal_amounts = (
+            cum_cpi * initial_withdrawal_amount * (1.0 + variable_transaction_fees)
+            + fixed_transaction_fees
+        )
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         for t in range(1, withdrawal_horizon + 1):
             if (t - 1) % withdrawal_interval == 0:
-                share_value -= withdrawal_amounts[t]
+                share_value -= withdrawal_amounts[t - 1]
                 if share_value <= 0.0:
                     res[s, t:] = 0.0
                     break
