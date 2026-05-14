@@ -2127,7 +2127,7 @@ def simulate_bootstrap_accumulation_strategy(
     cpi_series = load_cpi(currency)
     common_idx = strategy_series.index.intersection(cpi_series.index)
     strategy_series = strategy_series.loc[common_idx]
-    cpi = cpi_series.loc[common_idx].to_numpy()
+    cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
     cash_returns = (
         (
             load_fed_funds_returns()
@@ -2201,9 +2201,9 @@ def simulate_bootstrap_withdrawal_strategy(
         cpi_series = load_cpi(currency)
         common_idx = strategy_series.index.intersection(cpi_series.index)
         strategy_series = strategy_series.loc[common_idx]
-        cpi = cpi_series.loc[common_idx].to_numpy()
+        cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
     else:
-        cpi = np.ones(len(strategy_series))
+        cpi = np.zeros(len(strategy_series))
 
     monthly_returns = strategy_series.pct_change().to_numpy()
     n_data = len(monthly_returns) - 1

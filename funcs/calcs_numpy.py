@@ -192,14 +192,17 @@ def simulate_bootstrap_accumulation(
         boot_ret_fees = (1.0 + monthly_returns[idx]) * annual_fee_factor
         boot_cpi = cpi[idx]
         boot_cash = cash_returns[idx]
+        cum_cpi = np.empty(investment_horizon + 1)
+        cum_cpi[0] = 1.0
+        for t in range(investment_horizon):
+            cum_cpi[t + 1] = cum_cpi[t] * (1.0 + boot_cpi[t])
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         funds_to_invest = 0.0
         if adjust_monthly_investment_for_inflation:
             monthly_amounts = np.zeros(dca_len)
-            base_cpi = boot_cpi[0]
             for t in range(dca_len):
-                monthly_amounts[t] = boot_cpi[t + 1] / base_cpi * initial_monthly_amount
+                monthly_amounts[t] = cum_cpi[t + 1] * initial_monthly_amount
         else:
             monthly_amounts = np.full(dca_len, initial_monthly_amount)
         for t in range(dca_len):
@@ -219,7 +222,7 @@ def simulate_bootstrap_accumulation(
             res[s, t + 1] = share_value
         if adjust_portfolio_value_for_inflation:
             for t in range(1, investment_horizon + 1):
-                res[s, t] /= boot_cpi[t] / boot_cpi[0]
+                res[s, t] /= cum_cpi[t]
     return res
 
 
@@ -257,12 +260,14 @@ def simulate_bootstrap_withdrawal(
         idx = bootstrap_indices[s]
         boot_ret_fees = (1.0 + monthly_returns[idx]) * annual_fee_factor
         boot_cpi = cpi[idx]
+        cum_cpi = np.empty(withdrawal_horizon)
+        cum_cpi[0] = 1.0
+        for t in range(withdrawal_horizon - 1):
+            cum_cpi[t + 1] = cum_cpi[t] * (1.0 + boot_cpi[t])
         withdrawal_amounts = np.zeros(withdrawal_horizon)
-        base_cpi = boot_cpi[0]
         for t in range(withdrawal_horizon):
             withdrawal_amounts[t] = (
-                boot_cpi[t]
-                / base_cpi
+                cum_cpi[t]
                 * initial_withdrawal_amount
                 * (1.0 + variable_transaction_fees)
                 + fixed_transaction_fees
