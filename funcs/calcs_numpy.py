@@ -188,7 +188,6 @@ def simulate_bootstrap_accumulation(
     monthly_returns_with_fees = (1.0 + monthly_returns) * (
         1.0 - annualised_holding_fees
     ) ** (1.0 / 12.0)
-    dca_len = dca_length if dca_length <= investment_horizon else investment_horizon
     for s in range(num_samples):
         idx = bootstrap_indices[s]
         boot_ret = monthly_returns_with_fees[idx]
@@ -199,13 +198,13 @@ def simulate_bootstrap_accumulation(
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         funds_to_invest = 0.0
-        monthly_amounts = np.full(dca_len + 1, initial_monthly_amount)
+        monthly_amounts = np.full(dca_length + 1, initial_monthly_amount)
         if adjust_monthly_investment_for_inflation:
-            monthly_amounts *= cum_cpi[: dca_len + 1] / cum_cpi[1]
-        for t in range(1, dca_len + 1):
+            monthly_amounts *= cum_cpi[: dca_length + 1] / cum_cpi[1]
+        for t in range(1, dca_length + 1):
             share_value *= boot_ret[t]
             funds_to_invest += monthly_amounts[t]
-            if (t % dca_interval == 0) or (t == dca_len):
+            if (t % dca_interval == 0) or (t == dca_length):
                 share_value += (
                     funds_to_invest * (1.0 - variable_transaction_fees)
                     - fixed_transaction_fees
@@ -214,7 +213,7 @@ def simulate_bootstrap_accumulation(
             else:
                 funds_to_invest *= 1.0 + boot_cash[t]
             res[s, t] = share_value + funds_to_invest
-        for t in range(dca_len + 1, investment_horizon + 1):
+        for t in range(dca_length + 1, investment_horizon + 1):
             share_value *= boot_ret[t]
             res[s, t] = share_value
         if adjust_portfolio_value_for_inflation:
