@@ -2084,6 +2084,17 @@ def _build_quantile_fan_traces(
                 hoverinfo="skip",
             )
         )
+    customdata = np.column_stack(
+        [
+            quantiles[0.99],
+            quantiles[0.95],
+            quantiles[0.75],
+            quantiles[0.50],
+            quantiles[0.25],
+            quantiles[0.05],
+            quantiles[0.01],
+        ]
+    )
     traces.append(
         go.Scatter(
             x=months,
@@ -2091,6 +2102,16 @@ def _build_quantile_fan_traces(
             mode="lines",
             line=dict(color=color, width=2),
             name=strategy_name.replace("\n", "<br>"),
+            customdata=customdata,
+            hovertemplate=(
+                "p99: %{customdata[0]:$,.0f}<br>"
+                "p95: %{customdata[1]:$,.0f}<br>"
+                "p75: %{customdata[2]:$,.0f}<br>"
+                "<b>p50: %{customdata[3]:$,.0f}</b><br>"
+                "p25: %{customdata[4]:$,.0f}<br>"
+                "p5: %{customdata[5]:$,.0f}<br>"
+                "p1: %{customdata[6]:$,.0f}"
+            ),
             showlegend=True,
         )
     )
