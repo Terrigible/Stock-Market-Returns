@@ -291,8 +291,8 @@ def compute_bootstrap_max_drawdown(portfolio_values: np.ndarray) -> np.ndarray:
         for t in range(1, num_months):
             if portfolio_values[s, t] > running_max:
                 running_max = portfolio_values[s, t]
-            dd = running_max - portfolio_values[s, t]
-            if dd > max_dd:
+            dd = portfolio_values[s, t] - running_max
+            if dd < max_dd:
                 max_dd = dd
             res[s, t] = max_dd
     return res
