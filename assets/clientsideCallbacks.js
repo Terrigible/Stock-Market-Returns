@@ -181,7 +181,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Updates strategy portfolio selections based on available portfolios.
              *
              * @param {Object} portfolioOptions Dictionary of portfolio options.
-             * @returns {Array} [options1, options2, value1, value2]
+             * @returns {Array} [options1..4, value1..4]
              */
             function (portfolioOptions) {
                 var keys = Object.keys(portfolioOptions);
@@ -192,6 +192,10 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 return [
                     portfolioOptions,
                     portfolioOptions,
+                    portfolioOptions,
+                    portfolioOptions,
+                    selectedValue,
+                    selectedValue,
                     selectedValue,
                     selectedValue,
                 ];

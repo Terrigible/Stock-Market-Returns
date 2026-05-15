@@ -122,3 +122,177 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             share_value *= sample_monthly_returns[j]
             res[i, j] = share_value
     return res
+
+
+@njit(int64[:, :](int64, int64, int64, float64))
+def generate_bootstrap_indices(
+    num_samples: int,
+    sample_length: int,
+    n_data: int,
+    avg_block_length: float,
+):
+    res = np.empty((num_samples, sample_length), dtype=np.int64)
+    p = 1.0 / avg_block_length
+    log_1_minus_p = np.log(1.0 - p)
+    tiny = np.finfo(np.float64).tiny
+    for s in range(num_samples):
+        pos = 0
+        while pos < sample_length:
+            i = np.random.randint(0, n_data)
+            u = max(np.random.random(), tiny)
+            block_len = min(
+                int(np.ceil(np.log(u) / log_1_minus_p)), sample_length - pos
+            )
+            for j in range(block_len):
+                res[s, pos + j] = (i + j) % n_data
+            pos += block_len
+    return res
+
+
+@njit(
+    float64[:, :](
+        float64[:],
+        float64[:],
+        float64[:],
+        int64[:, :],
+        int64,
+        int64,
+        int64,
+        float64,
+        float64,
+        bool_,
+        float64,
+        float64,
+        float64,
+        bool_,
+    )
+)
+def simulate_bootstrap_accumulation(
+    monthly_returns: np.ndarray,
+    cpi: np.ndarray,
+    cash_returns: np.ndarray,
+    bootstrap_indices: np.ndarray,
+    dca_length: int,
+    dca_interval: int,
+    investment_horizon: int,
+    initial_portfolio_value: float,
+    initial_monthly_amount: float,
+    adjust_monthly_investment_for_inflation: bool,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
+    adjust_portfolio_value_for_inflation: bool,
+) -> np.ndarray:
+    num_samples = bootstrap_indices.shape[0]
+    res = np.zeros((num_samples, investment_horizon + 1))
+    monthly_returns_with_fees = (1.0 + monthly_returns) * (
+        1.0 - annualised_holding_fees
+    ) ** (1.0 / 12.0)
+    for s in range(num_samples):
+        idx = bootstrap_indices[s]
+        boot_ret = monthly_returns_with_fees[idx]
+        boot_cpi = cpi[idx]
+        boot_cash = cash_returns[idx]
+        boot_cpi[0] = 0
+        cum_cpi = (boot_cpi + 1).cumprod()
+        res[s, 0] = initial_portfolio_value
+        share_value = initial_portfolio_value
+        funds_to_invest = 0.0
+        monthly_amounts = np.full(dca_length + 1, initial_monthly_amount)
+        if adjust_monthly_investment_for_inflation:
+            monthly_amounts *= cum_cpi[: dca_length + 1] / cum_cpi[1]
+        for t in range(1, dca_length + 1):
+            share_value *= boot_ret[t]
+            funds_to_invest += monthly_amounts[t]
+            if (t % dca_interval == 0) or (t == dca_length):
+                share_value += (
+                    funds_to_invest * (1.0 - variable_transaction_fees)
+                    - fixed_transaction_fees
+                )
+                funds_to_invest = 0.0
+            else:
+                funds_to_invest *= 1.0 + boot_cash[t]
+            res[s, t] = share_value + funds_to_invest
+        for t in range(dca_length + 1, investment_horizon + 1):
+            share_value *= boot_ret[t]
+            res[s, t] = share_value
+        if adjust_portfolio_value_for_inflation:
+            res[s] /= cum_cpi
+    return res
+
+
+@njit(
+    float64[:, :](
+        float64[:],
+        float64[:],
+        int64[:, :],
+        int64,
+        int64,
+        float64,
+        float64,
+        float64,
+        float64,
+        float64,
+    )
+)
+def simulate_bootstrap_withdrawal(
+    monthly_returns: np.ndarray,
+    cpi: np.ndarray,
+    bootstrap_indices: np.ndarray,
+    withdrawal_horizon: int,
+    withdrawal_interval: int,
+    initial_portfolio_value: float,
+    initial_monthly_withdrawal: float,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
+) -> np.ndarray:
+    num_samples = bootstrap_indices.shape[0]
+    res = np.zeros((num_samples, withdrawal_horizon + 1))
+    monthly_returns_with_fees = (1.0 + monthly_returns) * (
+        1.0 - annualised_holding_fees
+    ) ** (1.0 / 12.0)
+    initial_withdrawal_amount = initial_monthly_withdrawal * withdrawal_interval
+    for s in range(num_samples):
+        idx = bootstrap_indices[s]
+        boot_ret = monthly_returns_with_fees[idx]
+        boot_cpi = cpi[idx]
+        boot_cpi[0] = 0
+        cum_cpi = (boot_cpi + 1).cumprod()
+        withdrawal_amounts = (
+            cum_cpi
+            / cum_cpi[1]
+            * initial_withdrawal_amount
+            * (1.0 + variable_transaction_fees)
+            + fixed_transaction_fees
+        )
+        res[s, 0] = initial_portfolio_value
+        share_value = initial_portfolio_value
+        for t in range(1, withdrawal_horizon + 1):
+            if (t - 1) % withdrawal_interval == 0:
+                share_value -= withdrawal_amounts[t]
+                if share_value <= 0.0:
+                    res[s, t:] = 0.0
+                    break
+            share_value *= boot_ret[t]
+            res[s, t] = share_value
+    return res
+
+
+@njit(float64[:, :](float64[:, :]))
+def compute_bootstrap_max_drawdown(portfolio_values: np.ndarray) -> np.ndarray:
+    num_samples = portfolio_values.shape[0]
+    num_months = portfolio_values.shape[1]
+    res = np.zeros((num_samples, num_months))
+    for s in range(num_samples):
+        running_max = portfolio_values[s, 0]
+        max_dd = 0.0
+        res[s, 0] = 0.0
+        for t in range(1, num_months):
+            if portfolio_values[s, t] > running_max:
+                running_max = portfolio_values[s, t]
+            dd = portfolio_values[s, t] - running_max
+            if dd < max_dd:
+                max_dd = dd
+            res[s, t] = max_dd
+    return res

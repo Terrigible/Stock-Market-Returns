@@ -1205,6 +1205,397 @@ app_layout = html.Div(
                     ],
                 ),
             ),
+            dbc.Tab(
+                label="Accumulation Bootstrap",
+                children=html.Div(
+                    [
+                        html.Div(
+                            [
+                                dbc.Label(
+                                    "Portfolio",
+                                    html_for="bootstrap-accumulation-strategy-portfolio",
+                                ),
+                                html.Div(
+                                    [
+                                        dbc.Select(
+                                            {},
+                                            id="bootstrap-accumulation-strategy-portfolio",
+                                            style={"width": 0, "flexGrow": 1},
+                                        ),
+                                    ],
+                                    style={"display": "flex"},
+                                ),
+                                dbc.Label(
+                                    "Currency",
+                                    html_for="bootstrap-accumulation-strategy-currency-selection",
+                                ),
+                                dbc.Select(
+                                    [
+                                        "SGD",
+                                        "USD",
+                                    ],
+                                    value="SGD",
+                                    id="bootstrap-accumulation-strategy-currency-selection",
+                                ),
+                                dbc.Label(
+                                    "Initial Portfolio Value",
+                                    html_for="bootstrap-accumulation-investment-amount-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-investment-amount-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Label(
+                                    "Monthly Investment Amount",
+                                    html_for="bootstrap-accumulation-monthly-investment-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-monthly-investment-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-accumulation-monthly-investment-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust for Inflation",
+                                    style={"marginTop": "0"},
+                                ),
+                                dbc.Label(
+                                    "Investment Horizon (Months)",
+                                    html_for="bootstrap-accumulation-investment-horizon-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-investment-horizon-input",
+                                    type="number",
+                                    min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "DCA Length (Months)",
+                                    html_for="bootstrap-accumulation-dca-length-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-dca-length-input",
+                                    type="number",
+                                    min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "DCA Interval (Months)",
+                                    html_for="bootstrap-accumulation-dca-interval-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-dca-interval-input",
+                                    type="number",
+                                    min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "Variable Transaction Fees (%)",
+                                    html_for="bootstrap-accumulation-variable-transaction-fees-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-variable-transaction-fees-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Label(
+                                    "Fixed Transaction Fees ($)",
+                                    html_for="bootstrap-accumulation-fixed-transaction-fees-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-fixed-transaction-fees-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Label(
+                                    "Annualised Holding Fees (% p.a.)",
+                                    html_for="bootstrap-accumulation-annualised-holding-fees-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-annualised-holding-fees-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-accumulation-portfolio-value-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust Portfolio Value for Inflation",
+                                ),
+                                dbc.Label(
+                                    "Num. Bootstrap Samples",
+                                    html_for="bootstrap-accumulation-num-samples-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-num-samples-input",
+                                    type="number",
+                                    min=100,
+                                    value=1000,
+                                    step=100,
+                                ),
+                                dbc.Label(
+                                    "Avg. Block Length (Months)",
+                                    html_for="bootstrap-accumulation-avg-block-length-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-avg-block-length-input",
+                                    type="number",
+                                    min=1,
+                                    value=120,
+                                    step=1,
+                                ),
+                                html.P(),
+                                dbc.Button(
+                                    "Add Strategy",
+                                    id="bootstrap-accumulation-add-strategy-button",
+                                ),
+                                html.P(),
+                                dbc.Label(
+                                    "Strategies",
+                                    html_for="bootstrap-accumulation-strategies",
+                                ),
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            multi=True,
+                                            searchable=False,
+                                            id="bootstrap-accumulation-strategies",
+                                            optionHeight=200,
+                                            style={"width": 0, "flexGrow": 1},
+                                        )
+                                    ],
+                                    style={"display": "flex"},
+                                ),
+                                dbc.Label(
+                                    "Value",
+                                    html_for="bootstrap-accumulation-y-var-selection",
+                                ),
+                                dbc.Select(
+                                    {
+                                        "portfolio_values": "Portfolio Value Quantiles",
+                                        "max_drawdown": "Max Dollar Drawdown Quantiles",
+                                    },
+                                    value="portfolio_values",
+                                    id="bootstrap-accumulation-y-var-selection",
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-accumulation-log-scale-switch",
+                                    value=False,
+                                    label="Logarithmic Scale",
+                                ),
+                            ],
+                            className="sidebar",
+                        ),
+                        html.Div(
+                            [
+                                dcc.Graph(
+                                    responsive=True,
+                                    figure={
+                                        "data": [],
+                                        "layout": {
+                                            "autosize": True,
+                                            "title": "Bootstrap Accumulation Strategy",
+                                        },
+                                    },
+                                    id="bootstrap-accumulation-graph",
+                                    config={"toImageButtonOptions": {"scale": 4}},
+                                ),
+                            ],
+                            className="graph-container",
+                        ),
+                    ],
+                ),
+            ),
+            dbc.Tab(
+                label="Withdrawal Bootstrap",
+                children=html.Div(
+                    [
+                        html.Div(
+                            [
+                                dbc.Label(
+                                    "Portfolio",
+                                    html_for="bootstrap-withdrawal-strategy-portfolio",
+                                ),
+                                html.Div(
+                                    [
+                                        dbc.Select(
+                                            {},
+                                            id="bootstrap-withdrawal-strategy-portfolio",
+                                            style={"width": 0, "flexGrow": 1},
+                                        ),
+                                    ],
+                                    style={"display": "flex"},
+                                ),
+                                dbc.Label(
+                                    "Currency",
+                                    html_for="bootstrap-withdrawal-strategy-currency-selection",
+                                ),
+                                dbc.Select(
+                                    [
+                                        "SGD",
+                                        "USD",
+                                    ],
+                                    value="SGD",
+                                    id="bootstrap-withdrawal-strategy-currency-selection",
+                                ),
+                                dbc.Label(
+                                    "Initial Capital",
+                                    html_for="bootstrap-withdrawal-initial-capital-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-initial-capital-input",
+                                    type="number",
+                                    min=0.01,
+                                ),
+                                dbc.Label(
+                                    "Monthly Withdrawal Amount",
+                                    html_for="bootstrap-withdrawal-monthly-amount-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-monthly-amount-input",
+                                    type="number",
+                                    min=0.01,
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-withdrawal-monthly-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust for Inflation",
+                                    style={"marginTop": "0"},
+                                ),
+                                dbc.Label(
+                                    "Withdrawal Horizon (Months)",
+                                    html_for="bootstrap-withdrawal-horizon-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-horizon-input",
+                                    type="number",
+                                    min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "Withdrawal Interval (Months)",
+                                    html_for="bootstrap-withdrawal-interval-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-interval-input",
+                                    type="number",
+                                    min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "Variable Transaction Fees (%)",
+                                    html_for="bootstrap-withdrawal-variable-transaction-fees-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-variable-transaction-fees-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Label(
+                                    "Fixed Transaction Fees ($)",
+                                    html_for="bootstrap-withdrawal-fixed-transaction-fees-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-fixed-transaction-fees-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Label(
+                                    "Annualised Holding Fees (% p.a.)",
+                                    html_for="bootstrap-withdrawal-annualised-holding-fees-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-annualised-holding-fees-input",
+                                    type="number",
+                                    min=0,
+                                ),
+                                dbc.Label(
+                                    "Num. Bootstrap Samples",
+                                    html_for="bootstrap-withdrawal-num-samples-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-num-samples-input",
+                                    type="number",
+                                    min=100,
+                                    value=1000,
+                                    step=100,
+                                ),
+                                dbc.Label(
+                                    "Avg. Block Length (Months)",
+                                    html_for="bootstrap-withdrawal-avg-block-length-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-avg-block-length-input",
+                                    type="number",
+                                    min=1,
+                                    value=120,
+                                    step=1,
+                                ),
+                                html.P(),
+                                dbc.Button(
+                                    "Add Strategy",
+                                    id="bootstrap-withdrawal-add-strategy-button",
+                                ),
+                                html.P(),
+                                dbc.Label(
+                                    "Strategies",
+                                    html_for="bootstrap-withdrawal-strategies",
+                                ),
+                                html.Div(
+                                    [
+                                        dcc.Dropdown(
+                                            {},
+                                            multi=True,
+                                            searchable=False,
+                                            id="bootstrap-withdrawal-strategies",
+                                            optionHeight=150,
+                                            style={"width": 0, "flexGrow": 1},
+                                        )
+                                    ],
+                                    style={"display": "flex"},
+                                ),
+                                dbc.Label(
+                                    "Value",
+                                    html_for="bootstrap-withdrawal-y-var-selection",
+                                ),
+                                dbc.Select(
+                                    {
+                                        "portfolio_values": "Portfolio Value Quantiles",
+                                        "max_drawdown": "Max Dollar Drawdown Quantiles",
+                                    },
+                                    value="portfolio_values",
+                                    id="bootstrap-withdrawal-y-var-selection",
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-withdrawal-log-scale-switch",
+                                    value=False,
+                                    label="Logarithmic Scale",
+                                ),
+                            ],
+                            className="sidebar",
+                        ),
+                        html.Div(
+                            [
+                                dcc.Graph(
+                                    responsive=True,
+                                    figure={
+                                        "data": [],
+                                        "layout": {
+                                            "autosize": True,
+                                            "title": "Bootstrap Withdrawal Strategy",
+                                        },
+                                    },
+                                    id="bootstrap-withdrawal-graph",
+                                    config={"toImageButtonOptions": {"scale": 4}},
+                                ),
+                            ],
+                            className="graph-container",
+                        ),
+                    ],
+                ),
+            ),
         ],
         style={
             "textWrap": "nowrap",
