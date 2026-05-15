@@ -2186,16 +2186,7 @@ def simulate_bootstrap_accumulation_strategy(
         annualised_holding_fees,
         adjust_portfolio_value_for_inflation,
     )
-    drawdown_values = compute_bootstrap_max_drawdown(portfolio_values)
-
-    p_quantiles = {
-        q: np.nanquantile(portfolio_values, q, axis=0) for q in QUANTILE_KEYS
-    }
-    d_quantiles = {q: np.nanquantile(drawdown_values, q, axis=0) for q in QUANTILE_KEYS}
-    return {
-        "portfolio_quantiles": p_quantiles,
-        "drawdown_quantiles": d_quantiles,
-    }
+    return portfolio_values
 
 
 def simulate_bootstrap_withdrawal_strategy(
@@ -2247,16 +2238,7 @@ def simulate_bootstrap_withdrawal_strategy(
         fixed_transaction_fees,
         annualised_holding_fees,
     )
-    drawdown_values = compute_bootstrap_max_drawdown(portfolio_values)
-
-    p_quantiles = {
-        q: np.nanquantile(portfolio_values, q, axis=0) for q in QUANTILE_KEYS
-    }
-    d_quantiles = {q: np.nanquantile(drawdown_values, q, axis=0) for q in QUANTILE_KEYS}
-    return {
-        "portfolio_quantiles": p_quantiles,
-        "drawdown_quantiles": d_quantiles,
-    }
+    return portfolio_values
 
 
 @app.callback(
@@ -2398,14 +2380,16 @@ def update_bootstrap_accumulation_graph(
     )
     all_traces = []
     for strategy_str in strategy_strs:
-        result = simulate_bootstrap_accumulation_strategy(yf_securities, strategy_str)
+        portfolio_values = simulate_bootstrap_accumulation_strategy(
+            yf_securities, strategy_str
+        )
         investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
         months = np.arange(investment_horizon + 1)
-        quantiles = result[
-            "portfolio_quantiles"
-            if y_var == "portfolio_values"
-            else "drawdown_quantiles"
-        ]
+        if y_var == "portfolio_values":
+            values = portfolio_values
+        else:
+            values = compute_bootstrap_max_drawdown(portfolio_values)
+        quantiles = {q: np.nanquantile(values, q, axis=0) for q in QUANTILE_KEYS}
         all_traces.extend(
             _build_quantile_fan_traces(
                 months,
@@ -2556,14 +2540,16 @@ def update_bootstrap_withdrawal_graph(
     )
     all_traces = []
     for strategy_str in strategy_strs:
-        result = simulate_bootstrap_withdrawal_strategy(yf_securities, strategy_str)
+        portfolio_values = simulate_bootstrap_withdrawal_strategy(
+            yf_securities, strategy_str
+        )
         withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
         months = np.arange(withdrawal_horizon + 1)
-        quantiles = result[
-            "portfolio_quantiles"
-            if y_var == "portfolio_values"
-            else "drawdown_quantiles"
-        ]
+        if y_var == "portfolio_values":
+            values = portfolio_values
+        else:
+            values = compute_bootstrap_max_drawdown(portfolio_values)
+        quantiles = {q: np.nanquantile(values, q, axis=0) for q in QUANTILE_KEYS}
         all_traces.extend(
             _build_quantile_fan_traces(
                 months,
