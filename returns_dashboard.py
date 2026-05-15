@@ -2039,17 +2039,6 @@ def show_backtest_withdrawal_strategy_modal(
     }
 
 
-def _to_rgba(color: str, opacity: float) -> str:
-    if color.startswith("rgb("):
-        return color.replace("rgb(", "rgba(").rstrip(")") + f", {opacity})"
-    if color.startswith("#"):
-        r = int(color[1:3], 16)
-        g = int(color[3:5], 16)
-        b = int(color[5:7], 16)
-        return f"rgba({r},{g},{b},{opacity})"
-    return color
-
-
 QUANTILE_KEYS = [0.01, 0.05, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99]
 BANDS = [(0.01, 0.99, 0.15), (0.05, 0.95, 0.25), (0.25, 0.75, 0.40)]
 
@@ -2068,6 +2057,7 @@ def _build_quantile_fan_traces(
                 y=quantiles[lo],
                 mode="lines",
                 line=dict(width=0),
+                legendgroup=strategy_name,
                 showlegend=False,
                 hoverinfo="skip",
             )
@@ -2079,7 +2069,8 @@ def _build_quantile_fan_traces(
                 mode="lines",
                 line=dict(width=0),
                 fill="tonexty",
-                fillcolor=_to_rgba(color, opacity),
+                fillcolor=color.replace("rgb(", "rgba(").rstrip(")") + f", {opacity})",
+                legendgroup=strategy_name,
                 showlegend=False,
                 hoverinfo="skip",
             )
@@ -2102,6 +2093,7 @@ def _build_quantile_fan_traces(
             mode="lines",
             line=dict(color=color, width=2),
             name=strategy_name.replace("\n", "<br>"),
+            legendgroup=strategy_name,
             customdata=customdata,
             hovertemplate=(
                 "p99: %{customdata[0]:$,.0f}<br>"
