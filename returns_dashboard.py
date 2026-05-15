@@ -2351,6 +2351,7 @@ def update_bootstrap_accumulation_strategies(
     Input("bootstrap-accumulation-strategies", "value"),
     State("bootstrap-accumulation-strategies", "options"),
     Input("bootstrap-accumulation-y-var-selection", "value"),
+    Input("bootstrap-accumulation-log-scale-switch", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
@@ -2358,6 +2359,7 @@ def update_bootstrap_accumulation_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     y_var: str,
+    log_scale: bool,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -2403,6 +2405,7 @@ def update_bootstrap_accumulation_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
+            yaxis_type="log" if log_scale else "linear",
             margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
@@ -2511,6 +2514,7 @@ def update_bootstrap_withdrawal_strategies(
     Input("bootstrap-withdrawal-strategies", "value"),
     State("bootstrap-withdrawal-strategies", "options"),
     Input("bootstrap-withdrawal-y-var-selection", "value"),
+    Input("bootstrap-withdrawal-log-scale-switch", "value"),
     State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
@@ -2518,6 +2522,7 @@ def update_bootstrap_withdrawal_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     y_var: str,
+    log_scale: bool,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -2563,6 +2568,7 @@ def update_bootstrap_withdrawal_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
+            yaxis_type="log" if log_scale else "linear",
             margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }

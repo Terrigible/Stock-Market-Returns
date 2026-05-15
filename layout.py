@@ -1380,6 +1380,11 @@ app_layout = html.Div(
                                     value="portfolio_values",
                                     id="bootstrap-accumulation-y-var-selection",
                                 ),
+                                dbc.Switch(
+                                    "bootstrap-accumulation-log-scale-switch",
+                                    value=False,
+                                    label="Logarithmic Scale",
+                                ),
                             ],
                             className="sidebar",
                         ),
@@ -1562,6 +1567,11 @@ app_layout = html.Div(
                                     },
                                     value="portfolio_values",
                                     id="bootstrap-withdrawal-y-var-selection",
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-withdrawal-log-scale-switch",
+                                    value=False,
+                                    label="Logarithmic Scale",
                                 ),
                             ],
                             className="sidebar",
