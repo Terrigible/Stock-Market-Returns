@@ -1525,7 +1525,7 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-avg-block-length-input",
                                     type="number",
                                     min=1,
-                                    value=60,
+                                    value=120,
                                     step=1,
                                 ),
                                 html.P(),
