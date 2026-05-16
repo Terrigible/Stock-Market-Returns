@@ -2383,7 +2383,7 @@ def update_bootstrap_accumulation_graph(
             values = portfolio_values
         else:
             values = compute_bootstrap_max_drawdown(portfolio_values)
-        quantiles = {q: np.nanquantile(values, q, axis=0) for q in QUANTILE_KEYS}
+        quantiles = dict(zip(QUANTILE_KEYS, np.quantile(values, QUANTILE_KEYS, axis=0)))
         all_traces.extend(
             _build_quantile_fan_traces(
                 months,
@@ -2546,7 +2546,7 @@ def update_bootstrap_withdrawal_graph(
             values = portfolio_values
         else:
             values = compute_bootstrap_max_drawdown(portfolio_values)
-        quantiles = {q: np.nanquantile(values, q, axis=0) for q in QUANTILE_KEYS}
+        quantiles = dict(zip(QUANTILE_KEYS, np.quantile(values, QUANTILE_KEYS, axis=0)))
         all_traces.extend(
             _build_quantile_fan_traces(
                 months,
