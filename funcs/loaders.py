@@ -714,7 +714,7 @@ def download_ft_data(
             params={
                 "source": api_key,
                 "symbols": symbol,
-                "dayCount": (pd.Timestamp.today() - pd.Timestamp(start_date)).days,
+                "dayCount": (pd.Timestamp.today() - start_date).days,
             },
         )
         if (
