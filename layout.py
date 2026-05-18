@@ -14,12 +14,12 @@ app_layout = html.Div(
                                     "Security Type", html_for="security-type-selection"
                                 ),
                                 dbc.Select(
-                                    [
-                                        "Index",
-                                        "Preset Fund",
-                                        "Yahoo Finance",
-                                        "Financial Times",
-                                    ],
+                                    {
+                                        "Index": "Index",
+                                        "Preset Fund": "Preset Fund",
+                                        "Yahoo Finance": "Yahoo Finance",
+                                        "Financial Times": "Financial Times",
+                                    },
                                     value="Index",
                                     id="security-type-selection",
                                 ),
@@ -46,7 +46,10 @@ app_layout = html.Div(
                                                     html_for="msci-index-type-selection",
                                                 ),
                                                 dbc.Select(
-                                                    ["Regional", "Country"],
+                                                    {
+                                                        "Regional": "Regional",
+                                                        "Country": "Country",
+                                                    },
                                                     value="Regional",
                                                     id="msci-index-type-selection",
                                                 ),
@@ -100,7 +103,7 @@ app_layout = html.Div(
                                                     html_for="msci-tax-treatment-selection",
                                                 ),
                                                 dbc.Select(
-                                                    ["Gross", "Net"],
+                                                    {"Gross": "Gross", "Net": "Net"},
                                                     value="Gross",
                                                     id="msci-tax-treatment-selection",
                                                 ),
@@ -212,7 +215,10 @@ app_layout = html.Div(
                                                             html_for="others-tax-treatment-selection",
                                                         ),
                                                         dbc.Select(
-                                                            ["Gross", "Net"],
+                                                            {
+                                                                "Gross": "Gross",
+                                                                "Net": "Net",
+                                                            },
                                                             value="Gross",
                                                             id="others-tax-treatment-selection",
                                                         ),
@@ -241,7 +247,7 @@ app_layout = html.Div(
                                             html_for="yf-security-tax-treatment-selection",
                                         ),
                                         dbc.Select(
-                                            ["Gross", "Net"],
+                                            {"Gross": "Gross", "Net": "Net"},
                                             value="Gross",
                                             id="yf-security-tax-treatment-selection",
                                         ),
@@ -270,18 +276,18 @@ app_layout = html.Div(
                                             html_for="fund-company-selection",
                                         ),
                                         dbc.Select(
-                                            [
-                                                "GreatLink",
-                                                "GMO",
-                                                "Fundsmith",
-                                                "Dimensional",
-                                            ],
+                                            {
+                                                "GreatLink": "GreatLink",
+                                                "GMO": "GMO",
+                                                "Fundsmith": "Fundsmith",
+                                                "Dimensional": "Dimensional",
+                                            },
                                             value="GreatLink",
                                             id="fund-company-selection",
                                         ),
                                         dbc.Label("Fund", html_for="fund-selection"),
                                         dbc.Select(
-                                            [],
+                                            {},
                                             id="fund-selection",
                                         ),
                                         html.P(),
@@ -358,16 +364,16 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label("Interval", html_for="interval-selection"),
                                 dbc.Select(
-                                    ["Monthly", "Daily"],
+                                    {"Monthly": "Monthly", "Daily": "Daily"},
                                     value="Monthly",
                                     id="interval-selection",
                                 ),
                                 dbc.Label("Currency", html_for="currency-selection"),
                                 dbc.Select(
-                                    [
-                                        "SGD",
-                                        "USD",
-                                    ],
+                                    {
+                                        "SGD": "SGD",
+                                        "USD": "USD",
+                                    },
                                     value="USD",
                                     id="currency-selection",
                                 ),
@@ -593,10 +599,10 @@ app_layout = html.Div(
                                     "Currency", html_for="portfolio-currency-selection"
                                 ),
                                 dbc.Select(
-                                    [
-                                        "SGD",
-                                        "USD",
-                                    ],
+                                    {
+                                        "SGD": "SGD",
+                                        "USD": "USD",
+                                    },
                                     value="USD",
                                     id="portfolio-currency-selection",
                                 ),
@@ -785,10 +791,10 @@ app_layout = html.Div(
                                     html_for="backtest-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    [
-                                        "SGD",
-                                        "USD",
-                                    ],
+                                    {
+                                        "SGD": "SGD",
+                                        "USD": "USD",
+                                    },
                                     value="SGD",
                                     id="backtest-accumulation-strategy-currency-selection",
                                 ),
@@ -1008,10 +1014,10 @@ app_layout = html.Div(
                                     html_for="backtest-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    [
-                                        "SGD",
-                                        "USD",
-                                    ],
+                                    {
+                                        "SGD": "SGD",
+                                        "USD": "USD",
+                                    },
                                     value="SGD",
                                     id="backtest-withdrawal-strategy-currency-selection",
                                 ),
@@ -1216,10 +1222,10 @@ app_layout = html.Div(
                                     html_for="bootstrap-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    [
-                                        "SGD",
-                                        "USD",
-                                    ],
+                                    {
+                                        "SGD": "SGD",
+                                        "USD": "USD",
+                                    },
                                     value="SGD",
                                     id="bootstrap-accumulation-strategy-currency-selection",
                                 ),
@@ -1419,10 +1425,10 @@ app_layout = html.Div(
                                     html_for="bootstrap-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    [
-                                        "SGD",
-                                        "USD",
-                                    ],
+                                    {
+                                        "SGD": "SGD",
+                                        "USD": "USD",
+                                    },
                                     value="SGD",
                                     id="bootstrap-withdrawal-strategy-currency-selection",
                                 ),

@@ -21,11 +21,11 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Shows the container matching the selected security type.
              *
              * @param {string} securityType The selected security type value.
-             * @param {Array} securityTypeOptions List of security type options.
+             * @param {Object} securityTypeOptions Dictionary of security type options.
              * @returns {Array} Array of style objects for each container.
              */
             function (securityType, securityTypeOptions) {
-                return securityTypeOptions.map(function (option) {
+                return Object.keys(securityTypeOptions).map(function (option) {
                     return {
                         display: securityType === option ? "block" : "none",
                     };
