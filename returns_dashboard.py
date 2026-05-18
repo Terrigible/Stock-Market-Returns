@@ -45,6 +45,14 @@ from funcs.loaders import (
     read_shiller_sp500_data,
 )
 from layout import app_layout
+from models import (
+    DimensionalFund,
+    FundsmithFund,
+    GMOFund,
+    GreatLinkFund,
+    MSCICountryIndex,
+    MSCIRegionalIndex,
+)
 from update_graph import PrevLayout, RelayoutData, update_graph
 
 yf.config.debug.hide_exceptions = False
@@ -302,41 +310,9 @@ app.clientside_callback(
 )
 def update_msci_index_options(index_type: str):
     if index_type == "Regional":
-        return {
-            "WORLD": "World",
-            "ACWI": "ACWI",
-            "EM (EMERGING MARKETS)": "Emerging Markets",
-            "WORLD ex USA": "World ex USA",
-            "KOKUSAI INDEX (WORLD ex JP)": "World ex Japan",
-            "EUROPE": "Europe",
-        }, "WORLD"
+        return MSCIRegionalIndex.to_dict(), MSCIRegionalIndex.WORLD
     if index_type == "Country":
-        return {
-            "AUSTRALIA": "Australia",
-            "AUSTRIA": "Austria",
-            "BELGIUM": "Belgium",
-            "CANADA": "Canada",
-            "DENMARK": "Denmark",
-            "FINLAND": "Finland",
-            "FRANCE": "France",
-            "GERMANY": "Germany",
-            "HONG KONG": "Hong Kong",
-            "IRELAND": "Ireland",
-            "ISRAEL": "Israel",
-            "ITALY": "Italy",
-            "JAPAN": "Japan",
-            "NIHONKABU": "Nihonkabu (Japan ex REITs)",
-            "NETHERLANDS": "Netherlands",
-            "NEW ZEALAND": "New Zealand",
-            "NORWAY": "Norway",
-            "PORTUGAL": "Portugal",
-            "SINGAPORE": "Singapore",
-            "SPAIN": "Spain",
-            "SWEDEN": "Sweden",
-            "SWITZERLAND": "Switzerland",
-            "UNITED KINGDOM": "United Kingdom",
-            "USA": "USA",
-        }, "AUSTRALIA"
+        return MSCICountryIndex.to_dict(), MSCICountryIndex.AUSTRALIA
 
 
 app.clientside_callback(
@@ -737,68 +713,13 @@ def add_ft_security(
 )
 def update_fund_selection_options(fund_company: str):
     if fund_company == "GreatLink":
-        return (
-            {
-                "ASEAN Growth Fund": "ASEAN Growth Fund",
-                "Asia Dividend Advantage Fund": "Asia Dividend Advantage Fund",
-                "Asia High Dividend Equity Fund": "Asia High Dividend Equity Fund",
-                "Asia Pacific Equity Fund": "Asia Pacific Equity Fund",
-                "Cash Fund": "Cash Fund",
-                "China Growth Fund": "China Growth Fund",
-                "Diversified Growth Portfolio": "Diversified Growth Portfolio",
-                "Dynamic Balanced Portfolio": "Dynamic Balanced Portfolio",
-                "Dynamic Growth Portfolio": "Dynamic Growth Portfolio",
-                "Dynamic Secure Portfolio": "Dynamic Secure Portfolio",
-                "European Sustainable Equity Fund": "European Sustainable Equity Fund",
-                "Far East Ex Japan Equities Fund": "Far East Ex Japan Equities Fund",
-                "Global Bond Fund": "Global Bond Fund",
-                "Global Disruptive Innovation Fund": "Global Disruptive Innovation Fund",
-                "Global Emerging Markets Equity Fund": "Global Emerging Markets Equity Fund",
-                "Global Equity Alpha Fund": "Global Equity Alpha Fund",
-                "Global Equity Fund": "Global Equity Fund",
-                "Global Perspective Fund": "Global Perspective Fund",
-                "Global Real Estate Securities Fund": "Global Real Estate Securities Fund",
-                "Global Supreme Fund": "Global Supreme Fund",
-                "Global Technology Fund": "Global Technology Fund",
-                "Income Bond Fund": "Income Bond Fund",
-                "Income Focus Fund": "Income Focus Fund",
-                "International Health Care Fund": "International Health Care Fund",
-                "Lifestyle Balanced Portfolio": "Lifestyle Balanced Portfolio",
-                "Lifestyle Dynamic Portfolio": "Lifestyle Dynamic Portfolio",
-                "Lifestyle Progressive Portfolio": "Lifestyle Progressive Portfolio",
-                "Lifestyle Secure Portfolio": "Lifestyle Secure Portfolio",
-                "Lifestyle Steady Portfolio": "Lifestyle Steady Portfolio",
-                "Lion Asian Balanced Fund": "Lion Asian Balanced Fund",
-                "Lion India Fund": "Lion India Fund",
-                "Lion Japan Growth Fund": "Lion Japan Growth Fund",
-                "Lion Vietnam Fund": "Lion Vietnam Fund",
-                "Multi-Sector Income Fund": "Multi-Sector Income Fund",
-                "Multi-Theme Equity Fund": "Multi-Theme Equity Fund",
-                "Short Duration Bond Fund": "Short Duration Bond Fund",
-                "Singapore Equities Fund": "Singapore Equities Fund",
-                "Singapore Physical Gold Fund": "Singapore Physical Gold Fund",
-                "Sustainable Global Thematic Fund": "Sustainable Global Thematic Fund",
-                "US Income and Growth Fund (Dis)": "US Income and Growth Fund (Dis)",
-            },
-            "ASEAN Growth Fund",
-        )
+        return GreatLinkFund.to_dict(), GreatLinkFund.ASEAN_GROWTH_FUND
     if fund_company == "GMO":
-        return (
-            {
-                "Quality Investment Fund": "Quality Investment Fund",
-            },
-            "Quality Investment Fund",
-        )
+        return GMOFund.to_dict(), GMOFund.QUALITY_INVESTMENT_FUND
     if fund_company == "Fundsmith":
-        return (
-            {
-                "Equity Fund Class T": "Equity Fund Class T",
-                "Equity Fund Class R": "Equity Fund Class R",
-            },
-            "Equity Fund Class T",
-        )
+        return FundsmithFund.to_dict(), FundsmithFund.EQUITY_FUND_CLASS_T
     if fund_company == "Dimensional":
-        return ({"World Equity Fund": "World Equity Fund"}, "World Equity Fund")
+        return DimensionalFund.to_dict(), DimensionalFund.WORLD_EQUITY_FUND
     return (
         {},
         None,

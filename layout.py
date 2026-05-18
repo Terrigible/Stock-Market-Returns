@@ -1,6 +1,33 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
+from models import (
+    BacktestYVar,
+    BootstrapYVar,
+    Currency,
+    DistributionChartType,
+    DrawdownType,
+    FREDIndex,
+    FundCompany,
+    IndexProvider,
+    Interval,
+    MASIndex,
+    MSCIIndexType,
+    MSCIRegionalIndex,
+    MSCISize,
+    MSCIStyle,
+    OthersIndex,
+    ReturnAnnualisation,
+    ReturnDuration,
+    ReturnInterval,
+    RollingReturnsPresentation,
+    SecurityType,
+    SGSDuration,
+    TaxTreatment,
+    USTreasuryDuration,
+    YVar,
+)
+
 app_layout = html.Div(
     dbc.Tabs(
         [
@@ -14,13 +41,8 @@ app_layout = html.Div(
                                     "Security Type", html_for="security-type-selection"
                                 ),
                                 dbc.Select(
-                                    {
-                                        "Index": "Index",
-                                        "Preset Fund": "Preset Fund",
-                                        "Yahoo Finance": "Yahoo Finance",
-                                        "Financial Times": "Financial Times",
-                                    },
-                                    value="Index",
+                                    SecurityType.to_dict(),
+                                    value=SecurityType.INDEX,
                                     id="security-type-selection",
                                 ),
                                 html.Div(
@@ -30,13 +52,8 @@ app_layout = html.Div(
                                             html_for="index-provider-selection",
                                         ),
                                         dbc.Select(
-                                            {
-                                                "MSCI": "MSCI",
-                                                "FRED": "FRED",
-                                                "MAS": "MAS",
-                                                "Others": "Others",
-                                            },
-                                            value="MSCI",
+                                            IndexProvider.to_dict(),
+                                            value=IndexProvider.MSCI,
                                             id="index-provider-selection",
                                         ),
                                         html.Div(
@@ -46,11 +63,8 @@ app_layout = html.Div(
                                                     html_for="msci-index-type-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "Regional": "Regional",
-                                                        "Country": "Country",
-                                                    },
-                                                    value="Regional",
+                                                    MSCIIndexType.to_dict(),
+                                                    value=MSCIIndexType.REGIONAL,
                                                     id="msci-index-type-selection",
                                                 ),
                                                 dbc.Label(
@@ -58,15 +72,8 @@ app_layout = html.Div(
                                                     html_for="msci-index-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "WORLD": "World",
-                                                        "ACWI": "ACWI",
-                                                        "EM (EMERGING MARKETS)": "Emerging Markets",
-                                                        "WORLD ex USA": "World ex USA",
-                                                        "KOKUSAI INDEX (WORLD ex JP)": "World ex Japan",
-                                                        "EUROPE": "Europe",
-                                                    },
-                                                    value="WORLD",
+                                                    MSCIRegionalIndex.to_dict(),
+                                                    value=MSCIRegionalIndex.WORLD,
                                                     id="msci-index-selection",
                                                 ),
                                                 dbc.Label(
@@ -74,15 +81,8 @@ app_layout = html.Div(
                                                     html_for="msci-size-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "STANDARD": "Standard",
-                                                        "SMALL": "Small",
-                                                        "SMID": "SMID",
-                                                        "MID": "Mid",
-                                                        "LARGE": "Large",
-                                                        "IMI": "IMI",
-                                                    },
-                                                    value="STANDARD",
+                                                    MSCISize.to_dict(),
+                                                    value=MSCISize.STANDARD,
                                                     id="msci-size-selection",
                                                 ),
                                                 dbc.Label(
@@ -90,12 +90,8 @@ app_layout = html.Div(
                                                     html_for="msci-style-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "BLEND": "None",
-                                                        "GROWTH": "Growth",
-                                                        "VALUE": "Value",
-                                                    },
-                                                    value="BLEND",
+                                                    MSCIStyle.to_dict(),
+                                                    value=MSCIStyle.BLEND,
                                                     id="msci-style-selection",
                                                 ),
                                                 dbc.Label(
@@ -103,8 +99,8 @@ app_layout = html.Div(
                                                     html_for="msci-tax-treatment-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {"Gross": "Gross", "Net": "Net"},
-                                                    value="Gross",
+                                                    TaxTreatment.to_dict(),
+                                                    value=TaxTreatment.GROSS,
                                                     id="msci-tax-treatment-selection",
                                                 ),
                                             ],
@@ -117,11 +113,8 @@ app_layout = html.Div(
                                                     html_for="fred-index-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "US-T": "US Treasuries",
-                                                        "FFR": "Fed Funds Rate",
-                                                    },
-                                                    value="US-T",
+                                                    FREDIndex.to_dict(),
+                                                    value=FREDIndex.US_T,
                                                     id="fred-index-selection",
                                                 ),
                                                 html.Div(
@@ -131,20 +124,8 @@ app_layout = html.Div(
                                                             html_for="us-treasury-duration-selection",
                                                         ),
                                                         dbc.Select(
-                                                            {
-                                                                "1MO": "1 Month",
-                                                                "3MO": "3 Months",
-                                                                "6MO": "6 Months",
-                                                                "1": "1 Year",
-                                                                "2": "2 Years",
-                                                                "3": "3 Years",
-                                                                "5": "5 Years",
-                                                                "7": "7 Years",
-                                                                "10": "10 Years",
-                                                                "20": "20 Years",
-                                                                "30": "30 Years",
-                                                            },
-                                                            value="1MO",
+                                                            USTreasuryDuration.to_dict(),
+                                                            value=USTreasuryDuration.DURATION_1MO,
                                                             id="us-treasury-duration-selection",
                                                         ),
                                                     ],
@@ -160,11 +141,8 @@ app_layout = html.Div(
                                                     html_for="mas-index-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "SGS": "SGS",
-                                                        "SORA": "SORA",
-                                                    },
-                                                    value="SGS",
+                                                    MASIndex.to_dict(),
+                                                    value=MASIndex.SGS,
                                                     id="mas-index-selection",
                                                 ),
                                                 html.Div(
@@ -174,17 +152,8 @@ app_layout = html.Div(
                                                             html_for="sgs-duration-selection",
                                                         ),
                                                         dbc.Select(
-                                                            {
-                                                                "1": "1 Year",
-                                                                "2": "2 Years",
-                                                                "5": "5 Years",
-                                                                "10": "10 Years",
-                                                                "15": "15 Years",
-                                                                "20": "20 Years",
-                                                                "30": "30 Years",
-                                                                "50": "50 Years",
-                                                            },
-                                                            value="1",
+                                                            SGSDuration.to_dict(),
+                                                            value=SGSDuration.DURATION_1Y,
                                                             id="sgs-duration-selection",
                                                         ),
                                                     ],
@@ -200,12 +169,8 @@ app_layout = html.Div(
                                                     html_for="others-index-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "SPX": "S&P 500",
-                                                        "SHILLER_SPX": "Shiller S&P 500",
-                                                        "SREIT": "iEdge S-REIT Leaders",
-                                                    },
-                                                    value="SPX",
+                                                    OthersIndex.to_dict(),
+                                                    value=OthersIndex.SPX,
                                                     id="others-index-selection",
                                                 ),
                                                 html.Div(
@@ -215,11 +180,8 @@ app_layout = html.Div(
                                                             html_for="others-tax-treatment-selection",
                                                         ),
                                                         dbc.Select(
-                                                            {
-                                                                "Gross": "Gross",
-                                                                "Net": "Net",
-                                                            },
-                                                            value="Gross",
+                                                            TaxTreatment.to_dict(),
+                                                            value=TaxTreatment.GROSS,
                                                             id="others-tax-treatment-selection",
                                                         ),
                                                     ],
@@ -247,8 +209,8 @@ app_layout = html.Div(
                                             html_for="yf-security-tax-treatment-selection",
                                         ),
                                         dbc.Select(
-                                            {"Gross": "Gross", "Net": "Net"},
-                                            value="Gross",
+                                            TaxTreatment.to_dict(),
+                                            value=TaxTreatment.GROSS,
                                             id="yf-security-tax-treatment-selection",
                                         ),
                                         html.P(),
@@ -276,13 +238,8 @@ app_layout = html.Div(
                                             html_for="fund-company-selection",
                                         ),
                                         dbc.Select(
-                                            {
-                                                "GreatLink": "GreatLink",
-                                                "GMO": "GMO",
-                                                "Fundsmith": "Fundsmith",
-                                                "Dimensional": "Dimensional",
-                                            },
-                                            value="GreatLink",
+                                            FundCompany.to_dict(),
+                                            value=FundCompany.GREATLINK,
                                             id="fund-company-selection",
                                         ),
                                         dbc.Label("Fund", html_for="fund-selection"),
@@ -364,17 +321,14 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label("Interval", html_for="interval-selection"),
                                 dbc.Select(
-                                    {"Monthly": "Monthly", "Daily": "Daily"},
-                                    value="Monthly",
+                                    Interval.to_dict(),
+                                    value=Interval.MONTHLY,
                                     id="interval-selection",
                                 ),
                                 dbc.Label("Currency", html_for="currency-selection"),
                                 dbc.Select(
-                                    {
-                                        "SGD": "SGD",
-                                        "USD": "USD",
-                                    },
-                                    value="USD",
+                                    Currency.to_dict(),
+                                    value=Currency.USD,
                                     id="currency-selection",
                                 ),
                                 dbc.Switch(
@@ -384,13 +338,8 @@ app_layout = html.Div(
                                 ),
                                 dbc.Label("Value", html_for="y-var-selection"),
                                 dbc.Select(
-                                    {
-                                        "price": "Price",
-                                        "drawdown": "Drawdown",
-                                        "rolling_returns": "Rolling Returns",
-                                        "calendar_returns": "Calendar Returns",
-                                    },
-                                    value="price",
+                                    YVar.to_dict(),
+                                    value=YVar.PRICE,
                                     id="y-var-selection",
                                 ),
                                 html.Div(
@@ -422,12 +371,8 @@ app_layout = html.Div(
                                                     html_for="return-interval-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "1mo": "Monthly",
-                                                        "3mo": "Quarterly",
-                                                        "1y": "Annual",
-                                                    },
-                                                    value="1mo",
+                                                    ReturnInterval.to_dict(),
+                                                    value=ReturnInterval.MONTHLY,
                                                     id="return-interval-selection",
                                                 ),
                                             ],
@@ -440,21 +385,8 @@ app_layout = html.Div(
                                                     html_for="return-duration-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "1mo": "1 Month",
-                                                        "3mo": "3 Months",
-                                                        "6mo": "6 Months",
-                                                        "1y": "1 Year",
-                                                        "2y": "2 Years",
-                                                        "3y": "3 Years",
-                                                        "5y": "5 Years",
-                                                        "10y": "10 Years",
-                                                        "15y": "15 Years",
-                                                        "20y": "20 Years",
-                                                        "25y": "25 Years",
-                                                        "30y": "30 Years",
-                                                    },
-                                                    value="1mo",
+                                                    ReturnDuration.to_dict(),
+                                                    value=ReturnDuration.DURATION_1MO,
                                                     id="return-duration-selection",
                                                 ),
                                                 dbc.Label(
@@ -462,11 +394,8 @@ app_layout = html.Div(
                                                     html_for="return-annualisation-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "cumulative": "Cumulative",
-                                                        "annualised": "Annualised",
-                                                    },
-                                                    value="cumulative",
+                                                    ReturnAnnualisation.to_dict(),
+                                                    value=ReturnAnnualisation.CUMULATIVE,
                                                     id="return-annualisation-selection",
                                                 ),
                                                 dbc.Label(
@@ -474,11 +403,8 @@ app_layout = html.Div(
                                                     html_for="rolling-returns-presentation-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "timeseries": "Time Series",
-                                                        "dist": "Distribution",
-                                                    },
-                                                    value="timeseries",
+                                                    RollingReturnsPresentation.to_dict(),
+                                                    value=RollingReturnsPresentation.TIMESERIES,
                                                     id="rolling-returns-presentation-selection",
                                                 ),
                                                 html.Div(
@@ -488,11 +414,8 @@ app_layout = html.Div(
                                                             html_for="rolling-returns-distribution-chart-type-selection",
                                                         ),
                                                         dbc.Select(
-                                                            {
-                                                                "hist": "Histogram",
-                                                                "box": "Box Plot",
-                                                            },
-                                                            value="hist",
+                                                            DistributionChartType.to_dict(),
+                                                            value=DistributionChartType.HISTOGRAM,
                                                             id="rolling-returns-distribution-chart-type-selection",
                                                         ),
                                                     ],
@@ -599,11 +522,8 @@ app_layout = html.Div(
                                     "Currency", html_for="portfolio-currency-selection"
                                 ),
                                 dbc.Select(
-                                    {
-                                        "SGD": "SGD",
-                                        "USD": "USD",
-                                    },
-                                    value="USD",
+                                    Currency.to_dict(),
+                                    value=Currency.USD,
                                     id="portfolio-currency-selection",
                                 ),
                                 dbc.Switch(
@@ -615,13 +535,8 @@ app_layout = html.Div(
                                     "Value", html_for="portfolio-y-var-selection"
                                 ),
                                 dbc.Select(
-                                    {
-                                        "price": "Price",
-                                        "drawdown": "Drawdown",
-                                        "rolling_returns": "Rolling Returns",
-                                        "calendar_returns": "Calendar Returns",
-                                    },
-                                    value="price",
+                                    YVar.to_dict(),
+                                    value=YVar.PRICE,
                                     id="portfolio-y-var-selection",
                                 ),
                                 html.Div(
@@ -653,12 +568,8 @@ app_layout = html.Div(
                                                     html_for="portfolio-return-interval-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "1mo": "Monthly",
-                                                        "3mo": "Quarterly",
-                                                        "1y": "Annual",
-                                                    },
-                                                    value="1mo",
+                                                    ReturnInterval.to_dict(),
+                                                    value=ReturnInterval.MONTHLY,
                                                     id="portfolio-return-interval-selection",
                                                 ),
                                             ],
@@ -671,21 +582,8 @@ app_layout = html.Div(
                                                     html_for="portfolio-return-duration-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "1mo": "1 Month",
-                                                        "3mo": "3 Months",
-                                                        "6mo": "6 Months",
-                                                        "1y": "1 Year",
-                                                        "2y": "2 Years",
-                                                        "3y": "3 Years",
-                                                        "5y": "5 Years",
-                                                        "10y": "10 Years",
-                                                        "15y": "15 Years",
-                                                        "20y": "20 Years",
-                                                        "25y": "25 Years",
-                                                        "30y": "30 Years",
-                                                    },
-                                                    value="1mo",
+                                                    ReturnDuration.to_dict(),
+                                                    value=ReturnDuration.DURATION_1MO,
                                                     id="portfolio-return-duration-selection",
                                                 ),
                                                 dbc.Label(
@@ -693,11 +591,8 @@ app_layout = html.Div(
                                                     html_for="portfolio-return-annualisation-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "cumulative": "Cumulative",
-                                                        "annualised": "Annualised",
-                                                    },
-                                                    value="cumulative",
+                                                    ReturnAnnualisation.to_dict(),
+                                                    value=ReturnAnnualisation.CUMULATIVE,
                                                     id="portfolio-return-annualisation-selection",
                                                 ),
                                                 dbc.Label(
@@ -705,11 +600,8 @@ app_layout = html.Div(
                                                     html_for="portfolio-rolling-returns-presentation-selection",
                                                 ),
                                                 dbc.Select(
-                                                    {
-                                                        "timeseries": "Time Series",
-                                                        "dist": "Distribution",
-                                                    },
-                                                    value="timeseries",
+                                                    RollingReturnsPresentation.to_dict(),
+                                                    value=RollingReturnsPresentation.TIMESERIES,
                                                     id="portfolio-rolling-returns-presentation-selection",
                                                 ),
                                                 html.Div(
@@ -719,11 +611,8 @@ app_layout = html.Div(
                                                             html_for="portfolio-rolling-returns-distribution-chart-type-selection",
                                                         ),
                                                         dbc.Select(
-                                                            {
-                                                                "hist": "Histogram",
-                                                                "box": "Box Plot",
-                                                            },
-                                                            value="hist",
+                                                            DistributionChartType.to_dict(),
+                                                            value=DistributionChartType.HISTOGRAM,
                                                             id="portfolio-rolling-returns-distribution-chart-type-selection",
                                                         ),
                                                     ],
@@ -791,11 +680,8 @@ app_layout = html.Div(
                                     html_for="backtest-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "SGD": "SGD",
-                                        "USD": "USD",
-                                    },
-                                    value="SGD",
+                                    Currency.to_dict(),
+                                    value=Currency.SGD,
                                     id="backtest-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Label(
@@ -917,11 +803,8 @@ app_layout = html.Div(
                                     html_for="backtest-accumulation-y-var-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "ending_values": "Ending Values",
-                                        "max_drawdown": "Max Drawdown",
-                                    },
-                                    value="ending_values",
+                                    BacktestYVar.to_dict(),
+                                    value=BacktestYVar.ENDING_VALUES,
                                     id="backtest-accumulation-y-var-selection",
                                 ),
                                 html.Div(
@@ -931,11 +814,8 @@ app_layout = html.Div(
                                             html_for="backtest-accumulation-drawdown-type-selection",
                                         ),
                                         dbc.Select(
-                                            {
-                                                "percent": "Percent Drawdown",
-                                                "dollar": "Dollar Drawdown",
-                                            },
-                                            value="percent",
+                                            DrawdownType.to_dict(),
+                                            value=DrawdownType.PERCENT,
                                             id="backtest-accumulation-drawdown-type-selection",
                                         ),
                                     ],
@@ -1014,11 +894,8 @@ app_layout = html.Div(
                                     html_for="backtest-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "SGD": "SGD",
-                                        "USD": "USD",
-                                    },
-                                    value="SGD",
+                                    Currency.to_dict(),
+                                    value=Currency.SGD,
                                     id="backtest-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Label(
@@ -1125,11 +1002,8 @@ app_layout = html.Div(
                                     html_for="backtest-withdrawal-y-var-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "ending_values": "Ending Values",
-                                        "max_drawdown": "Max Drawdown",
-                                    },
-                                    value="ending_values",
+                                    BacktestYVar.to_dict(),
+                                    value=BacktestYVar.ENDING_VALUES,
                                     id="backtest-withdrawal-y-var-selection",
                                 ),
                                 html.Div(
@@ -1139,11 +1013,8 @@ app_layout = html.Div(
                                             html_for="backtest-withdrawal-drawdown-type-selection",
                                         ),
                                         dbc.Select(
-                                            {
-                                                "percent": "Percent Drawdown",
-                                                "dollar": "Dollar Drawdown",
-                                            },
-                                            value="percent",
+                                            DrawdownType.to_dict(),
+                                            value=DrawdownType.PERCENT,
                                             id="backtest-withdrawal-drawdown-type-selection",
                                         ),
                                     ],
@@ -1222,11 +1093,8 @@ app_layout = html.Div(
                                     html_for="bootstrap-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "SGD": "SGD",
-                                        "USD": "USD",
-                                    },
-                                    value="SGD",
+                                    Currency.to_dict(),
+                                    value=Currency.SGD,
                                     id="bootstrap-accumulation-strategy-currency-selection",
                                 ),
                                 dbc.Label(
@@ -1365,11 +1233,8 @@ app_layout = html.Div(
                                     html_for="bootstrap-accumulation-y-var-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "portfolio_values": "Portfolio Value Quantiles",
-                                        "max_drawdown": "Max Dollar Drawdown Quantiles",
-                                    },
-                                    value="portfolio_values",
+                                    BootstrapYVar.to_dict(),
+                                    value=BootstrapYVar.PORTFOLIO_VALUES,
                                     id="bootstrap-accumulation-y-var-selection",
                                 ),
                                 dbc.Switch(
@@ -1425,11 +1290,8 @@ app_layout = html.Div(
                                     html_for="bootstrap-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "SGD": "SGD",
-                                        "USD": "USD",
-                                    },
-                                    value="SGD",
+                                    Currency.to_dict(),
+                                    value=Currency.SGD,
                                     id="bootstrap-withdrawal-strategy-currency-selection",
                                 ),
                                 dbc.Label(
@@ -1553,11 +1415,8 @@ app_layout = html.Div(
                                     html_for="bootstrap-withdrawal-y-var-selection",
                                 ),
                                 dbc.Select(
-                                    {
-                                        "portfolio_values": "Portfolio Value Quantiles",
-                                        "max_drawdown": "Max Dollar Drawdown Quantiles",
-                                    },
-                                    value="portfolio_values",
+                                    BootstrapYVar.to_dict(),
+                                    value=BootstrapYVar.PORTFOLIO_VALUES,
                                     id="bootstrap-withdrawal-y-var-selection",
                                 ),
                                 dbc.Switch(
