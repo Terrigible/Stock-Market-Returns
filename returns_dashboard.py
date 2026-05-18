@@ -88,7 +88,7 @@ def load_data(
     security_str: str,
     interval: str,
     currency: str,
-    adjust_for_inflation: str,
+    adjust_for_inflation: bool,
     cached_security: str | None,
 ):
     security: dict[str, str] = json.loads(security_str)
@@ -182,7 +182,7 @@ def load_data(
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
         )
-    if adjust_for_inflation == "Yes":
+    if adjust_for_inflation:
         series = series.div(
             load_cpi(currency)
             .resample("D")
@@ -900,7 +900,7 @@ app.clientside_callback(
     Input("selected-securities", "options"),
     Input("cached-securities-store", "data"),
     Input("currency-selection", "value"),
-    Input("inflation-adjustment-selection", "value"),
+    Input("inflation-adjustment-switch", "value"),
     Input("y-var-selection", "value"),
     Input("log-scale-switch", "value"),
     Input("percent-scale-switch", "value"),
@@ -924,7 +924,7 @@ def update_security_graph(
     selected_securities_options: dict[str, str],
     cached_securities: dict[str, str],
     currency: str,
-    adjust_for_inflation: str,
+    adjust_for_inflation: bool,
     y_var: str,
     log_scale: bool,
     percent_scale: bool,
@@ -971,7 +971,7 @@ def update_security_graph(
 
     uirevision = (
         currency
-        + adjust_for_inflation
+        + str(adjust_for_inflation)
         + y_var
         + str(log_scale)
         + str(percent_scale)
@@ -1176,7 +1176,7 @@ app.clientside_callback(
 def load_portfolio(
     portfolio_str: str,
     currency: str,
-    adjust_for_inflation: str,
+    adjust_for_inflation: bool,
     yf_securities: dict[str, str],
 ):
     portfolio_allocation_strs: list[str] = json.loads(portfolio_str)
@@ -1230,7 +1230,7 @@ app.clientside_callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     Input("portfolio-currency-selection", "value"),
-    Input("portfolio-inflation-adjustment-selection", "value"),
+    Input("portfolio-inflation-adjustment-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
     Input("portfolio-return-duration-selection", "value"),
     Input("portfolio-return-duration-selection", "options"),
@@ -1254,7 +1254,7 @@ app.clientside_callback(
 def update_portfolio_graph(
     portfolio_strs: list[str],
     currency: str,
-    adjust_for_inflation: str,
+    adjust_for_inflation: bool,
     y_var: str,
     return_duration: str,
     return_duration_options: dict[str, str],
@@ -1304,7 +1304,7 @@ def update_portfolio_graph(
 
     uirevision = (
         currency
-        + adjust_for_inflation
+        + str(adjust_for_inflation)
         + y_var
         + str(log_scale)
         + str(percent_scale)
@@ -1502,7 +1502,7 @@ def simulate_backtest_accumulation_strategy(
 
     variable_transaction_fees /= 100
     annualised_holding_fees /= 100
-    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    strategy_series = load_portfolio(strategy_portfolio, currency, False, yf_securities)
     cash_returns = (
         (
             load_fed_funds_returns()
@@ -1833,7 +1833,7 @@ def simulate_backtest_withdrawal_strategy(
     variable_transaction_fees /= 100
     annualised_holding_fees /= 100
 
-    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    strategy_series = load_portfolio(strategy_portfolio, currency, False, yf_securities)
     cpi = (
         np.ones(len(strategy_series))
         if not adjust_for_inflation
@@ -2137,7 +2137,7 @@ def simulate_bootstrap_accumulation_strategy(
     annualised_holding_fees /= 100
 
     strategy_series = load_portfolio(
-        strategy_portfolio, currency, "No", yf_securities
+        strategy_portfolio, currency, False, yf_securities
     ).pct_change()
     cpi = load_cpi(currency).pct_change()
     cash_returns = (
@@ -2201,7 +2201,7 @@ def simulate_bootstrap_withdrawal_strategy(
     variable_transaction_fees /= 100
     annualised_holding_fees /= 100
 
-    strategy_series = load_portfolio(strategy_portfolio, currency, "No", yf_securities)
+    strategy_series = load_portfolio(strategy_portfolio, currency, False, yf_securities)
     if adjust_for_inflation:
         cpi_series = load_cpi(currency)
         common_idx = strategy_series.index.intersection(cpi_series.index)

@@ -371,17 +371,10 @@ app_layout = html.Div(
                                     value="USD",
                                     id="currency-selection",
                                 ),
-                                dbc.Label(
-                                    "Adjust for Inflation",
-                                    html_for="inflation-adjustment-selection",
-                                ),
-                                dbc.Select(
-                                    [
-                                        "No",
-                                        "Yes",
-                                    ],
-                                    value="No",
-                                    id="inflation-adjustment-selection",
+                                dbc.Switch(
+                                    "inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust for Inflation",
                                 ),
                                 dbc.Label("Value", html_for="y-var-selection"),
                                 dbc.Select(
@@ -607,17 +600,10 @@ app_layout = html.Div(
                                     value="USD",
                                     id="portfolio-currency-selection",
                                 ),
-                                dbc.Label(
-                                    "Adjust for Inflation",
-                                    html_for="portfolio-inflation-adjustment-selection",
-                                ),
-                                dbc.Select(
-                                    [
-                                        "No",
-                                        "Yes",
-                                    ],
-                                    value="No",
-                                    id="portfolio-inflation-adjustment-selection",
+                                dbc.Switch(
+                                    "portfolio-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust for Inflation",
                                 ),
                                 dbc.Label(
                                     "Value", html_for="portfolio-y-var-selection"
