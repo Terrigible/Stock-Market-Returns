@@ -1,5 +1,5 @@
 import json
-from functools import cache, partial
+from functools import partial
 from io import StringIO
 from itertools import cycle
 from typing import TypedDict
@@ -123,15 +123,13 @@ def convert_price_to_usd(
     return series
 
 
-@cache
 def load_data(
-    security_str: str,
+    security: Security,
     interval: str,
     currency: str,
     adjust_for_inflation: bool,
     cached_security: str | None,
 ):
-    security: Security = parse_security(security_str)
     if isinstance(security, MsciSecurity):
         series = read_msci_data(
             f"data/"
@@ -772,7 +770,7 @@ app.clientside_callback(
     State("graph-last-layout-state-store", "data"),
 )
 def update_security_graph(
-    selected_securities: list[str],
+    selected_securities_strs: list[str],
     selected_securities_options: dict[str, str],
     cached_securities: dict[str, str],
     currency: str,
@@ -801,15 +799,18 @@ def update_security_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
+    selected_securities = TypeAdapter(list[Json[Security]]).validate_python(
+        selected_securities_strs
+    )
     df = pd.DataFrame(
         {
-            selected_security: transform_data(
+            selected_security.model_dump_json(): transform_data(
                 load_data(
                     selected_security,
                     "Monthly" if y_var == "calendar_returns" else interval,
                     currency,
                     adjust_for_inflation,
-                    cached_securities.get(selected_security),
+                    cached_securities.get(selected_security.model_dump_json()),
                 ),
                 interval,
                 y_var,
@@ -1002,16 +1003,12 @@ app.clientside_callback(
 
 
 def load_portfolio(
-    portfolio_str: str,
+    portfolio: Portfolio,
     currency: str,
     adjust_for_inflation: bool,
     yf_securities: dict[str, str],
 ):
-    portfolio = Portfolio.model_validate_json(portfolio_str)
-    securities = [
-        allocation.security.model_dump_json(exclude_none=True)
-        for allocation in portfolio.allocations
-    ]
+    securities = [allocation.security for allocation in portfolio.allocations]
     weights = [allocation.weight for allocation in portfolio.allocations]
     portfolio_df = pd.concat(
         [
@@ -1020,7 +1017,7 @@ def load_portfolio(
                 "Monthly",
                 currency,
                 adjust_for_inflation,
-                yf_securities.get(security),
+                yf_securities.get(security.model_dump_json()),
             )
             for security in securities
         ],
@@ -1113,19 +1110,20 @@ def update_portfolio_graph(
     portfolio_options = {
         k: v.replace("\n", "<br>") for k, v in portfolio_options.items()
     }
+    portfolios = TypeAdapter(list[Json[Portfolio]]).validate_python(portfolio_strs)
     portfolios_df = pd.concat(
         [
             transform_data(
                 load_portfolio(
-                    portfolio_str, currency, adjust_for_inflation, yf_securities
+                    portfolio, currency, adjust_for_inflation, yf_securities
                 ),
                 "Monthly",
                 y_var,
                 return_duration,
                 return_interval,
                 return_annualisation,
-            ).rename(portfolio_str)
-            for portfolio_str in portfolio_strs
+            ).rename(portfolio.model_dump_json())
+            for portfolio in portfolios
         ],
         axis=1,
     )
@@ -1311,7 +1309,9 @@ def simulate_backtest_accumulation_strategy(
     yf_securities: dict[str, str], strategy_str: str
 ):
     strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
+    strategy_portfolio = Portfolio.model_validate_json(
+        str(strategy["strategy_portfolio"])
+    )
     currency = str(strategy["currency"])
     investment_amount = float(strategy["investment_amount"])
     investment_horizon = int(strategy["investment_horizon"])
@@ -1648,7 +1648,9 @@ def simulate_backtest_withdrawal_strategy(
     yf_securities: dict[str, str], strategy_str: str
 ):
     strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
+    strategy_portfolio = Portfolio.model_validate_json(
+        str(strategy["strategy_portfolio"])
+    )
     currency = str(strategy["currency"])
     initial_capital = float(strategy["initial_capital"])
     withdrawal_horizon = int(strategy["withdrawal_horizon"])
@@ -1943,7 +1945,9 @@ def simulate_bootstrap_accumulation_strategy(
     strategy_str: str,
 ):
     strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
+    strategy_portfolio = Portfolio.model_validate_json(
+        str(strategy["strategy_portfolio"])
+    )
     currency = str(strategy["currency"])
     investment_amount = float(strategy["investment_amount"])
     investment_horizon = int(strategy["investment_horizon"])
@@ -2014,7 +2018,9 @@ def simulate_bootstrap_withdrawal_strategy(
     strategy_str: str,
 ):
     strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
+    strategy_portfolio = Portfolio.model_validate_json(
+        str(strategy["strategy_portfolio"])
+    )
     currency = str(strategy["currency"])
     initial_capital = float(strategy["initial_capital"])
     withdrawal_horizon = int(strategy["withdrawal_horizon"])
