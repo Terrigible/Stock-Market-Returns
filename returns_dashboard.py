@@ -443,7 +443,7 @@ def add_index(
             },
         )
         return no_update
-    index_json = model.model_dump_json(exclude_none=True, exclude_computed_fields=True)
+    index_json = model.model_dump_json(exclude_none=True)
     index_name = model.label
 
     if selected_securities is None:
@@ -528,9 +528,7 @@ def add_yf_security(
         currency=currency,
         tax_treatment=tax_treatment,
     )
-    new_yf_security_json = new_yf_security.model_dump_json(
-        exclude_none=True, exclude_computed_fields=True
-    )
+    new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
     selected_securities.append(new_yf_security_json)
     selected_securities_options[new_yf_security_json] = new_yf_security.label
     try:
@@ -634,9 +632,7 @@ def add_ft_security(
         currency=currency,
         dividends=dividends,
     )
-    new_ft_security_str = new_ft_security.model_dump_json(
-        exclude_none=True, exclude_computed_fields=True
-    )
+    new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
     selected_securities.append(new_ft_security_str)
     selected_securities_options[new_ft_security_str] = new_ft_security.label
 
@@ -695,9 +691,7 @@ def add_fund(
             "fund": fund,
         }
     )
-    security_json = fund_security.model_dump_json(
-        exclude_none=True, exclude_computed_fields=True
-    )
+    security_json = fund_security.model_dump_json(exclude_none=True)
     security_name = fund_security.label
     if security_json in selected_securities:
         return no_update
@@ -958,9 +952,7 @@ def add_portfolio(
     )
     if sum([allocation.weight for allocation in portfolio.allocations]) != 100:
         return no_update
-    portfolio_str = portfolio.model_dump_json(
-        exclude_none=True, exclude_computed_fields=True
-    )
+    portfolio_str = portfolio.model_dump_json(exclude_none=True)
     if portfolio_strs is None:
         return ([portfolio_str], {portfolio_str: portfolio.label}, [], {})
     if portfolio_str in portfolio_strs:
@@ -1017,9 +1009,7 @@ def load_portfolio(
 ):
     portfolio = Portfolio.model_validate_json(portfolio_str)
     securities = [
-        allocation.security.model_dump_json(
-            exclude_none=True, exclude_computed_fields=True
-        )
+        allocation.security.model_dump_json(exclude_none=True)
         for allocation in portfolio.allocations
     ]
     weights = [allocation.weight for allocation in portfolio.allocations]

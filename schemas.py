@@ -6,7 +6,6 @@ from pydantic import (
     ConfigDict,
     Field,
     TypeAdapter,
-    computed_field,
     field_validator,
     model_validator,
 )
@@ -37,7 +36,6 @@ class MsciSecurity(BaseModel):
     msci_style: MSCIStyle
     msci_tax_treatment: TaxTreatment
 
-    @computed_field
     @property
     def label(self) -> str:
         return " ".join(
@@ -76,7 +74,6 @@ class FredTreasurySecurity(BaseModel):
     fred_index: Literal[FREDIndex.US_T] = FREDIndex.US_T
     us_treasury_duration: USTreasuryDuration
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.us_treasury_duration.label} {self.fred_index.label}"
@@ -86,7 +83,6 @@ class FredFfrSecurity(BaseModel):
     source: Literal["FRED"] = "FRED"
     fred_index: Literal[FREDIndex.FFR] = FREDIndex.FFR
 
-    @computed_field
     @property
     def label(self) -> str:
         return self.fred_index.label
@@ -103,7 +99,6 @@ class MasSgsSecurity(BaseModel):
     mas_index: Literal[MASIndex.SGS] = MASIndex.SGS
     sgs_duration: SGSDuration
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.sgs_duration.label} {self.mas_index.label}"
@@ -113,7 +108,6 @@ class MasSoraSecurity(BaseModel):
     source: Literal["MAS"] = "MAS"
     mas_index: Literal[MASIndex.SORA] = MASIndex.SORA
 
-    @computed_field
     @property
     def label(self) -> str:
         return self.mas_index.label
@@ -130,7 +124,6 @@ class SpxSecurity(BaseModel):
     others_index: Literal[OthersIndex.SPX] = OthersIndex.SPX
     others_tax_treatment: TaxTreatment
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.others_index.label} {self.others_tax_treatment.label}"
@@ -141,7 +134,6 @@ class ShillerSpxSecurity(BaseModel):
     others_index: Literal[OthersIndex.SHILLER_SPX] = OthersIndex.SHILLER_SPX
     others_tax_treatment: TaxTreatment
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.others_index.label} {self.others_tax_treatment.label}"
@@ -152,7 +144,6 @@ class SreitSecurity(BaseModel):
     others_index: Literal[OthersIndex.SREIT] = OthersIndex.SREIT
     others_tax_treatment: TaxTreatment = TaxTreatment.GROSS
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.others_index.label} {self.others_tax_treatment.label}"
@@ -175,7 +166,6 @@ class YfSecurity(BaseModel):
     currency: str
     tax_treatment: TaxTreatment
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"yfinance: {self.ticker} {self.tax_treatment.label}"
@@ -187,7 +177,6 @@ class FtSecurity(BaseModel):
     currency: str
     dividends: bool
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"FT: {self.ticker} {('(With Dividends)') * self.dividends}"
@@ -199,7 +188,6 @@ class GreatlinkSecurity(BaseModel):
     fund: GreatLinkFund
     currency: Literal["SGD"] = "SGD"
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
@@ -211,7 +199,6 @@ class GMOSecurity(BaseModel):
     fund: GMOFund
     currency: Literal["USD"] = "USD"
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
@@ -223,7 +210,6 @@ class FundsmithSecurity(BaseModel):
     fund: FundsmithFund
     currency: Literal["EUR"] = "EUR"
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
@@ -235,7 +221,6 @@ class DimensionalSecurity(BaseModel):
     fund: DimensionalFund
     currency: Literal["GBP"] = "GBP"
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
@@ -271,7 +256,6 @@ class Allocation(BaseModel):
     security: Security
     weight: float = Field(gt=0, le=100)
 
-    @computed_field
     @property
     def label(self) -> str:
         return f"{self.weight}% {self.security.label}"
@@ -282,7 +266,6 @@ class Portfolio(BaseModel):
 
     allocations: list[Allocation]
 
-    @computed_field
     @property
     def label(self) -> str:
         return ",\n".join(allocation.label for allocation in self.allocations)
@@ -297,8 +280,6 @@ class Portfolio(BaseModel):
 
     def to_plotly_options(self) -> dict[str, str]:
         return {
-            allocation.model_dump_json(
-                exclude_none=True, exclude_computed_fields=True
-            ): allocation.label
+            allocation.model_dump_json(exclude_none=True): allocation.label
             for allocation in self.allocations
         }
