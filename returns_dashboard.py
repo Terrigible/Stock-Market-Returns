@@ -528,9 +528,7 @@ def add_yf_security(
     )
     new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
     selected_securities.append(new_yf_security_json)
-    selected_securities_options[new_yf_security_json] = (
-        f"yfinance: {new_yf_security.ticker} {new_yf_security.tax_treatment}"
-    )
+    selected_securities_options[new_yf_security_json] = new_yf_security.label
     try:
         df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
     except YFException as e:
@@ -634,9 +632,7 @@ def add_ft_security(
     )
     new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
     selected_securities.append(new_ft_security_str)
-    selected_securities_options[new_ft_security_str] = (
-        f"FT: {new_ft_security.ticker} {('(With Dividends)') * new_ft_security.dividends}"
-    )
+    selected_securities_options[new_ft_security_str] = new_ft_security.label
 
     ft_securities_store[new_ft_security_str] = series.to_json(
         orient="index", date_format="iso"
@@ -694,7 +690,7 @@ def add_fund(
         }
     )
     security_json = fund_security.model_dump_json(exclude_none=True)
-    security_name = f"{fund_company} {fund}"
+    security_name = fund_security.label
     if security_json in selected_securities:
         return no_update
     selected_securities.append(security_json)

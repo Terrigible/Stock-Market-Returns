@@ -174,12 +174,22 @@ class YfSecurity(BaseModel):
     currency: str
     tax_treatment: TaxTreatment
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"yfinance: {self.ticker} {self.tax_treatment.label}"
+
 
 class FtSecurity(BaseModel):
     source: Literal["FT"] = "FT"
     ticker: str
     currency: str
     dividends: bool
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"FT: {self.ticker} {('(With Dividends)') * self.dividends}"
 
 
 class GreatlinkSecurity(BaseModel):
@@ -188,12 +198,22 @@ class GreatlinkSecurity(BaseModel):
     fund: GreatLinkFund
     currency: Literal["SGD"] = "SGD"
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.fund_company.label} {self.fund.label}"
+
 
 class GMOSecurity(BaseModel):
     source: Literal["Fund"] = "Fund"
     fund_company: Literal[FundCompany.GMO] = FundCompany.GMO
     fund: GMOFund
     currency: Literal["USD"] = "USD"
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.fund_company.label} {self.fund.label}"
 
 
 class FundsmithSecurity(BaseModel):
@@ -202,12 +222,22 @@ class FundsmithSecurity(BaseModel):
     fund: FundsmithFund
     currency: Literal["EUR"] = "EUR"
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.fund_company.label} {self.fund.label}"
+
 
 class DimensionalSecurity(BaseModel):
     source: Literal["Fund"] = "Fund"
     fund_company: Literal[FundCompany.DIMENSIONAL] = FundCompany.DIMENSIONAL
     fund: DimensionalFund
     currency: Literal["GBP"] = "GBP"
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.fund_company.label} {self.fund.label}"
 
 
 FundSecurity = Annotated[
