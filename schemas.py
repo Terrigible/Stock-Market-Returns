@@ -5,6 +5,7 @@ from pydantic import (
     BaseModel,
     Field,
     TypeAdapter,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -35,6 +36,26 @@ class MsciSecurity(BaseModel):
     msci_style: MSCIStyle
     msci_tax_treatment: TaxTreatment
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return " ".join(
+            field
+            for field in [
+                "MSCI",
+                self.msci_base_index.label,
+                None if self.msci_size == MSCISize.STANDARD else self.msci_size.label,
+                "Cap"
+                if self.msci_size
+                in (MSCISize.SMALL, MSCISize.SMID, MSCISize.MID, MSCISize.LARGE)
+                and self.msci_style == MSCIStyle.BLEND
+                else None,
+                None if self.msci_style == MSCIStyle.BLEND else self.msci_style.label,
+                self.msci_tax_treatment.label,
+            ]
+            if field is not None
+        )
+
     @model_validator(mode="after")
     def check_valid(self):
         if not glob(
@@ -54,10 +75,20 @@ class FredTreasurySecurity(BaseModel):
     fred_index: Literal[FREDIndex.US_T] = FREDIndex.US_T
     us_treasury_duration: USTreasuryDuration
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.us_treasury_duration.label} {self.fred_index.label}"
+
 
 class FredFfrSecurity(BaseModel):
     source: Literal["FRED"] = "FRED"
     fred_index: Literal[FREDIndex.FFR] = FREDIndex.FFR
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return self.fred_index.label
 
 
 FredSecurity = Annotated[
@@ -71,10 +102,20 @@ class MasSgsSecurity(BaseModel):
     mas_index: Literal[MASIndex.SGS] = MASIndex.SGS
     sgs_duration: SGSDuration
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.sgs_duration.label} {self.mas_index.label}"
+
 
 class MasSoraSecurity(BaseModel):
     source: Literal["MAS"] = "MAS"
     mas_index: Literal[MASIndex.SORA] = MASIndex.SORA
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return self.mas_index.label
 
 
 MasSecurity = Annotated[
@@ -88,17 +129,32 @@ class SpxSecurity(BaseModel):
     others_index: Literal[OthersIndex.SPX] = OthersIndex.SPX
     others_tax_treatment: TaxTreatment
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.others_index.label} {self.others_tax_treatment.label}"
+
 
 class ShillerSpxSecurity(BaseModel):
     source: Literal["Others"] = "Others"
     others_index: Literal[OthersIndex.SHILLER_SPX] = OthersIndex.SHILLER_SPX
     others_tax_treatment: TaxTreatment
 
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.others_index.label} {self.others_tax_treatment.label}"
+
 
 class SreitSecurity(BaseModel):
     source: Literal["Others"] = "Others"
     others_index: Literal[OthersIndex.SREIT] = OthersIndex.SREIT
     others_tax_treatment: TaxTreatment = TaxTreatment.GROSS
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.others_index.label} {self.others_tax_treatment.label}"
 
     @field_validator("others_tax_treatment", mode="after")
     @classmethod

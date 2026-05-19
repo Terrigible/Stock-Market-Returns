@@ -411,7 +411,7 @@ def add_index(
     others_tax_treatment: TaxTreatment,
 ):
     try:
-        model = TypeAdapter(IndexSecurity).validate_python(
+        model: IndexSecurity = TypeAdapter(IndexSecurity).validate_python(
             {
                 "source": index_provider,
                 "msci_base_index": msci_base_index,
@@ -441,51 +441,8 @@ def add_index(
             },
         )
         return no_update
-    if isinstance(model, MsciSecurity):
-        index_json = model.model_dump_json(exclude_none=True)
-        index_name_template = [
-            "MSCI",
-            model.msci_base_index.label,
-            (None if model.msci_size == MSCISize.STANDARD else model.msci_size.label),
-            (
-                "Cap"
-                if model.msci_size
-                in (
-                    MSCISize.SMALL,
-                    MSCISize.SMID,
-                    MSCISize.MID,
-                    MSCISize.LARGE,
-                )
-                and model.msci_style == MSCIStyle.BLEND
-                else None
-            ),
-            (None if model.msci_style == MSCIStyle.BLEND else model.msci_style.label),
-            model.msci_tax_treatment.label,
-        ]
-        index_name = " ".join(
-            field for field in index_name_template if field is not None
-        )
-
-    elif isinstance(model, FredTreasurySecurity):
-        index_json = model.model_dump_json(exclude_none=True)
-        index_name = f"{model.us_treasury_duration.label} {model.fred_index.label}"
-    elif isinstance(model, FredFfrSecurity):
-        index_json = model.model_dump_json(exclude_none=True)
-        index_name = model.fred_index.label
-
-    elif isinstance(model, MasSgsSecurity):
-        index_json = model.model_dump_json(exclude_none=True)
-        index_name = f"{model.sgs_duration.label} {model.mas_index.label}"
-    elif isinstance(model, MasSoraSecurity):
-        index_json = model.model_dump_json(exclude_none=True)
-        index_name = model.mas_index.label
-
-    elif isinstance(model, (SpxSecurity, ShillerSpxSecurity, SreitSecurity)):
-        index_json = model.model_dump_json(exclude_none=True)
-        index_name = f"{model.others_index.label} {model.others_tax_treatment.label}"
-
-    else:
-        return no_update
+    index_json = model.model_dump_json(exclude_none=True)
+    index_name = model.label
 
     if selected_securities is None:
         return [index_json], {index_json: index_name}
