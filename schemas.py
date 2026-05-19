@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from models import (
+    Currency,
     DimensionalFund,
     FREDIndex,
     FundCompany,
@@ -292,7 +293,7 @@ def convert_percent_to_decimal(v: float) -> float:
 
 class AccumulationStrategy(BaseModel):
     strategy_portfolio: Portfolio
-    currency: str
+    currency: Currency
     investment_amount: float = Field(default=0, ge=0)
     monthly_investment: float = Field(default=0, ge=0)
     adjust_monthly_investment_for_inflation: bool = False
@@ -351,7 +352,7 @@ class AccumulationBootstrapStrategy(AccumulationStrategy):
 
 class WithdrawalStrategy(BaseModel):
     strategy_portfolio: Portfolio
-    currency: str
+    currency: Currency
     initial_capital: float = Field(gt=0)
     monthly_withdrawal: float = Field(gt=0)
     adjust_for_inflation: bool = False

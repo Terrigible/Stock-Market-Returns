@@ -6,6 +6,15 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import ctx
 
+from models import (
+    DistributionChartType,
+    ReturnAnnualisation,
+    ReturnDuration,
+    ReturnInterval,
+    RollingReturnsPresentation,
+    YVar,
+)
+
 
 class XAxis(TypedDict):
     range: list[str]
@@ -225,14 +234,14 @@ def update_rolling_returns_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
-    return_duration: str,
+    return_duration: ReturnDuration,
     return_duration_options: dict[str, str],
-    return_annualisation: str,
+    return_annualisation: ReturnAnnualisation,
     return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
-    rolling_returns_presentation: str,
-    rolling_returns_distribution_chart_type: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
     layout: go.Layout,
 ):
     layout.update(yaxis_tickformat=".2%")
@@ -252,7 +261,7 @@ def update_rolling_returns_graph(
         title=title,
     )
 
-    if rolling_returns_presentation == "timeseries":
+    if rolling_returns_presentation == RollingReturnsPresentation.TIMESERIES:
         data = [
             go.Scatter(
                 x=df.index,
@@ -266,12 +275,12 @@ def update_rolling_returns_graph(
             for column in df.columns
         ]
 
-    elif rolling_returns_presentation == "dist":
+    elif rolling_returns_presentation == RollingReturnsPresentation.DISTRIBUTION:
         layout.update(
             xaxis_tickformat="+.2%",
         )
 
-        if rolling_returns_distribution_chart_type == "hist":
+        if rolling_returns_distribution_chart_type == DistributionChartType.HISTOGRAM:
             vertical_line = go.layout.Shape(
                 type="line",
                 x0=0,
@@ -319,7 +328,7 @@ def update_rolling_returns_graph(
                         showlegend=True,
                     ),
                 )
-        elif rolling_returns_distribution_chart_type == "box":
+        elif rolling_returns_distribution_chart_type == DistributionChartType.BOX_PLOT:
             layout.update(
                 hovermode="closest",
                 yaxis_autorange="reversed",
@@ -360,7 +369,7 @@ def update_calendar_returns_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
-    return_interval: str,
+    return_interval: ReturnInterval,
     return_interval_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
@@ -384,15 +393,15 @@ def update_calendar_returns_graph(
 
     layout.update(title=title)
 
-    if return_interval == "1mo":
+    if return_interval == ReturnInterval.MONTHLY:
         index_offset = pd.offsets.BMonthEnd(0)
         xperiod = "M1"
         layout.update(xaxis_tickformat="%b %Y")
-    elif return_interval == "3mo":
+    elif return_interval == ReturnInterval.QUARTERLY:
         index_offset = pd.offsets.BQuarterEnd(0)
         xperiod = "M3"
         layout.update(xaxis_tickformat="Q%q %Y")
-    elif return_interval == "1y":
+    elif return_interval == ReturnInterval.ANNUAL:
         index_offset = pd.offsets.BYearEnd(0)
         xperiod = "M12"
         layout.update(xaxis_tickformat="%Y")
@@ -423,20 +432,20 @@ def update_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
-    y_var: str,
+    y_var: YVar,
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    return_duration: str,
+    return_duration: ReturnDuration,
     return_duration_options: dict[str, str],
-    return_interval: str,
+    return_interval: ReturnInterval,
     return_interval_options: dict[str, str],
-    return_annualisation: str,
+    return_annualisation: ReturnAnnualisation,
     return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
-    rolling_returns_presentation: str,
-    rolling_returns_distribution_chart_type: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
     uirevision: str,
     prev_layout: PrevLayout | None,
@@ -456,7 +465,7 @@ def update_graph(
     if relayout_data is None:
         relayout_data = {"autosize": True}
 
-    if y_var == "price":
+    if y_var == YVar.PRICE:
         data, layout = update_price_graph(
             df,
             trace_colourmap,
@@ -471,11 +480,11 @@ def update_graph(
 
         return data, layout
 
-    if y_var == "drawdown":
+    if y_var == YVar.DRAWDOWN:
         data, layout = update_drawdown_graph(df, trace_colourmap, trace_options, layout)
         return data, layout
 
-    if y_var == "rolling_returns":
+    if y_var == YVar.ROLLING_RETURNS:
         data, layout = update_rolling_returns_graph(
             df,
             trace_colourmap,
@@ -492,7 +501,7 @@ def update_graph(
         )
         return data, layout
 
-    if y_var == "calendar_returns":
+    if y_var == YVar.CALENDAR_RETURNS:
         data, layout = update_calendar_returns_graph(
             df,
             trace_colourmap,

@@ -46,22 +46,34 @@ from funcs.loaders import (
 )
 from layout import app_layout
 from models import (
+    BacktestYVar,
+    BootstrapYVar,
+    Currency,
     DimensionalFund,
+    DistributionChartType,
+    DrawdownType,
     FREDIndex,
     FundCompany,
     FundsmithFund,
     GMOFund,
     GreatLinkFund,
     IndexProvider,
+    Interval,
     MASIndex,
     MSCICountryIndex,
+    MSCIIndexType,
     MSCIRegionalIndex,
     MSCISize,
     MSCIStyle,
     OthersIndex,
+    ReturnAnnualisation,
+    ReturnDuration,
+    ReturnInterval,
+    RollingReturnsPresentation,
     SGSDuration,
     TaxTreatment,
     USTreasuryDuration,
+    YVar,
 )
 from schemas import (
     AccumulationBootstrapStrategy,
@@ -129,8 +141,8 @@ def convert_price_to_usd(
 
 def load_data(
     security: Security,
-    interval: str,
-    currency: str,
+    interval: Interval,
+    currency: Currency,
     adjust_for_inflation: bool,
     cached_security: str | None,
 ):
@@ -149,12 +161,12 @@ def load_data(
             .dropna()
             .pipe(fast_bday_downsample)
         )
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(security, FredFfrSecurity):
         fed_funds_returns = load_fed_funds_returns()
         series = fed_funds_returns.pipe(fast_bday_downsample)
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = fed_funds_returns.pipe(resample_bme)
     elif isinstance(security, MasSgsSecurity):
         series = (
@@ -163,7 +175,7 @@ def load_data(
             .pipe(fast_bday_downsample)
         )
         series = convert_price_to_usd(series, "SGD")
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(security, MasSoraSecurity):
         sgd_interest_rates_returns = load_sgd_interest_rates_returns()
@@ -171,28 +183,28 @@ def load_data(
             sgd_interest_rates_returns, "SGD"
         )
         series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = sgd_interest_rates_returns.pipe(resample_bme)
     elif isinstance(security, (SpxSecurity, ShillerSpxSecurity, SreitSecurity)):
         if isinstance(security, (SpxSecurity)):
             series = read_ft_data(f"S&P 500 USD {security.others_tax_treatment}")
-            if interval == "Daily":
+            if interval == Interval.DAILY:
                 series = series.pipe(fast_bday_upsample)
         elif isinstance(security, ShillerSpxSecurity):
             series = read_shiller_sp500_data(security.others_tax_treatment)
-            if interval == "Daily":
+            if interval == Interval.DAILY:
                 series = series.pipe(fast_bday_upsample)
         elif isinstance(security, SreitSecurity):
             series = read_ft_data("iEdge S-REIT Leaders USD Gross")
         else:
             raise ValueError(f"Invalid index: {security}")
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(security, (YfSecurity, FtSecurity)):
         ticker_currency = security.currency
         series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
         series = convert_price_to_usd(series, ticker_currency)
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(
         security,
@@ -211,11 +223,11 @@ def load_data(
         else:
             raise ValueError(f"Invalid fund: {security.fund}")
         series = convert_price_to_usd(series, security.currency)
-        if interval == "Monthly":
+        if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     else:
         raise ValueError(f"Invalid index: {security}")
-    if currency == "SGD":
+    if currency == Currency.SGD:
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
         )
@@ -232,15 +244,15 @@ def load_data(
 
 def transform_data(
     series: pd.Series,
-    interval: str,
-    y_var: str,
-    return_duration: str,
-    return_interval: str,
-    return_annualisation: str,
+    interval: Interval,
+    y_var: YVar,
+    return_duration: ReturnDuration,
+    return_interval: ReturnInterval,
+    return_annualisation: ReturnAnnualisation,
 ) -> pd.Series:
-    if y_var == "price":
+    if y_var == YVar.PRICE:
         return series
-    if y_var == "drawdown":
+    if y_var == YVar.DRAWDOWN:
         return series.div(series.cummax()).sub(1)
     return_durations = {
         "1mo": 1,
@@ -256,10 +268,10 @@ def transform_data(
         "25y": 300,
         "30y": 360,
     }
-    if y_var == "rolling_returns":
-        if interval == "Monthly":
+    if y_var == YVar.ROLLING_RETURNS:
+        if interval == Interval.MONTHLY:
             series = series.pct_change(return_durations[return_duration])
-        elif interval == "Daily":
+        elif interval == Interval.DAILY:
             series = series.div(
                 series.reindex(
                     series.index
@@ -270,10 +282,10 @@ def transform_data(
             ).sub(1)
         else:
             raise ValueError("Invalid interval")
-        if return_annualisation == "annualised":
+        if return_annualisation == ReturnAnnualisation.ANNUALISED:
             series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
         return series.dropna()
-    if y_var == "calendar_returns":
+    if y_var == YVar.CALENDAR_RETURNS:
         df_pl = pl.from_pandas(series.reset_index())
         df_pl = (
             df_pl.sort("date")
@@ -337,10 +349,10 @@ app.clientside_callback(
     Output("msci-index-selection", "value"),
     Input("msci-index-type-selection", "value"),
 )
-def update_msci_index_options(index_type: str):
-    if index_type == "Regional":
+def update_msci_index_options(index_type: MSCIIndexType):
+    if index_type == MSCIIndexType.REGIONAL:
         return MSCIRegionalIndex.to_dict(), MSCIRegionalIndex.WORLD
-    if index_type == "Country":
+    if index_type == MSCIIndexType.COUNTRY:
         return MSCICountryIndex.to_dict(), MSCICountryIndex.AUSTRALIA
 
 
@@ -540,7 +552,7 @@ def add_yf_security(
         set_props("toast-store", {"data": f"The selected ticker is not available: {e}"})
         set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
         return no_update
-    if tax_treatment == "Net" and "Dividends" in df.columns:
+    if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
             .add(df["Dividends"].mul(0.7))
@@ -685,7 +697,7 @@ def add_fund(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     fund_company: FundCompany,
-    fund: str,
+    fund: GreatLinkFund | GMOFund | FundsmithFund | DimensionalFund,
 ):
     fund_security: FundSecurity = TypeAdapter(FundSecurity).validate_python(
         {
@@ -777,23 +789,23 @@ def update_security_graph(
     selected_securities_strs: list[str],
     selected_securities_options: dict[str, str],
     cached_securities: dict[str, str],
-    currency: str,
+    currency: Currency,
     adjust_for_inflation: bool,
-    y_var: str,
+    y_var: YVar,
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    return_duration: str,
+    return_duration: ReturnDuration,
     return_duration_options: dict[str, str],
-    return_interval: str,
+    return_interval: ReturnInterval,
     return_interval_options: dict[str, str],
-    return_annualisation: str,
+    return_annualisation: ReturnAnnualisation,
     return_annualisation_options: dict[str, str],
-    interval: str,
+    interval: Interval,
     baseline_security: str,
     baseline_security_options: dict[str, str],
-    rolling_returns_presentation: str,
-    rolling_returns_distribution_chart_type: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
     prev_layout: PrevLayout | None,
 ):
@@ -811,7 +823,7 @@ def update_security_graph(
             selected_security.model_dump_json(): transform_data(
                 load_data(
                     selected_security,
-                    "Monthly" if y_var == "calendar_returns" else interval,
+                    Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval,
                     currency,
                     adjust_for_inflation,
                     cached_securities.get(selected_security.model_dump_json()),
@@ -1008,7 +1020,7 @@ app.clientside_callback(
 
 def load_portfolio(
     portfolio: Portfolio,
-    currency: str,
+    currency: Currency,
     adjust_for_inflation: bool,
     yf_securities: dict[str, str],
 ):
@@ -1018,7 +1030,7 @@ def load_portfolio(
         [
             load_data(
                 security,
-                "Monthly",
+                Interval.MONTHLY,
                 currency,
                 adjust_for_inflation,
                 yf_securities.get(security.model_dump_json()),
@@ -1082,22 +1094,22 @@ app.clientside_callback(
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
-    currency: str,
+    currency: Currency,
     adjust_for_inflation: bool,
-    y_var: str,
-    return_duration: str,
+    y_var: YVar,
+    return_duration: ReturnDuration,
     return_duration_options: dict[str, str],
-    return_interval: str,
+    return_interval: ReturnInterval,
     return_interval_options: dict[str, str],
-    return_annualisation: str,
+    return_annualisation: ReturnAnnualisation,
     return_annualisation_options: dict[str, str],
     baseline_portfolio: str,
     baseline_portfolio_options: dict[str, str],
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    rolling_returns_presentation: str,
-    rolling_returns_distribution_chart_type: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
     portfolio_options: dict[str, str],
     yf_securities: dict[str, str],
@@ -1121,7 +1133,7 @@ def update_portfolio_graph(
                 load_portfolio(
                     portfolio, currency, adjust_for_inflation, yf_securities
                 ),
-                "Monthly",
+                Interval.MONTHLY,
                 y_var,
                 return_duration,
                 return_interval,
@@ -1234,7 +1246,7 @@ def update_backtest_accumulation_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    currency: str,
+    currency: Currency,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
@@ -1300,7 +1312,7 @@ def simulate_backtest_accumulation_strategy(
     cash_returns = (
         (
             load_fed_funds_returns()
-            if strategy.currency == "USD"
+            if strategy.currency == Currency.USD
             else load_sgd_interest_rates_returns()
         )
         .resample("BME")
@@ -1347,8 +1359,8 @@ def update_backtest_accumulation_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
-    y_var: str,
-    drawdown_type: str,
+    y_var: BacktestYVar,
+    drawdown_type: DrawdownType,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -1376,12 +1388,12 @@ def update_backtest_accumulation_strategy_graph(
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
-    if y_var == "ending_values":
+    if y_var == BacktestYVar.ENDING_VALUES:
         values = pd.concat(
             [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
         )
-    elif y_var == "max_drawdown":
-        if drawdown_type == "percent":
+    elif y_var == BacktestYVar.MAX_DRAWDOWN:
+        if drawdown_type == DrawdownType.PERCENT:
             values = pd.concat(
                 [
                     df.T.div(df.T.cummax()).sub(1).min().rename(name)
@@ -1546,7 +1558,7 @@ def update_backtest_withdrawal_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    currency: str,
+    currency: Currency,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
     adjust_for_inflation: bool,
@@ -1644,8 +1656,8 @@ def update_backtest_withdrawal_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
-    y_var: str,
-    drawdown_type: str,
+    y_var: BacktestYVar,
+    drawdown_type: DrawdownType,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -1673,12 +1685,12 @@ def update_backtest_withdrawal_strategy_graph(
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
-    if y_var == "ending_values":
+    if y_var == BacktestYVar.ENDING_VALUES:
         values = pd.concat(
             [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
         )
-    elif y_var == "max_drawdown":
-        if drawdown_type == "percent":
+    elif y_var == BacktestYVar.MAX_DRAWDOWN:
+        if drawdown_type == DrawdownType.PERCENT:
             values = pd.concat(
                 [
                     df.T.div(df.T.cummax()).sub(1).min().rename(name)
@@ -1896,7 +1908,7 @@ def simulate_bootstrap_accumulation_strategy(
     cash_returns = (
         (
             load_fed_funds_returns()
-            if strategy.currency == "USD"
+            if strategy.currency == Currency.USD
             else load_sgd_interest_rates_returns()
         )
         .resample("BME")
@@ -2007,7 +2019,7 @@ def update_bootstrap_accumulation_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    currency: str,
+    currency: Currency,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
@@ -2080,7 +2092,7 @@ def update_bootstrap_accumulation_strategies(
 def update_bootstrap_accumulation_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
-    y_var: str,
+    y_var: BootstrapYVar,
     log_scale: bool,
     yf_securities: dict[str, str],
 ):
@@ -2102,7 +2114,7 @@ def update_bootstrap_accumulation_graph(
         )
         investment_horizon = strategy.investment_horizon
         months = np.arange(investment_horizon + 1)
-        if y_var == "portfolio_values":
+        if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
             values = compute_bootstrap_max_drawdown(portfolio_values)
@@ -2122,7 +2134,7 @@ def update_bootstrap_accumulation_graph(
             title="Bootstrap Accumulation Strategy",
             xaxis_title="Month",
             yaxis_title="Portfolio Value ($)"
-            if y_var == "portfolio_values"
+            if y_var == BootstrapYVar.PORTFOLIO_VALUES
             else "Max Drawdown ($)",
             hovermode="x",
             showlegend=True,
@@ -2159,7 +2171,7 @@ def update_bootstrap_withdrawal_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    currency: str,
+    currency: Currency,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
     adjust_for_inflation: bool,
@@ -2228,7 +2240,7 @@ def update_bootstrap_withdrawal_strategies(
 def update_bootstrap_withdrawal_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
-    y_var: str,
+    y_var: BootstrapYVar,
     log_scale: bool,
     yf_securities: dict[str, str],
 ):
@@ -2250,7 +2262,7 @@ def update_bootstrap_withdrawal_graph(
         )
         withdrawal_horizon = strategy.withdrawal_horizon
         months = np.arange(withdrawal_horizon + 1)
-        if y_var == "portfolio_values":
+        if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
             values = compute_bootstrap_max_drawdown(portfolio_values)
@@ -2270,7 +2282,7 @@ def update_bootstrap_withdrawal_graph(
             title="Bootstrap Withdrawal Strategy",
             xaxis_title="Month",
             yaxis_title="Portfolio Value ($)"
-            if y_var == "portfolio_values"
+            if y_var == BootstrapYVar.PORTFOLIO_VALUES
             else "Max Drawdown ($)",
             hovermode="x",
             showlegend=True,
