@@ -216,9 +216,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 var total = 0;
                 for (var i = 0; i < allocationStrings.length; i++) {
                     var allocation = JSON.parse(allocationStrings[i]);
-                    for (var key in allocation) {
-                        total += allocation[key];
-                    }
+                    total += allocation["weight"];
                 }
                 return "Sum of Weights: " + total + "%";
             },

@@ -1,5 +1,5 @@
 import json
-from functools import cache, partial, reduce
+from functools import cache, partial
 from io import StringIO
 from itertools import cycle
 from typing import TypedDict
@@ -15,7 +15,7 @@ import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
-from pydantic import TypeAdapter, ValidationError
+from pydantic import Json, TypeAdapter, ValidationError
 from yfinance.exceptions import YFException
 
 from funcs.calcs_numpy import (
@@ -64,6 +64,7 @@ from models import (
     USTreasuryDuration,
 )
 from schemas import (
+    Allocation,
     DimensionalSecurity,
     FredFfrSecurity,
     FredTreasurySecurity,
@@ -76,6 +77,7 @@ from schemas import (
     MasSgsSecurity,
     MasSoraSecurity,
     MsciSecurity,
+    Portfolio,
     Security,
     ShillerSpxSecurity,
     SpxSecurity,
@@ -441,7 +443,7 @@ def add_index(
             },
         )
         return no_update
-    index_json = model.model_dump_json(exclude_none=True)
+    index_json = model.model_dump_json(exclude_none=True, exclude_computed_fields=True)
     index_name = model.label
 
     if selected_securities is None:
@@ -526,7 +528,9 @@ def add_yf_security(
         currency=currency,
         tax_treatment=tax_treatment,
     )
-    new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
+    new_yf_security_json = new_yf_security.model_dump_json(
+        exclude_none=True, exclude_computed_fields=True
+    )
     selected_securities.append(new_yf_security_json)
     selected_securities_options[new_yf_security_json] = new_yf_security.label
     try:
@@ -630,7 +634,9 @@ def add_ft_security(
         currency=currency,
         dividends=dividends,
     )
-    new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
+    new_ft_security_str = new_ft_security.model_dump_json(
+        exclude_none=True, exclude_computed_fields=True
+    )
     selected_securities.append(new_ft_security_str)
     selected_securities_options[new_ft_security_str] = new_ft_security.label
 
@@ -689,7 +695,9 @@ def add_fund(
             "fund": fund,
         }
     )
-    security_json = fund_security.model_dump_json(exclude_none=True)
+    security_json = fund_security.model_dump_json(
+        exclude_none=True, exclude_computed_fields=True
+    )
     security_name = fund_security.label
     if security_json in selected_securities:
         return no_update
@@ -874,9 +882,7 @@ app.clientside_callback(
     Output("portfolio-allocations", "options"),
     Input("add-security-button", "n_clicks"),
     Input("portfolio-allocations", "value"),
-    State("portfolio-allocations", "options"),
     State("portfolio-security-selection", "value"),
-    State("portfolio-security-selection", "options"),
     State("security-weight", "value"),
     allow_duplicate=True,
     prevent_initial_call=True,
@@ -884,41 +890,34 @@ app.clientside_callback(
 def add_allocation(
     _,
     portfolio_allocation_strs: list[str] | None,
-    portfolio_allocation_options: dict[str, str],
-    security: str,
-    security_options: dict[str, str],
+    security_str: str,
     weight: float | int | None,
 ):
     if ctx.triggered_id == "add-security-button":
         if weight is None:
             return no_update
-        new_allocation = json.dumps({security: weight})
-        if not portfolio_allocation_strs:
-            return [new_allocation], {
-                new_allocation: f"{weight}% {security_options[security]}"
-            }
-        if new_allocation in portfolio_allocation_strs:
+        portfolio = Portfolio(
+            allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+                portfolio_allocation_strs or []
+            )
+        )
+        new_allocation = Allocation(
+            security=parse_security(security_str),
+            weight=weight,
+        )
+        if new_allocation in portfolio.allocations:
             return no_update
-        portfolio_allocations: dict[str, int | float] = reduce(
-            dict.__or__, map(json.loads, portfolio_allocation_strs)
-        )
-        if security in portfolio_allocations:
-            old_weight = portfolio_allocations[security]
-            portfolio_allocation_strs.remove(json.dumps({security: old_weight}))
-            portfolio_allocation_options.pop(json.dumps({security: old_weight}))
-
-        portfolio_allocation_strs.append(new_allocation)
-        portfolio_allocation_options.update(
-            {new_allocation: f"{weight}% {security_options[security]}"}
-        )
-        return portfolio_allocation_strs, portfolio_allocation_options
-    if ctx.triggered_id == "portfolio-allocations":
+        portfolio.add_allocation(new_allocation=new_allocation)
+        return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
+    elif ctx.triggered_id == "portfolio-allocations":
         if portfolio_allocation_strs is None:
             raise ValueError("This should not happen")
-        return portfolio_allocation_strs, {
-            portfolio_allocation: portfolio_allocation_options[portfolio_allocation]
-            for portfolio_allocation in portfolio_allocation_strs
-        }
+        portfolio = Portfolio(
+            allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+                portfolio_allocation_strs
+            )
+        )
+        return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
     return no_update
 
 
@@ -942,7 +941,6 @@ app.clientside_callback(
     State("portfolios", "value"),
     State("portfolios", "options"),
     State("portfolio-allocations", "value"),
-    State("portfolio-allocations", "options"),
     prevent_initial_call=True,
 )
 def add_portfolio(
@@ -950,38 +948,26 @@ def add_portfolio(
     portfolio_strs: list[str] | None,
     portfolio_options: dict[str, str],
     portfolio_allocation_strs: list[str] | None,
-    portfolio_allocations_options: dict[str, str],
 ):
     if not portfolio_allocation_strs:
         return no_update
-    portfolio_allocations: dict[str, int | float] = reduce(
-        dict.__or__, map(json.loads, portfolio_allocation_strs)
+    portfolio = Portfolio(
+        allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+            portfolio_allocation_strs
+        )
     )
-    weights = portfolio_allocations.values()
-    if sum(weights) != 100:
+    if sum([allocation.weight for allocation in portfolio.allocations]) != 100:
         return no_update
-    portfolio_str = json.dumps(portfolio_allocation_strs)
-    portfolio_title = ",\n".join(
-        portfolio_allocations_options[portfolio_allocation]
-        for portfolio_allocation in portfolio_allocation_strs
+    portfolio_str = portfolio.model_dump_json(
+        exclude_none=True, exclude_computed_fields=True
     )
     if portfolio_strs is None:
-        return (
-            [portfolio_str],
-            {portfolio_str: portfolio_title},
-            [],
-            {},
-        )
+        return ([portfolio_str], {portfolio_str: portfolio.label}, [], {})
     if portfolio_str in portfolio_strs:
         return no_update
     portfolio_strs.append(portfolio_str)
-    portfolio_options.update({portfolio_str: portfolio_title})
-    return (
-        portfolio_strs,
-        portfolio_options,
-        [],
-        {},
-    )
+    portfolio_options.update({portfolio_str: portfolio.label})
+    return (portfolio_strs, portfolio_options, [], {})
 
 
 app.clientside_callback(
@@ -1029,12 +1015,14 @@ def load_portfolio(
     adjust_for_inflation: bool,
     yf_securities: dict[str, str],
 ):
-    portfolio_allocation_strs: list[str] = json.loads(portfolio_str)
-    portfolio_allocations: dict[str, int | float] = reduce(
-        dict.__or__, map(json.loads, portfolio_allocation_strs)
-    )
-    securities = portfolio_allocations.keys()
-    weights = list(portfolio_allocations.values())
+    portfolio = Portfolio.model_validate_json(portfolio_str)
+    securities = [
+        allocation.security.model_dump_json(
+            exclude_none=True, exclude_computed_fields=True
+        )
+        for allocation in portfolio.allocations
+    ]
+    weights = [allocation.weight for allocation in portfolio.allocations]
     portfolio_df = pd.concat(
         [
             load_data(

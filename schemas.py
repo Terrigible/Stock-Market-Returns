@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     TypeAdapter,
     computed_field,
@@ -264,3 +265,40 @@ Security = Annotated[
 ]
 
 parse_security = TypeAdapter(Security).validate_json
+
+
+class Allocation(BaseModel):
+    security: Security
+    weight: float = Field(gt=0, le=100)
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return f"{self.weight}% {self.security.label}"
+
+
+class Portfolio(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
+    allocations: list[Allocation]
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return ",\n".join(allocation.label for allocation in self.allocations)
+
+    def add_allocation(self, new_allocation: Allocation):
+        for allocation in self.allocations:
+            if new_allocation.security != allocation.security:
+                continue
+            allocation.weight = new_allocation.weight
+        else:
+            self.allocations.append(new_allocation)
+
+    def to_plotly_options(self) -> dict[str, str]:
+        return {
+            allocation.model_dump_json(
+                exclude_none=True, exclude_computed_fields=True
+            ): allocation.label
+            for allocation in self.allocations
+        }
