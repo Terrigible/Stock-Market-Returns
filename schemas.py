@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from models import (
     DimensionalFund,
@@ -78,7 +78,12 @@ class ShillerSpxSecurity(BaseModel):
 class SreitSecurity(BaseModel):
     source: Literal["Others"] = "Others"
     others_index: Literal[OthersIndex.SREIT] = OthersIndex.SREIT
-    others_tax_treatment: Literal[TaxTreatment.GROSS] = TaxTreatment.GROSS
+    others_tax_treatment: TaxTreatment = TaxTreatment.GROSS
+
+    @field_validator("others_tax_treatment", mode="after")
+    @classmethod
+    def is_gross(cls, _):
+        return TaxTreatment.GROSS
 
 
 OthersSecurity = Annotated[

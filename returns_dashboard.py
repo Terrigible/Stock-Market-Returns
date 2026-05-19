@@ -477,8 +477,6 @@ def add_index(
         index_name = model.mas_index.label
 
     elif isinstance(model, (SpxSecurity, ShillerSpxSecurity, SreitSecurity)):
-        if isinstance(model, SreitSecurity):
-            model.others_tax_treatment = TaxTreatment.GROSS
         index_json = model.model_dump_json(exclude_none=True)
         index_name = f"{model.others_index.label} {model.others_tax_treatment.label}"
 
