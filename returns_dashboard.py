@@ -1,6 +1,5 @@
 import json
 from functools import cache, partial, reduce
-from glob import glob
 from io import StringIO
 from itertools import cycle
 from typing import TypedDict
@@ -16,7 +15,7 @@ import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from yfinance.exceptions import YFException
 
 from funcs.calcs_numpy import (
@@ -411,33 +410,38 @@ def add_index(
     others_index: OthersIndex,
     others_tax_treatment: TaxTreatment,
 ):
-    model = TypeAdapter(IndexSecurity).validate_python(
-        {
-            "source": index_provider,
-            "msci_base_index": msci_base_index,
-            "msci_size": msci_size,
-            "msci_style": msci_style,
-            "msci_tax_treatment": msci_tax_treatment,
-            "fred_index": fred_index,
-            "us_treasury_duration": us_treasury_duration,
-            "mas_index": mas_index,
-            "sgs_duration": sgs_duration,
-            "others_index": others_index,
-            "others_tax_treatment": others_tax_treatment,
-        }
-    )
+    try:
+        model = TypeAdapter(IndexSecurity).validate_python(
+            {
+                "source": index_provider,
+                "msci_base_index": msci_base_index,
+                "msci_size": msci_size,
+                "msci_style": msci_style,
+                "msci_tax_treatment": msci_tax_treatment,
+                "fred_index": fred_index,
+                "us_treasury_duration": us_treasury_duration,
+                "mas_index": mas_index,
+                "sgs_duration": sgs_duration,
+                "others_index": others_index,
+                "others_tax_treatment": others_tax_treatment,
+            }
+        )
+    except ValidationError as e:
+        set_props(
+            "toast-store",
+            {
+                "data": "\n".join(
+                    err["msg"]
+                    for err in e.errors(
+                        include_url=False,
+                        include_context=False,
+                        include_input=False,
+                    )
+                )
+            },
+        )
+        return no_update
     if isinstance(model, MsciSecurity):
-        if not glob(
-            f"data/"
-            f"{index_provider}/"
-            f"{msci_base_index}/"
-            f"{msci_size}/"
-            f"{msci_style}/"
-            f"* {msci_tax_treatment}*.csv"
-        ):
-            set_props("toast-store", {"data": "The constructed index is not available"})
-            return no_update
-
         index_json = model.model_dump_json(exclude_none=True)
         index_name_template = [
             "MSCI",
@@ -2468,4 +2472,4 @@ def update_bootstrap_withdrawal_graph(
 
 
 if __name__ == "__main__":
-    app.run("0.0.0.0")
+    app.run("0.0.0.0", debug=True)

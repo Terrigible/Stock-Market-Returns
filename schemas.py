@@ -1,6 +1,13 @@
+from glob import glob
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 from models import (
     DimensionalFund,
@@ -27,6 +34,19 @@ class MsciSecurity(BaseModel):
     msci_size: MSCISize
     msci_style: MSCIStyle
     msci_tax_treatment: TaxTreatment
+
+    @model_validator(mode="after")
+    def check_valid(self):
+        if not glob(
+            f"data/"
+            f"{self.source}/"
+            f"{self.msci_base_index}/"
+            f"{self.msci_size}/"
+            f"{self.msci_style}/"
+            f"* {self.msci_tax_treatment}*.csv"
+        ):
+            raise ValueError("The constructed index is not available")
+        return self
 
 
 class FredTreasurySecurity(BaseModel):
