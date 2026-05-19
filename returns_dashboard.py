@@ -16,6 +16,7 @@ import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
+from pydantic import TypeAdapter
 from yfinance.exceptions import YFException
 
 from funcs.calcs_numpy import (
@@ -47,11 +48,41 @@ from funcs.loaders import (
 from layout import app_layout
 from models import (
     DimensionalFund,
+    FREDIndex,
+    FundCompany,
     FundsmithFund,
     GMOFund,
     GreatLinkFund,
+    IndexProvider,
+    MASIndex,
     MSCICountryIndex,
     MSCIRegionalIndex,
+    MSCISize,
+    MSCIStyle,
+    OthersIndex,
+    SGSDuration,
+    TaxTreatment,
+    USTreasuryDuration,
+)
+from schemas import (
+    DimensionalSecurity,
+    FredFfrSecurity,
+    FredTreasurySecurity,
+    FtSecurity,
+    FundSecurity,
+    FundsmithSecurity,
+    GMOSecurity,
+    GreatlinkSecurity,
+    IndexSecurity,
+    MasSgsSecurity,
+    MasSoraSecurity,
+    MsciSecurity,
+    Security,
+    ShillerSpxSecurity,
+    SpxSecurity,
+    SreitSecurity,
+    YfSecurity,
+    parse_security,
 )
 from update_graph import PrevLayout, RelayoutData, update_graph
 
@@ -99,89 +130,84 @@ def load_data(
     adjust_for_inflation: bool,
     cached_security: str | None,
 ):
-    security: dict[str, str] = json.loads(security_str)
-    source = security["source"]
-    if source == "MSCI":
+    security: Security = parse_security(security_str)
+    if isinstance(security, MsciSecurity):
         series = read_msci_data(
             f"data/"
             f"MSCI/"
-            f"{security['msci_base_index']}/"
-            f"{security['msci_size']}/"
-            f"{security['msci_style']}/"
-            f"*{security['msci_tax_treatment']} {interval}.csv"
+            f"{security.msci_base_index}/"
+            f"{security.msci_size}/"
+            f"{security.msci_style}/"
+            f"*{security.msci_tax_treatment} {interval}.csv"
         )
-    elif source == "FRED":
-        if security["fred_index"] == "US-T":
-            series = (
-                load_us_treasury_returns()[security["us_treasury_duration"]]
-                .dropna()
-                .pipe(fast_bday_downsample)
-            )
-            if interval == "Monthly":
-                series = series.pipe(resample_bme)
-        elif security["fred_index"] == "FFR":
-            fed_funds_returns = load_fed_funds_returns()
-            series = fed_funds_returns.pipe(fast_bday_downsample)
-            if interval == "Monthly":
-                series = fed_funds_returns.pipe(resample_bme)
-        else:
-            raise ValueError(f"Invalid index: {security}")
-    elif source == "MAS":
-        if security["mas_index"] == "SGS":
-            series = (
-                load_sgs_returns()[security["sgs_duration"]]
-                .dropna()
-                .pipe(fast_bday_downsample)
-            )
-            series = convert_price_to_usd(series, "SGD")
-            if interval == "Monthly":
-                series = series.pipe(resample_bme)
-        elif security["mas_index"] == "SORA":
-            sgd_interest_rates_returns = load_sgd_interest_rates_returns()
-            sgd_interest_rates_returns = convert_price_to_usd(
-                sgd_interest_rates_returns, "SGD"
-            )
-            series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
-            if interval == "Monthly":
-                series = sgd_interest_rates_returns.pipe(resample_bme)
-        else:
-            raise ValueError(f"Invalid index: {security}")
-    elif source == "Others":
-        if security["others_index"] == "SPX":
-            series = read_ft_data(f"S&P 500 USD {security['others_tax_treatment']}")
+    elif isinstance(security, FredTreasurySecurity):
+        series = (
+            load_us_treasury_returns()[security.us_treasury_duration]
+            .dropna()
+            .pipe(fast_bday_downsample)
+        )
+        if interval == "Monthly":
+            series = series.pipe(resample_bme)
+    elif isinstance(security, FredFfrSecurity):
+        fed_funds_returns = load_fed_funds_returns()
+        series = fed_funds_returns.pipe(fast_bday_downsample)
+        if interval == "Monthly":
+            series = fed_funds_returns.pipe(resample_bme)
+    elif isinstance(security, MasSgsSecurity):
+        series = (
+            load_sgs_returns()[security.sgs_duration]
+            .dropna()
+            .pipe(fast_bday_downsample)
+        )
+        series = convert_price_to_usd(series, "SGD")
+        if interval == "Monthly":
+            series = series.pipe(resample_bme)
+    elif isinstance(security, MasSoraSecurity):
+        sgd_interest_rates_returns = load_sgd_interest_rates_returns()
+        sgd_interest_rates_returns = convert_price_to_usd(
+            sgd_interest_rates_returns, "SGD"
+        )
+        series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
+        if interval == "Monthly":
+            series = sgd_interest_rates_returns.pipe(resample_bme)
+    elif isinstance(security, (SpxSecurity, ShillerSpxSecurity, SreitSecurity)):
+        if isinstance(security, (SpxSecurity)):
+            series = read_ft_data(f"S&P 500 USD {security.others_tax_treatment}")
             if interval == "Daily":
                 series = series.pipe(fast_bday_upsample)
-        elif security["others_index"] == "SHILLER_SPX":
-            series = read_shiller_sp500_data(security["others_tax_treatment"])
+        elif isinstance(security, ShillerSpxSecurity):
+            series = read_shiller_sp500_data(security.others_tax_treatment)
             if interval == "Daily":
                 series = series.pipe(fast_bday_upsample)
-        elif security["others_index"] == "SREIT":
+        elif isinstance(security, SreitSecurity):
             series = read_ft_data("iEdge S-REIT Leaders USD Gross")
         else:
             raise ValueError(f"Invalid index: {security}")
         if interval == "Monthly":
             series = series.pipe(resample_bme)
-    elif source in ["YF", "FT"]:
-        ticker_currency = security["currency"]
+    elif isinstance(security, (YfSecurity, FtSecurity)):
+        ticker_currency = security.currency
         series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
         series = convert_price_to_usd(series, ticker_currency)
         if interval == "Monthly":
             series = series.pipe(resample_bme)
-    elif source == "Fund":
-        fund_company = security["fund_company"]
-        fund = security["fund"]
-        fund_currency = security["currency"]
-        if fund_company == "GreatLink":
-            series = read_greatlink_data(fund)
-        elif fund_company == "GMO":
+    elif isinstance(
+        security,
+        (GreatlinkSecurity, GMOSecurity, FundsmithSecurity, DimensionalSecurity),
+    ):
+        if isinstance(security, GreatlinkSecurity):
+            series = read_greatlink_data(security.fund)
+        elif isinstance(security, GMOSecurity):
             series = read_ft_data("GMO Quality Investment Fund")
-        elif fund_company == "Fundsmith":
-            series = read_ft_data(f"Fundsmith {fund.replace('Class ', '')} EUR Acc")
-        elif fund_company == "Dimensional":
-            series = read_ft_data(f"Dimensional {fund} GBP Accumulation")
+        elif isinstance(security, FundsmithSecurity):
+            series = read_ft_data(
+                f"Fundsmith {security.fund.replace('Class ', '')} EUR Acc"
+            )
+        elif isinstance(security, DimensionalSecurity):
+            series = read_ft_data(f"Dimensional {security.fund} GBP Accumulation")
         else:
-            raise ValueError(f"Invalid fund: {fund}")
-        series = convert_price_to_usd(series, fund_currency)
+            raise ValueError(f"Invalid fund: {security.fund}")
+        series = convert_price_to_usd(series, security.currency)
         if interval == "Monthly":
             series = series.pipe(resample_bme)
     else:
@@ -358,52 +384,49 @@ app.clientside_callback(
     State("selected-securities", "value"),
     State("selected-securities", "options"),
     State("index-provider-selection", "value"),
-    State("index-provider-selection", "options"),
     State("msci-index-selection", "value"),
-    State("msci-index-selection", "options"),
     State("msci-size-selection", "value"),
-    State("msci-size-selection", "options"),
     State("msci-style-selection", "value"),
-    State("msci-style-selection", "options"),
     State("msci-tax-treatment-selection", "value"),
     State("fred-index-selection", "value"),
-    State("fred-index-selection", "options"),
     State("us-treasury-duration-selection", "value"),
-    State("us-treasury-duration-selection", "options"),
     State("mas-index-selection", "value"),
-    State("mas-index-selection", "options"),
     State("sgs-duration-selection", "value"),
-    State("sgs-duration-selection", "options"),
     State("others-index-selection", "value"),
-    State("others-index-selection", "options"),
     State("others-tax-treatment-selection", "value"),
 )
 def add_index(
     _,
     selected_securities: None | list[str],
     selected_securities_options: dict[str, str],
-    index_provider: str,
-    index_provider_options: dict[str, str],
-    msci_base_index: str,
-    msci_base_index_options: dict[str, str],
-    msci_size: str,
-    msci_size_options: dict[str, str],
-    msci_style: str,
-    msci_style_options: dict[str, str],
-    msci_tax_treatment: str,
-    fred_index: str,
-    fred_index_options: dict[str, str],
-    us_treasury_duration: str,
-    us_treasury_duration_options: dict[str, str],
-    mas_index: str,
-    mas_index_options: dict[str, str],
-    sgs_duration: str,
-    sgs_duration_options: dict[str, str],
-    others_index: str,
-    others_index_options: dict[str, str],
-    others_tax_treatment: str,
+    index_provider: IndexProvider,
+    msci_base_index: MSCIRegionalIndex | MSCICountryIndex,
+    msci_size: MSCISize,
+    msci_style: MSCIStyle,
+    msci_tax_treatment: TaxTreatment,
+    fred_index: FREDIndex,
+    us_treasury_duration: USTreasuryDuration,
+    mas_index: MASIndex,
+    sgs_duration: SGSDuration,
+    others_index: OthersIndex,
+    others_tax_treatment: TaxTreatment,
 ):
-    if index_provider == "MSCI":
+    model = TypeAdapter(IndexSecurity).validate_python(
+        {
+            "source": index_provider,
+            "msci_base_index": msci_base_index,
+            "msci_size": msci_size,
+            "msci_style": msci_style,
+            "msci_tax_treatment": msci_tax_treatment,
+            "fred_index": fred_index,
+            "us_treasury_duration": us_treasury_duration,
+            "mas_index": mas_index,
+            "sgs_duration": sgs_duration,
+            "others_index": others_index,
+            "others_tax_treatment": others_tax_treatment,
+        }
+    )
+    if isinstance(model, MsciSecurity):
         if not glob(
             f"data/"
             f"{index_provider}/"
@@ -415,93 +438,52 @@ def add_index(
             set_props("toast-store", {"data": "The constructed index is not available"})
             return no_update
 
-        index_json = json.dumps(
-            {
-                "source": "MSCI",
-                "msci_base_index": msci_base_index,
-                "msci_size": msci_size,
-                "msci_style": msci_style,
-                "msci_tax_treatment": msci_tax_treatment,
-            }
-        )
+        index_json = model.model_dump_json(exclude_none=True)
         index_name_template = [
-            index_provider_options[index_provider],
-            msci_base_index_options[msci_base_index],
-            (None if msci_size == "STANDARD" else msci_size_options[msci_size]),
+            "MSCI",
+            model.msci_base_index.label,
+            (None if model.msci_size == MSCISize.STANDARD else model.msci_size.label),
             (
                 "Cap"
-                if msci_size in ["SMALL", "SMID", "MID", "LARGE"]
-                and msci_style == "BLEND"
+                if model.msci_size
+                in (
+                    MSCISize.SMALL,
+                    MSCISize.SMID,
+                    MSCISize.MID,
+                    MSCISize.LARGE,
+                )
+                and model.msci_style == MSCIStyle.BLEND
                 else None
             ),
-            (None if msci_style == "BLEND" else msci_style_options[msci_style]),
-            msci_tax_treatment,
+            (None if model.msci_style == MSCIStyle.BLEND else model.msci_style.label),
+            model.msci_tax_treatment.label,
         ]
         index_name = " ".join(
             field for field in index_name_template if field is not None
         )
 
-    elif index_provider == "FRED":
-        if fred_index == "US-T":
-            index_json = json.dumps(
-                {
-                    "source": "FRED",
-                    "fred_index": fred_index,
-                    "us_treasury_duration": us_treasury_duration,
-                }
-            )
-            index_name = (
-                f"{us_treasury_duration_options[us_treasury_duration]} "
-                f"{fred_index_options[fred_index]}"
-            )
-        elif fred_index == "FFR":
-            index_json = json.dumps(
-                {
-                    "source": "FRED",
-                    "fred_index": fred_index,
-                }
-            )
-            index_name = fred_index_options[fred_index]
-        else:
-            set_props("toast-store", {"data": "The constructed index is not available"})
-            return no_update
+    elif isinstance(model, FredTreasurySecurity):
+        index_json = model.model_dump_json(exclude_none=True)
+        index_name = f"{model.us_treasury_duration.label} {model.fred_index.label}"
+    elif isinstance(model, FredFfrSecurity):
+        index_json = model.model_dump_json(exclude_none=True)
+        index_name = model.fred_index.label
 
-    elif index_provider == "MAS":
-        if mas_index == "SGS":
-            index_json = json.dumps(
-                {
-                    "source": "MAS",
-                    "mas_index": mas_index,
-                    "sgs_duration": sgs_duration,
-                }
-            )
-            index_name = (
-                f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}"
-            )
-        elif mas_index == "SORA":
-            index_json = json.dumps(
-                {
-                    "source": "MAS",
-                    "mas_index": mas_index,
-                }
-            )
-            index_name = mas_index_options[mas_index]
-        else:
-            set_props("toast-store", {"data": "The constructed index is not available"})
-            return no_update
+    elif isinstance(model, MasSgsSecurity):
+        index_json = model.model_dump_json(exclude_none=True)
+        index_name = f"{model.sgs_duration.label} {model.mas_index.label}"
+    elif isinstance(model, MasSoraSecurity):
+        index_json = model.model_dump_json(exclude_none=True)
+        index_name = model.mas_index.label
+
+    elif isinstance(model, (SpxSecurity, ShillerSpxSecurity, SreitSecurity)):
+        if isinstance(model, SreitSecurity):
+            model.others_tax_treatment = TaxTreatment.GROSS
+        index_json = model.model_dump_json(exclude_none=True)
+        index_name = f"{model.others_index.label} {model.others_tax_treatment.label}"
 
     else:
-        others_tax_treatment = (
-            "Gross" if others_index in ["SREIT"] else others_tax_treatment
-        )
-        index_json = json.dumps(
-            {
-                "source": "Others",
-                "others_index": others_index,
-                "others_tax_treatment": others_tax_treatment,
-            }
-        )
-        index_name = f"{others_index_options[others_index]} {others_tax_treatment}"
+        return no_update
 
     if selected_securities is None:
         return [index_json], {index_json: index_name}
@@ -531,7 +513,7 @@ def add_yf_security(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     yf_security: str | None,
-    tax_treatment: str,
+    tax_treatment: TaxTreatment,
     yf_invalid_securities_store: list[str],
     yf_securities_store: dict[str, str],
 ):
@@ -565,6 +547,11 @@ def add_yf_security(
         set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
         return no_update
     ticker_symbol = ticker.ticker
+    if not ticker_symbol:
+        yf_invalid_securities_store.append(yf_security)
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
+        return no_update
     if "currency" not in ticker.history_metadata:
         currency = "USD"
         set_props(
@@ -575,17 +562,15 @@ def add_yf_security(
         )
     else:
         currency = ticker.history_metadata["currency"]
-    new_yf_security = json.dumps(
-        {
-            "source": "YF",
-            "ticker": ticker_symbol,
-            "currency": currency,
-            "tax_treatment": tax_treatment,
-        }
+    new_yf_security = YfSecurity(
+        ticker=ticker_symbol,
+        currency=currency,
+        tax_treatment=tax_treatment,
     )
-    selected_securities.append(new_yf_security)
-    selected_securities_options[new_yf_security] = (
-        f"yfinance: {ticker_symbol} {tax_treatment}"
+    new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
+    selected_securities.append(new_yf_security_json)
+    selected_securities_options[new_yf_security_json] = (
+        f"yfinance: {new_yf_security.ticker} {new_yf_security.tax_treatment}"
     )
     try:
         df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
@@ -605,7 +590,7 @@ def add_yf_security(
         df["Adj Close"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
             df["Adj Close"].iloc[-1]
         )
-    yf_securities_store[new_yf_security] = df["Adj Close"].to_json(
+    yf_securities_store[new_yf_security_json] = df["Adj Close"].to_json(
         orient="index", date_format="iso"
     )
 
@@ -672,26 +657,26 @@ def add_ft_security(
         set_props("ft-invalid-securities-store", {"data": ft_invalid_securities_store})
         return no_update
 
-    new_ft_security = {
-        "source": "FT",
-        "ticker": ticker,
-        "currency": currency,
-        "dividends": False,
-    }
+    dividends = False
 
     if ft_security.upper().endswith(":SES"):
-        new_ft_security["dividends"] = True
-        dividends = get_sgx_dividends(ticker.removesuffix(":SES"))
-        dividends = dividends.reindex(series.index, fill_value=0)
+        dividends = True
+        dividends_series = get_sgx_dividends(ticker.removesuffix(":SES"))
+        dividends_series = dividends_series.reindex(series.index, fill_value=0)
         manually_adjusted = (
-            series.add(dividends).div(series.shift(1)).fillna(1).cumprod()
+            series.add(dividends_series).div(series.shift(1)).fillna(1).cumprod()
         )
         series = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(series.iloc[-1])
 
-    new_ft_security_str = json.dumps(new_ft_security)
+    new_ft_security = FtSecurity(
+        ticker=ticker,
+        currency=currency,
+        dividends=dividends,
+    )
+    new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
     selected_securities.append(new_ft_security_str)
     selected_securities_options[new_ft_security_str] = (
-        f"FT: {ticker} {('(With Dividends)') * new_ft_security['dividends']}"
+        f"FT: {new_ft_security.ticker} {('(With Dividends)') * new_ft_security.dividends}"
     )
 
     ft_securities_store[new_ft_security_str] = series.to_json(
@@ -711,14 +696,14 @@ def add_ft_security(
     Output("fund-selection", "value"),
     Input("fund-company-selection", "value"),
 )
-def update_fund_selection_options(fund_company: str):
-    if fund_company == "GreatLink":
+def update_fund_selection_options(fund_company: FundCompany):
+    if fund_company == FundCompany.GREATLINK:
         return GreatLinkFund.to_dict(), GreatLinkFund.ASEAN_GROWTH_FUND
-    if fund_company == "GMO":
+    if fund_company == FundCompany.GMO:
         return GMOFund.to_dict(), GMOFund.QUALITY_INVESTMENT_FUND
-    if fund_company == "Fundsmith":
+    if fund_company == FundCompany.FUNDSMITH:
         return FundsmithFund.to_dict(), FundsmithFund.EQUITY_FUND_CLASS_T
-    if fund_company == "Dimensional":
+    if fund_company == FundCompany.DIMENSIONAL:
         return DimensionalFund.to_dict(), DimensionalFund.WORLD_EQUITY_FUND
     return (
         {},
@@ -740,27 +725,16 @@ def add_fund(
     _,
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
-    fund_company: str,
+    fund_company: FundCompany,
     fund: str,
 ):
-    if fund_company == "GreatLink":
-        currency = "SGD"
-    elif fund_company == "GMO":
-        currency = "USD"
-    elif fund_company == "Fundsmith":
-        currency = "EUR"
-    elif fund_company == "Dimensional":
-        currency = "GBP"
-    else:
-        return no_update
-    security_json = json.dumps(
+    fund_security: FundSecurity = TypeAdapter(FundSecurity).validate_python(
         {
-            "source": "Fund",
             "fund_company": fund_company,
             "fund": fund,
-            "currency": currency,
         }
     )
+    security_json = fund_security.model_dump_json(exclude_none=True)
     security_name = f"{fund_company} {fund}"
     if security_json in selected_securities:
         return no_update
