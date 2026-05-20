@@ -1145,6 +1145,7 @@ def update_backtest_accumulation_strategies(
             adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
         )
     except ValidationError:
+        # TODO
         # set_props(
         #     "toast-store",
         #     {
@@ -1453,6 +1454,7 @@ def update_backtest_withdrawal_strategies(
             annualised_holding_fees=annualised_holding_fees or 0,
         )
     except ValidationError:
+        # TODO
         # set_props(
         #     "toast-store",
         #     {
@@ -1922,6 +1924,7 @@ def update_bootstrap_accumulation_strategies(
             avg_block_length=avg_block_len or 120,
         )
     except ValidationError:
+        # TODO
         # set_props(
         #     "toast-store",
         #     {
@@ -2070,6 +2073,7 @@ def update_bootstrap_withdrawal_strategies(
             avg_block_length=avg_block_len or 120,
         )
     except ValidationError:
+        # TODO
         # set_props(
         #     "toast-store",
         #     {
