@@ -38,6 +38,7 @@ class MsciSecurity(BaseModel):
     msci_size: MSCISize
     msci_style: MSCIStyle
     msci_tax_treatment: TaxTreatment
+    currency: Literal["USD"] = "USD"
 
     @property
     def label(self) -> str:
@@ -76,6 +77,7 @@ class FredTreasurySecurity(BaseModel):
     source: Literal["FRED"] = "FRED"
     fred_index: Literal[FREDIndex.US_T] = FREDIndex.US_T
     us_treasury_duration: USTreasuryDuration
+    currency: Literal["USD"] = "USD"
 
     @property
     def label(self) -> str:
@@ -85,6 +87,7 @@ class FredTreasurySecurity(BaseModel):
 class FredFfrSecurity(BaseModel):
     source: Literal["FRED"] = "FRED"
     fred_index: Literal[FREDIndex.FFR] = FREDIndex.FFR
+    currency: Literal["USD"] = "USD"
 
     @property
     def label(self) -> str:
@@ -101,6 +104,7 @@ class MasSgsSecurity(BaseModel):
     source: Literal["MAS"] = "MAS"
     mas_index: Literal[MASIndex.SGS] = MASIndex.SGS
     sgs_duration: SGSDuration
+    currency: Literal["SGD"] = "SGD"
 
     @property
     def label(self) -> str:
@@ -110,6 +114,7 @@ class MasSgsSecurity(BaseModel):
 class MasSoraSecurity(BaseModel):
     source: Literal["MAS"] = "MAS"
     mas_index: Literal[MASIndex.SORA] = MASIndex.SORA
+    currency: Literal["SGD"] = "SGD"
 
     @property
     def label(self) -> str:
@@ -136,15 +141,15 @@ class BaseOthersIndexSecurity(BaseModel, Generic[OthersIndexT]):
 
 
 class SpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SPX]]):
-    pass
+    currency: Literal["USD"] = "USD"
 
 
 class ShillerSpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SHILLER_SPX]]):
-    pass
+    currency: Literal["USD"] = "USD"
 
 
 class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
-    pass
+    currency: Literal["USD"] = "USD"
 
     @field_validator("others_tax_treatment", mode="after")
     @classmethod

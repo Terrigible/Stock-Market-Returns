@@ -174,14 +174,10 @@ def load_data(
             .dropna()
             .pipe(fast_bday_downsample)
         )
-        series = convert_price_to_usd(series, "SGD")
         if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(security, MasSoraSecurity):
         sgd_interest_rates_returns = load_sgd_interest_rates_returns()
-        sgd_interest_rates_returns = convert_price_to_usd(
-            sgd_interest_rates_returns, "SGD"
-        )
         series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
         if interval == Interval.MONTHLY:
             series = sgd_interest_rates_returns.pipe(resample_bme)
@@ -201,9 +197,7 @@ def load_data(
         if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(security, (YfSecurity, FtSecurity)):
-        ticker_currency = security.currency
         series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
-        series = convert_price_to_usd(series, ticker_currency)
         if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     elif isinstance(
@@ -222,11 +216,12 @@ def load_data(
             series = read_ft_data(f"Dimensional {security.fund} GBP Accumulation")
         else:
             raise ValueError(f"Invalid fund: {security.fund}")
-        series = convert_price_to_usd(series, security.currency)
         if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
     else:
         raise ValueError(f"Invalid index: {security}")
+
+    series = convert_price_to_usd(series, security.currency)
     if currency == Currency.SGD:
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
