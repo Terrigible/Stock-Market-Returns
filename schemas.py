@@ -396,9 +396,9 @@ class Portfolio(RootModel):
 
     def add_allocation(self, new_allocation: Allocation):
         for allocation in self.root:
-            if new_allocation.security != allocation.security:
-                continue
-            allocation.weight = new_allocation.weight
+            if new_allocation.security == allocation.security:
+                allocation.weight = new_allocation.weight
+                break
         else:
             self.root.append(new_allocation)
 
