@@ -1,6 +1,5 @@
 import json
 from functools import partial
-from io import StringIO
 from itertools import cycle
 from typing import TypedDict
 
@@ -28,21 +27,13 @@ from funcs.calcs_numpy import (
 )
 from funcs.loaders import (
     download_ft_data,
-    fast_bday_downsample,
-    fast_bday_upsample,
     get_sgx_dividends,
     load_cpi,
     load_fed_funds_returns,
     load_fred_usd_fx,
     load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
-    load_sgs_returns,
-    load_us_treasury_returns,
     load_usdsgd,
-    read_ft_data,
-    read_greatlink_data,
-    read_msci_data,
-    read_shiller_sp500_data,
 )
 from layout import app_layout
 from models import (
@@ -79,23 +70,11 @@ from schemas import (
     AccumulationBootstrapStrategy,
     AccumulationStrategy,
     Allocation,
-    DimensionalSecurity,
-    FredFfrSecurity,
-    FredTreasurySecurity,
     FtSecurity,
     FundSecurity,
-    FundsmithSecurity,
-    GMOSecurity,
-    GreatlinkSecurity,
     IndexSecurity,
-    MasSgsSecurity,
-    MasSoraSecurity,
-    MsciSecurity,
     Portfolio,
     Security,
-    ShillerSpxSecurity,
-    SpxSecurity,
-    SreitSecurity,
     WithdrawalBootstrapStrategy,
     WithdrawalStrategy,
     YfSecurity,
@@ -104,18 +83,6 @@ from schemas import (
 from update_graph import GraphParams, PrevLayout, RelayoutData
 
 yf.config.debug.hide_exceptions = False
-
-
-def resample_bme(series: pd.Series):
-    df = (
-        series.rename("price")
-        .to_frame()
-        .assign(date=series.index)
-        .resample("BME")
-        .last()
-    )
-    new_index = df.index[:-1].union([df["date"].iloc[-1]])
-    return df["price"].set_axis(new_index)
 
 
 def convert_price_to_usd(
@@ -146,80 +113,10 @@ def load_data(
     adjust_for_inflation: bool,
     cached_security: str | None,
 ):
-    if isinstance(security, MsciSecurity):
-        series = read_msci_data(
-            f"data/"
-            f"MSCI/"
-            f"{security.msci_base_index}/"
-            f"{security.msci_size}/"
-            f"{security.msci_style}/"
-            f"*{security.msci_tax_treatment} {interval}.csv"
-        )
-    elif isinstance(security, FredTreasurySecurity):
-        series = (
-            load_us_treasury_returns()[security.us_treasury_duration]
-            .dropna()
-            .pipe(fast_bday_downsample)
-        )
-        if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-    elif isinstance(security, FredFfrSecurity):
-        fed_funds_returns = load_fed_funds_returns()
-        series = fed_funds_returns.pipe(fast_bday_downsample)
-        if interval == Interval.MONTHLY:
-            series = fed_funds_returns.pipe(resample_bme)
-    elif isinstance(security, MasSgsSecurity):
-        series = (
-            load_sgs_returns()[security.sgs_duration]
-            .dropna()
-            .pipe(fast_bday_downsample)
-        )
-        if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-    elif isinstance(security, MasSoraSecurity):
-        sgd_interest_rates_returns = load_sgd_interest_rates_returns()
-        series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
-        if interval == Interval.MONTHLY:
-            series = sgd_interest_rates_returns.pipe(resample_bme)
-    elif isinstance(security, (SpxSecurity, ShillerSpxSecurity, SreitSecurity)):
-        if isinstance(security, (SpxSecurity)):
-            series = read_ft_data(f"S&P 500 USD {security.others_tax_treatment}")
-            if interval == Interval.DAILY:
-                series = series.pipe(fast_bday_upsample)
-        elif isinstance(security, ShillerSpxSecurity):
-            series = read_shiller_sp500_data(security.others_tax_treatment)
-            if interval == Interval.DAILY:
-                series = series.pipe(fast_bday_upsample)
-        elif isinstance(security, SreitSecurity):
-            series = read_ft_data("iEdge S-REIT Leaders USD Gross")
-        else:
-            raise ValueError(f"Invalid index: {security}")
-        if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-    elif isinstance(security, (YfSecurity, FtSecurity)):
-        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
-        if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-    elif isinstance(
-        security,
-        (GreatlinkSecurity, GMOSecurity, FundsmithSecurity, DimensionalSecurity),
-    ):
-        if isinstance(security, GreatlinkSecurity):
-            series = read_greatlink_data(security.fund)
-        elif isinstance(security, GMOSecurity):
-            series = read_ft_data("GMO Quality Investment Fund")
-        elif isinstance(security, FundsmithSecurity):
-            series = read_ft_data(
-                f"Fundsmith {security.fund.replace('Class ', '')} EUR Acc"
-            )
-        elif isinstance(security, DimensionalSecurity):
-            series = read_ft_data(f"Dimensional {security.fund} GBP Accumulation")
-        else:
-            raise ValueError(f"Invalid fund: {security.fund}")
-        if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
+    if isinstance(security, (YfSecurity, FtSecurity)):
+        series = security.load_data(interval, cached_security)
     else:
-        raise ValueError(f"Invalid index: {security}")
+        series = security.load_data(interval)
 
     series = convert_price_to_usd(series, security.currency)
     if currency == Currency.SGD:

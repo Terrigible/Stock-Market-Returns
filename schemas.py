@@ -1,6 +1,8 @@
 from glob import glob
+from io import StringIO
 from typing import Annotated, Generic, Literal, TypeVar
 
+import pandas as pd
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -12,6 +14,18 @@ from pydantic import (
     model_validator,
 )
 
+from funcs.loaders import (
+    fast_bday_downsample,
+    fast_bday_upsample,
+    load_fed_funds_returns,
+    load_sgd_interest_rates_returns,
+    load_sgs_returns,
+    load_us_treasury_returns,
+    read_ft_data,
+    read_greatlink_data,
+    read_msci_data,
+    read_shiller_sp500_data,
+)
 from models import (
     Currency,
     DimensionalFund,
@@ -20,6 +34,7 @@ from models import (
     FundsmithFund,
     GMOFund,
     GreatLinkFund,
+    Interval,
     MASIndex,
     MSCICountryIndex,
     MSCIRegionalIndex,
@@ -30,6 +45,18 @@ from models import (
     TaxTreatment,
     USTreasuryDuration,
 )
+
+
+def resample_bme(series: pd.Series):
+    df = (
+        series.rename("price")
+        .to_frame()
+        .assign(date=series.index)
+        .resample("BME")
+        .last()
+    )
+    new_index = df.index[:-1].union([df["date"].iloc[-1]])
+    return df["price"].set_axis(new_index)
 
 
 class MsciSecurity(BaseModel):
@@ -72,6 +99,16 @@ class MsciSecurity(BaseModel):
             raise ValueError("The constructed index is not available")
         return self
 
+    def load_data(self, interval: Interval):
+        return read_msci_data(
+            f"data/"
+            f"MSCI/"
+            f"{self.msci_base_index}/"
+            f"{self.msci_size}/"
+            f"{self.msci_style}/"
+            f"*{self.msci_tax_treatment} {interval}.csv"
+        )
+
 
 class FredTreasurySecurity(BaseModel):
     source: Literal["FRED"] = "FRED"
@@ -83,6 +120,16 @@ class FredTreasurySecurity(BaseModel):
     def label(self) -> str:
         return f"{self.us_treasury_duration.label} {self.fred_index.label}"
 
+    def load_data(self, interval: Interval):
+        series = (
+            load_us_treasury_returns()[self.us_treasury_duration]
+            .dropna()
+            .pipe(fast_bday_downsample)
+        )
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
+
 
 class FredFfrSecurity(BaseModel):
     source: Literal["FRED"] = "FRED"
@@ -92,6 +139,13 @@ class FredFfrSecurity(BaseModel):
     @property
     def label(self) -> str:
         return self.fred_index.label
+
+    def load_data(self, interval: Interval):
+        fed_funds_returns = load_fed_funds_returns()
+        series = fed_funds_returns.pipe(fast_bday_downsample)
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 FredSecurity = Annotated[
@@ -110,6 +164,14 @@ class MasSgsSecurity(BaseModel):
     def label(self) -> str:
         return f"{self.sgs_duration.label} {self.mas_index.label}"
 
+    def load_data(self, interval: Interval):
+        series = (
+            load_sgs_returns()[self.sgs_duration].dropna().pipe(fast_bday_downsample)
+        )
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
+
 
 class MasSoraSecurity(BaseModel):
     source: Literal["MAS"] = "MAS"
@@ -119,6 +181,13 @@ class MasSoraSecurity(BaseModel):
     @property
     def label(self) -> str:
         return self.mas_index.label
+
+    def load_data(self, interval: Interval):
+        sgd_interest_rates_returns = load_sgd_interest_rates_returns()
+        series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 MasSecurity = Annotated[
@@ -143,9 +212,25 @@ class BaseOthersIndexSecurity(BaseModel, Generic[OthersIndexT]):
 class SpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SPX]]):
     currency: Literal["USD"] = "USD"
 
+    def load_data(self, interval: Interval):
+        series = read_ft_data(f"S&P 500 USD {self.others_tax_treatment}")
+        if interval == Interval.DAILY:
+            series = series.pipe(fast_bday_upsample)
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
+
 
 class ShillerSpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SHILLER_SPX]]):
     currency: Literal["USD"] = "USD"
+
+    def load_data(self, interval: Interval):
+        series = read_shiller_sp500_data(self.others_tax_treatment)
+        if interval == Interval.DAILY:
+            series = series.pipe(fast_bday_upsample)
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
@@ -155,6 +240,12 @@ class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
     @classmethod
     def is_gross(cls, _):
         return TaxTreatment.GROSS
+
+    def load_data(self, interval: Interval):
+        series = read_ft_data("iEdge S-REIT Leaders USD Gross")
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 OthersIndexSecurity = Annotated[
@@ -173,6 +264,12 @@ class YfSecurity(BaseModel):
     def label(self) -> str:
         return f"yfinance: {self.ticker} {self.tax_treatment.label}"
 
+    def load_data(self, interval: Interval, cached_security: str | None):
+        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
+
 
 class FtSecurity(BaseModel):
     source: Literal["FT"] = "FT"
@@ -183,6 +280,12 @@ class FtSecurity(BaseModel):
     @property
     def label(self) -> str:
         return f"FT: {self.ticker} {('(With Dividends)') * self.dividends}"
+
+    def load_data(self, interval: Interval, cached_security: str | None):
+        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 class GreatlinkSecurity(BaseModel):
@@ -195,6 +298,12 @@ class GreatlinkSecurity(BaseModel):
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
 
+    def load_data(self, interval: Interval):
+        series = read_greatlink_data(self.fund)
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
+
 
 class GMOSecurity(BaseModel):
     source: Literal["Fund"] = "Fund"
@@ -205,6 +314,12 @@ class GMOSecurity(BaseModel):
     @property
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
+
+    def load_data(self, interval: Interval):
+        series = read_ft_data("GMO Quality Investment Fund")
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 class FundsmithSecurity(BaseModel):
@@ -217,6 +332,12 @@ class FundsmithSecurity(BaseModel):
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
 
+    def load_data(self, interval: Interval):
+        series = read_ft_data(f"Fundsmith {self.fund.replace('Class ', '')} EUR Acc")
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
+
 
 class DimensionalSecurity(BaseModel):
     source: Literal["Fund"] = "Fund"
@@ -227,6 +348,12 @@ class DimensionalSecurity(BaseModel):
     @property
     def label(self) -> str:
         return f"{self.fund_company.label} {self.fund.label}"
+
+    def load_data(self, interval: Interval):
+        series = read_ft_data(f"Dimensional {self.fund} GBP Accumulation")
+        if interval == Interval.MONTHLY:
+            series = series.pipe(resample_bme)
+        return series
 
 
 FundSecurity = Annotated[
