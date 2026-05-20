@@ -350,10 +350,8 @@ app.clientside_callback(
     Input("msci-index-type-selection", "value"),
 )
 def update_msci_index_options(index_type: MSCIIndexType):
-    if index_type == MSCIIndexType.REGIONAL:
-        return MSCIRegionalIndex.to_dict(), MSCIRegionalIndex.WORLD
-    if index_type == MSCIIndexType.COUNTRY:
-        return MSCICountryIndex.to_dict(), MSCICountryIndex.AUSTRALIA
+    options = MSCIIndexType(index_type).indexes
+    return options.to_dict(), list(options)[0]
 
 
 app.clientside_callback(
@@ -667,19 +665,11 @@ def add_ft_security(
     Output("fund-selection", "value"),
     Input("fund-company-selection", "value"),
 )
-def update_fund_selection_options(fund_company: FundCompany):
-    if fund_company == FundCompany.GREATLINK:
-        return GreatLinkFund.to_dict(), GreatLinkFund.ASEAN_GROWTH_FUND
-    if fund_company == FundCompany.GMO:
-        return GMOFund.to_dict(), GMOFund.QUALITY_INVESTMENT_FUND
-    if fund_company == FundCompany.FUNDSMITH:
-        return FundsmithFund.to_dict(), FundsmithFund.EQUITY_FUND_CLASS_T
-    if fund_company == FundCompany.DIMENSIONAL:
-        return DimensionalFund.to_dict(), DimensionalFund.WORLD_EQUITY_FUND
-    return (
-        {},
-        None,
-    )
+def update_fund_selection_options(fund_company: FundCompany | None):
+    if fund_company is None:
+        return {}, None
+    fund_class = FundCompany(fund_company).funds
+    return fund_class.to_dict(), list(fund_class)[0]
 
 
 @app.callback(
