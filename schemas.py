@@ -238,7 +238,7 @@ class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
 
     @field_validator("others_tax_treatment", mode="after")
     @classmethod
-    def is_gross(cls, _):
+    def force_gross_tax(cls, _):
         return TaxTreatment.GROSS
 
     def load_data(self, interval: Interval):
