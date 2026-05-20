@@ -1,5 +1,5 @@
 import json
-from functools import partial
+from functools import cache, partial
 from itertools import cycle
 from typing import TypedDict
 
@@ -106,13 +106,15 @@ def convert_price_to_usd(
     return series
 
 
+@cache
 def load_data(
-    security: Security,
+    security_str: str,
     interval: Interval,
     currency: Currency,
     adjust_for_inflation: bool,
     cached_security: str | None,
 ):
+    security: Security = TypeAdapter(Security).validate_json(security_str)
     if isinstance(security, (YfSecurity, FtSecurity)):
         series = security.load_data(interval, cached_security)
     else:
@@ -700,7 +702,7 @@ def update_security_graph(
         {
             selected_security.model_dump_json(): transform_data(
                 load_data(
-                    selected_security,
+                    selected_security.model_dump_json(),
                     Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval,
                     currency,
                     adjust_for_inflation,
@@ -900,7 +902,7 @@ def load_portfolio(
     portfolio_df = pd.concat(
         [
             load_data(
-                security,
+                security.model_dump_json(),
                 Interval.MONTHLY,
                 currency,
                 adjust_for_inflation,
