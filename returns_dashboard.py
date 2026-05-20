@@ -907,7 +907,7 @@ def add_allocation(
         if weight is None:
             return no_update
         portfolio = Portfolio(
-            allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+            TypeAdapter(list[Json[Allocation]]).validate_python(
                 portfolio_allocation_strs or []
             )
         )
@@ -915,7 +915,7 @@ def add_allocation(
             security=parse_security(security_str),
             weight=weight,
         )
-        if new_allocation in portfolio.allocations:
+        if new_allocation in portfolio.root:
             return no_update
         portfolio.add_allocation(new_allocation=new_allocation)
         return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
@@ -923,7 +923,7 @@ def add_allocation(
         if portfolio_allocation_strs is None:
             raise ValueError("This should not happen")
         portfolio = Portfolio(
-            allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+            TypeAdapter(list[Json[Allocation]]).validate_python(
                 portfolio_allocation_strs
             )
         )
@@ -962,11 +962,9 @@ def add_portfolio(
     if not portfolio_allocation_strs:
         return no_update
     portfolio = Portfolio(
-        allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
-            portfolio_allocation_strs
-        )
+        TypeAdapter(list[Json[Allocation]]).validate_python(portfolio_allocation_strs)
     )
-    if sum([allocation.weight for allocation in portfolio.allocations]) != 100:
+    if sum([allocation.weight for allocation in portfolio.root]) != 100:
         return no_update
     portfolio_str = portfolio.model_dump_json(exclude_none=True)
     if portfolio_strs is None:
@@ -1023,8 +1021,8 @@ def load_portfolio(
     adjust_for_inflation: bool,
     yf_securities: dict[str, str],
 ):
-    securities = [allocation.security for allocation in portfolio.allocations]
-    weights = [allocation.weight for allocation in portfolio.allocations]
+    securities = [allocation.security for allocation in portfolio.root]
+    weights = [allocation.weight for allocation in portfolio.root]
     portfolio_df = pd.concat(
         [
             load_data(

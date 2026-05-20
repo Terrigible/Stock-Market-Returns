@@ -6,6 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    RootModel,
     TypeAdapter,
     field_validator,
     model_validator,
@@ -252,27 +253,27 @@ class Allocation(BaseModel):
         return f"{self.weight}% {self.security.label}"
 
 
-class Portfolio(BaseModel):
+class Portfolio(RootModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    allocations: list[Allocation]
+    root: list[Allocation]
 
     @property
     def label(self) -> str:
-        return ",\n".join(allocation.label for allocation in self.allocations)
+        return ",\n".join(allocation.label for allocation in self.root)
 
     def add_allocation(self, new_allocation: Allocation):
-        for allocation in self.allocations:
+        for allocation in self.root:
             if new_allocation.security != allocation.security:
                 continue
             allocation.weight = new_allocation.weight
         else:
-            self.allocations.append(new_allocation)
+            self.root.append(new_allocation)
 
     def to_plotly_options(self) -> dict[str, str]:
         return {
             allocation.model_dump_json(exclude_none=True): allocation.label
-            for allocation in self.allocations
+            for allocation in self.root
         }
 
 
