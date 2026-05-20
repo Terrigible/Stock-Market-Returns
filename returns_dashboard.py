@@ -888,32 +888,24 @@ def add_allocation(
     security_str: str,
     weight: float | int | None,
 ):
-    if ctx.triggered_id == "add-security-button":
-        if weight is None:
-            return no_update
-        portfolio = Portfolio(
-            TypeAdapter(list[Json[Allocation]]).validate_python(
-                portfolio_allocation_strs or []
-            )
+    portfolio = Portfolio(
+        TypeAdapter(list[Json[Allocation]]).validate_python(
+            portfolio_allocation_strs or []
         )
-        new_allocation = Allocation(
-            security=parse_security(security_str),
-            weight=weight,
-        )
-        if new_allocation in portfolio.root:
-            return no_update
-        portfolio.add_allocation(new_allocation=new_allocation)
+    )
+    if ctx.triggered_id == "portfolio-allocations":
         return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
-    elif ctx.triggered_id == "portfolio-allocations":
-        if portfolio_allocation_strs is None:
-            raise ValueError("This should not happen")
-        portfolio = Portfolio(
-            TypeAdapter(list[Json[Allocation]]).validate_python(
-                portfolio_allocation_strs
-            )
-        )
-        return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
-    return no_update
+
+    if weight is None:
+        return no_update
+    new_allocation = Allocation(
+        security=parse_security(security_str),
+        weight=weight,
+    )
+    if new_allocation in portfolio.root:
+        return no_update
+    portfolio.add_allocation(new_allocation=new_allocation)
+    return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
 
 
 app.clientside_callback(
