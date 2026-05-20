@@ -1,10 +1,11 @@
 import math
-from typing import NotRequired, TypedDict
+from typing import Annotated, Generic, Literal, NotRequired, TypedDict, TypeVar
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from dash import ctx
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from models import (
     DistributionChartType,
@@ -235,9 +236,7 @@ def update_rolling_returns_graph(
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
     return_duration: ReturnDuration,
-    return_duration_options: dict[str, str],
     return_annualisation: ReturnAnnualisation,
-    return_annualisation_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     rolling_returns_presentation: RollingReturnsPresentation,
@@ -246,10 +245,7 @@ def update_rolling_returns_graph(
 ):
     layout.update(yaxis_tickformat=".2%")
 
-    title = (
-        f"{return_duration_options[return_duration]} "
-        f"{return_annualisation_options[return_annualisation]} Rolling Returns"
-    )
+    title = f"{return_duration.label} {return_annualisation.label} Rolling Returns"
 
     if baseline_trace != "None":
         df = df.sub(df[baseline_trace], axis=0, level=0).dropna(
@@ -370,7 +366,6 @@ def update_calendar_returns_graph(
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
     return_interval: ReturnInterval,
-    return_interval_options: dict[str, str],
     baseline_trace: str,
     baseline_trace_options: dict[str, str],
     layout: go.Layout,
@@ -381,7 +376,7 @@ def update_calendar_returns_graph(
         barmode="group",
     )
 
-    title = f"{return_interval_options[return_interval]} Returns"
+    title = f"{return_interval.label} Returns"
 
     if baseline_trace != "None":
         df = (
@@ -428,92 +423,113 @@ def update_calendar_returns_graph(
     return data, layout
 
 
-def update_graph(
-    df: pd.DataFrame,
-    trace_colourmap: dict[str, str],
-    trace_options: dict[str, str],
-    y_var: YVar,
-    log_scale: bool,
-    percent_scale: bool,
-    auto_scale: bool,
-    return_duration: ReturnDuration,
-    return_duration_options: dict[str, str],
-    return_interval: ReturnInterval,
-    return_interval_options: dict[str, str],
-    return_annualisation: ReturnAnnualisation,
-    return_annualisation_options: dict[str, str],
-    baseline_trace: str,
-    baseline_trace_options: dict[str, str],
-    rolling_returns_presentation: RollingReturnsPresentation,
-    rolling_returns_distribution_chart_type: DistributionChartType,
-    relayout_data: RelayoutData | None,
-    uirevision: str,
-    prev_layout: PrevLayout | None,
-):
-    layout = go.Layout(
-        autosize=True,
-        hovermode="x",
-        showlegend=True,
-        legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
-        uirevision=y_var,
-        yaxis_side="right",
-        yaxis_automargin=True,
-        yaxis_uirevision=uirevision,
-        margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
-    )
+GraphTypeT = TypeVar("GraphTypeT", bound=YVar)
 
-    if relayout_data is None:
-        relayout_data = {"autosize": True}
 
-    if y_var == YVar.PRICE:
-        data, layout = update_price_graph(
-            df,
-            trace_colourmap,
-            trace_options,
-            log_scale,
-            percent_scale,
-            auto_scale,
-            relayout_data,
-            prev_layout,
-            layout,
+class BaseGraphParam(BaseModel, Generic[GraphTypeT]):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    df: pd.DataFrame
+    trace_colourmap: dict[str, str]
+    trace_options: dict[str, str]
+    uirevision: str
+
+    y_var: GraphTypeT
+
+    @computed_field
+    @property
+    def layout(self) -> go.Layout:
+        return go.Layout(
+            autosize=True,
+            hovermode="x",
+            showlegend=True,
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            uirevision=self.y_var,
+            yaxis_side="right",
+            yaxis_automargin=True,
+            yaxis_uirevision=self.uirevision,
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         )
 
-        return data, layout
 
-    if y_var == YVar.DRAWDOWN:
-        data, layout = update_drawdown_graph(df, trace_colourmap, trace_options, layout)
-        return data, layout
+class PriceGraphParams(BaseGraphParam[Literal[YVar.PRICE]]):
+    log_scale: bool
+    percent_scale: bool
+    auto_scale: bool
+    relayout_data: RelayoutData
+    prev_layout: PrevLayout | None
 
-    if y_var == YVar.ROLLING_RETURNS:
-        data, layout = update_rolling_returns_graph(
-            df,
-            trace_colourmap,
-            trace_options,
-            return_duration,
-            return_duration_options,
-            return_annualisation,
-            return_annualisation_options,
-            baseline_trace,
-            baseline_trace_options,
-            rolling_returns_presentation,
-            rolling_returns_distribution_chart_type,
-            layout,
+    def update_graph(self) -> tuple[list[go.Scatter], go.Layout]:
+        return update_price_graph(
+            self.df,
+            self.trace_colourmap,
+            self.trace_options,
+            self.log_scale,
+            self.percent_scale,
+            self.auto_scale,
+            self.relayout_data,
+            self.prev_layout,
+            self.layout,
         )
-        return data, layout
 
-    if y_var == YVar.CALENDAR_RETURNS:
-        data, layout = update_calendar_returns_graph(
-            df,
-            trace_colourmap,
-            trace_options,
-            return_interval,
-            return_interval_options,
-            baseline_trace,
-            baseline_trace_options,
-            layout,
+
+class DrawdownGraphParams(BaseGraphParam[Literal[YVar.DRAWDOWN]]):
+    pass
+
+    def update_graph(self) -> tuple[list[go.Scatter], go.Layout]:
+        return update_drawdown_graph(
+            self.df, self.trace_colourmap, self.trace_options, self.layout
         )
-        return data, layout
-    raise ValueError("Invalid y_var")
 
 
-__all__ = ["PrevLayout", "update_graph"]
+class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
+    return_duration: ReturnDuration
+    return_annualisation: ReturnAnnualisation
+    baseline_trace: str
+    baseline_trace_options: dict[str, str]
+    rolling_returns_presentation: RollingReturnsPresentation
+    rolling_returns_distribution_chart_type: DistributionChartType
+
+    def update_graph(
+        self,
+    ) -> tuple[list[go.Scatter] | list[go.Histogram] | list[go.Box], go.Layout]:
+        return update_rolling_returns_graph(
+            self.df,
+            self.trace_colourmap,
+            self.trace_options,
+            self.return_duration,
+            self.return_annualisation,
+            self.baseline_trace,
+            self.baseline_trace_options,
+            self.rolling_returns_presentation,
+            self.rolling_returns_distribution_chart_type,
+            self.layout,
+        )
+
+
+class CalendarReturnsGraphParams(BaseGraphParam[Literal[YVar.CALENDAR_RETURNS]]):
+    return_interval: ReturnInterval
+    baseline_trace: str
+    baseline_trace_options: dict[str, str]
+
+    def update_graph(
+        self,
+    ) -> tuple[list[go.Bar], go.Layout]:
+        return update_calendar_returns_graph(
+            self.df,
+            self.trace_colourmap,
+            self.trace_options,
+            self.return_interval,
+            self.baseline_trace,
+            self.baseline_trace_options,
+            self.layout,
+        )
+
+
+GraphParams = Annotated[
+    PriceGraphParams
+    | DrawdownGraphParams
+    | RollingReturnsGraphParams
+    | CalendarReturnsGraphParams,
+    Field(discriminator="y_var"),
+]

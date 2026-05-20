@@ -101,7 +101,7 @@ from schemas import (
     YfSecurity,
     parse_security,
 )
-from update_graph import PrevLayout, RelayoutData, update_graph
+from update_graph import GraphParams, PrevLayout, RelayoutData
 
 yf.config.debug.hide_exceptions = False
 
@@ -772,11 +772,8 @@ app.clientside_callback(
     Input("percent-scale-switch", "value"),
     Input("auto-scale-switch", "value"),
     Input("return-duration-selection", "value"),
-    Input("return-duration-selection", "options"),
     Input("return-interval-selection", "value"),
-    Input("return-interval-selection", "options"),
     Input("return-annualisation-selection", "value"),
-    Input("return-annualisation-selection", "options"),
     Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
     Input("baseline-security-selection", "options"),
@@ -796,11 +793,8 @@ def update_security_graph(
     percent_scale: bool,
     auto_scale: bool,
     return_duration: ReturnDuration,
-    return_duration_options: dict[str, str],
     return_interval: ReturnInterval,
-    return_interval_options: dict[str, str],
     return_annualisation: ReturnAnnualisation,
-    return_annualisation_options: dict[str, str],
     interval: Interval,
     baseline_security: str,
     baseline_security_options: dict[str, str],
@@ -809,6 +803,8 @@ def update_security_graph(
     relayout_data: RelayoutData | None,
     prev_layout: PrevLayout | None,
 ):
+    if not selected_securities_strs:
+        return no_update
     securities_colourmap = dict(
         zip(
             selected_securities_options.keys(),
@@ -852,28 +848,31 @@ def update_security_graph(
         + rolling_returns_distribution_chart_type
     )
 
-    data, layout = update_graph(
-        df,
-        securities_colourmap,
-        selected_securities_options,
-        y_var,
-        log_scale,
-        percent_scale,
-        auto_scale,
-        return_duration,
-        return_duration_options,
-        return_interval,
-        return_interval_options,
-        return_annualisation,
-        return_annualisation_options,
-        baseline_security,
-        baseline_security_options,
-        rolling_returns_presentation,
-        rolling_returns_distribution_chart_type,
-        relayout_data,
-        uirevision,
-        prev_layout,
+    relayout_data = relayout_data or {"autosize": True}
+
+    graph_params: GraphParams = TypeAdapter(GraphParams).validate_python(
+        {
+            "df": df,
+            "trace_colourmap": securities_colourmap,
+            "trace_options": selected_securities_options,
+            "y_var": y_var,
+            "log_scale": log_scale,
+            "percent_scale": percent_scale,
+            "auto_scale": auto_scale,
+            "return_duration": return_duration,
+            "return_interval": return_interval,
+            "return_annualisation": return_annualisation,
+            "baseline_trace": baseline_security,
+            "baseline_trace_options": baseline_security_options,
+            "rolling_returns_presentation": rolling_returns_presentation,
+            "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
+            "relayout_data": relayout_data,
+            "uirevision": uirevision,
+            "prev_layout": prev_layout,
+        }
     )
+
+    data, layout = graph_params.update_graph()
     return dict(data=data, layout=layout)
 
 
@@ -1074,11 +1073,8 @@ app.clientside_callback(
     Input("portfolio-inflation-adjustment-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
     Input("portfolio-return-duration-selection", "value"),
-    Input("portfolio-return-duration-selection", "options"),
     Input("portfolio-return-interval-selection", "value"),
-    Input("portfolio-return-interval-selection", "options"),
     Input("portfolio-return-annualisation-selection", "value"),
-    Input("portfolio-return-annualisation-selection", "options"),
     Input("portfolio-baseline-security-selection", "value"),
     Input("portfolio-baseline-security-selection", "options"),
     Input("portfolio-log-scale-switch", "value"),
@@ -1098,11 +1094,8 @@ def update_portfolio_graph(
     adjust_for_inflation: bool,
     y_var: YVar,
     return_duration: ReturnDuration,
-    return_duration_options: dict[str, str],
     return_interval: ReturnInterval,
-    return_interval_options: dict[str, str],
     return_annualisation: ReturnAnnualisation,
-    return_annualisation_options: dict[str, str],
     baseline_portfolio: str,
     baseline_portfolio_options: dict[str, str],
     log_scale: bool,
@@ -1158,28 +1151,30 @@ def update_portfolio_graph(
         + rolling_returns_distribution_chart_type
     )
 
-    data, layout = update_graph(
-        portfolios_df,
-        portfolios_colourmap,
-        portfolio_options,
-        y_var,
-        log_scale,
-        percent_scale,
-        auto_scale,
-        return_duration,
-        return_duration_options,
-        return_interval,
-        return_interval_options,
-        return_annualisation,
-        return_annualisation_options,
-        baseline_portfolio,
-        baseline_portfolio_options,
-        rolling_returns_presentation,
-        rolling_returns_distribution_chart_type,
-        relayout_data,
-        uirevision,
-        prev_layout,
+    relayout_data = relayout_data or {"autosize": True}
+
+    graph_params: GraphParams = TypeAdapter(GraphParams).validate_python(
+        {
+            "df": portfolios_df,
+            "trace_colourmap": portfolios_colourmap,
+            "trace_options": portfolio_options,
+            "y_var": y_var,
+            "log_scale": log_scale,
+            "percent_scale": percent_scale,
+            "auto_scale": auto_scale,
+            "return_duration": return_duration,
+            "return_interval": return_interval,
+            "return_annualisation": return_annualisation,
+            "baseline_trace": baseline_portfolio,
+            "baseline_trace_options": baseline_portfolio_options,
+            "rolling_returns_presentation": rolling_returns_presentation,
+            "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
+            "relayout_data": relayout_data,
+            "uirevision": uirevision,
+            "prev_layout": prev_layout,
+        }
     )
+    data, layout = graph_params.update_graph()
     return dict(data=data, layout=layout)
 
 
