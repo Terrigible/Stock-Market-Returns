@@ -1,5 +1,5 @@
 from glob import glob
-from typing import Annotated, Literal
+from typing import Annotated, Generic, Literal, TypeVar
 
 from pydantic import (
     AfterValidator,
@@ -121,9 +121,12 @@ MasSecurity = Annotated[
 ]
 
 
-class SpxSecurity(BaseModel):
+OthersIndexT = TypeVar("OthersIndexT", bound=OthersIndex)
+
+
+class BaseOthersIndexSecurity(BaseModel, Generic[OthersIndexT]):
     source: Literal["Others"] = "Others"
-    others_index: Literal[OthersIndex.SPX] = OthersIndex.SPX
+    others_index: OthersIndexT
     others_tax_treatment: TaxTreatment
 
     @property
@@ -131,24 +134,16 @@ class SpxSecurity(BaseModel):
         return f"{self.others_index.label} {self.others_tax_treatment.label}"
 
 
-class ShillerSpxSecurity(BaseModel):
-    source: Literal["Others"] = "Others"
-    others_index: Literal[OthersIndex.SHILLER_SPX] = OthersIndex.SHILLER_SPX
-    others_tax_treatment: TaxTreatment
-
-    @property
-    def label(self) -> str:
-        return f"{self.others_index.label} {self.others_tax_treatment.label}"
+class SpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SPX]]):
+    pass
 
 
-class SreitSecurity(BaseModel):
-    source: Literal["Others"] = "Others"
-    others_index: Literal[OthersIndex.SREIT] = OthersIndex.SREIT
-    others_tax_treatment: TaxTreatment = TaxTreatment.GROSS
+class ShillerSpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SHILLER_SPX]]):
+    pass
 
-    @property
-    def label(self) -> str:
-        return f"{self.others_index.label} {self.others_tax_treatment.label}"
+
+class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
+    pass
 
     @field_validator("others_tax_treatment", mode="after")
     @classmethod
@@ -156,7 +151,7 @@ class SreitSecurity(BaseModel):
         return TaxTreatment.GROSS
 
 
-OthersSecurity = Annotated[
+OthersIndexSecurity = Annotated[
     SpxSecurity | ShillerSpxSecurity | SreitSecurity,
     Field(discriminator="others_index"),
 ]
@@ -235,19 +230,13 @@ FundSecurity = Annotated[
 
 
 IndexSecurity = Annotated[
-    MsciSecurity | FredSecurity | MasSecurity | OthersSecurity,
+    MsciSecurity | FredSecurity | MasSecurity | OthersIndexSecurity,
     Field(discriminator="source"),
 ]
 
 
 Security = Annotated[
-    MsciSecurity
-    | FredSecurity
-    | MasSecurity
-    | OthersSecurity
-    | YfSecurity
-    | FtSecurity
-    | FundSecurity,
+    IndexSecurity | YfSecurity | FtSecurity | FundSecurity,
     Field(discriminator="source"),
 ]
 
