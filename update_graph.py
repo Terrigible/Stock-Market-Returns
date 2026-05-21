@@ -1,11 +1,12 @@
 import math
+from functools import cached_property
 from typing import Annotated, Generic, Literal, NotRequired, TypedDict, TypeVar
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from dash import ctx
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, Json, TypeAdapter, computed_field
 
 from models import (
     DistributionChartType,
@@ -15,6 +16,7 @@ from models import (
     RollingReturnsPresentation,
     YVar,
 )
+from schemas import Holding
 
 
 class XAxis(TypedDict):
@@ -238,7 +240,6 @@ def update_rolling_returns_graph(
     return_duration: ReturnDuration,
     return_annualisation: ReturnAnnualisation,
     baseline_trace: str,
-    baseline_trace_options: dict[str, str],
     rolling_returns_presentation: RollingReturnsPresentation,
     rolling_returns_distribution_chart_type: DistributionChartType,
     layout: go.Layout,
@@ -251,7 +252,7 @@ def update_rolling_returns_graph(
         df = df.sub(df[baseline_trace], axis=0, level=0).dropna(
             subset=df.columns.difference([baseline_trace]), how="all"
         )
-        title += f" vs {baseline_trace_options[baseline_trace]}"
+        title += f" vs {trace_options[baseline_trace]}"
 
     layout.update(
         title=title,
@@ -367,7 +368,6 @@ def update_calendar_returns_graph(
     trace_options: dict[str, str],
     return_interval: ReturnInterval,
     baseline_trace: str,
-    baseline_trace_options: dict[str, str],
     layout: go.Layout,
 ):
     layout.update(
@@ -384,7 +384,7 @@ def update_calendar_returns_graph(
             .dropna(subset=df.columns.difference([baseline_trace]), how="all")
             .drop(columns=baseline_trace)
         )
-        title += f" vs {baseline_trace_options[baseline_trace]}"
+        title += f" vs {trace_options[baseline_trace]}"
 
     layout.update(title=title)
 
@@ -431,10 +431,17 @@ class BaseGraphParam(BaseModel, Generic[GraphTypeT]):
 
     df: pd.DataFrame
     trace_colourmap: dict[str, str]
-    trace_options: dict[str, str]
     uirevision: str
 
     y_var: GraphTypeT
+
+    @cached_property
+    def trace_options(self) -> dict[str, str]:
+        holdings = TypeAdapter(list[Json[Holding]]).validate_python(self.df.columns)
+        return {
+            holding.model_dump_json(): holding.label.replace("\n", "<br>")
+            for holding in holdings
+        }
 
     @computed_field
     @property
@@ -486,7 +493,6 @@ class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
     return_duration: ReturnDuration
     return_annualisation: ReturnAnnualisation
     baseline_trace: str
-    baseline_trace_options: dict[str, str]
     rolling_returns_presentation: RollingReturnsPresentation
     rolling_returns_distribution_chart_type: DistributionChartType
 
@@ -500,7 +506,6 @@ class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
             self.return_duration,
             self.return_annualisation,
             self.baseline_trace,
-            self.baseline_trace_options,
             self.rolling_returns_presentation,
             self.rolling_returns_distribution_chart_type,
             self.layout,
@@ -510,7 +515,6 @@ class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
 class CalendarReturnsGraphParams(BaseGraphParam[Literal[YVar.CALENDAR_RETURNS]]):
     return_interval: ReturnInterval
     baseline_trace: str
-    baseline_trace_options: dict[str, str]
 
     def update_graph(
         self,
@@ -521,7 +525,6 @@ class CalendarReturnsGraphParams(BaseGraphParam[Literal[YVar.CALENDAR_RETURNS]])
             self.trace_options,
             self.return_interval,
             self.baseline_trace,
-            self.baseline_trace_options,
             self.layout,
         )
 

@@ -724,7 +724,6 @@ app.clientside_callback(
     Input("return-annualisation-selection", "value"),
     Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
-    Input("baseline-security-selection", "options"),
     Input("rolling-returns-presentation-selection", "value"),
     Input("rolling-returns-distribution-chart-type-selection", "value"),
     Input("graph", "relayoutData"),
@@ -745,7 +744,6 @@ def update_security_graph(
     return_annualisation: ReturnAnnualisation,
     interval: Interval,
     baseline_security: str,
-    baseline_security_options: dict[str, str],
     rolling_returns_presentation: RollingReturnsPresentation,
     rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
@@ -802,7 +800,6 @@ def update_security_graph(
         {
             "df": df,
             "trace_colourmap": securities_colourmap,
-            "trace_options": selected_securities_options,
             "y_var": y_var,
             "log_scale": log_scale,
             "percent_scale": percent_scale,
@@ -811,7 +808,6 @@ def update_security_graph(
             "return_interval": return_interval,
             "return_annualisation": return_annualisation,
             "baseline_trace": baseline_security,
-            "baseline_trace_options": baseline_security_options,
             "rolling_returns_presentation": rolling_returns_presentation,
             "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
             "relayout_data": relayout_data,
@@ -976,7 +972,6 @@ app.clientside_callback(
     Input("portfolio-return-interval-selection", "value"),
     Input("portfolio-return-annualisation-selection", "value"),
     Input("portfolio-baseline-security-selection", "value"),
-    Input("portfolio-baseline-security-selection", "options"),
     Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-auto-scale-switch", "value"),
@@ -997,7 +992,6 @@ def update_portfolio_graph(
     return_interval: ReturnInterval,
     return_annualisation: ReturnAnnualisation,
     baseline_portfolio: str,
-    baseline_portfolio_options: dict[str, str],
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
@@ -1016,9 +1010,6 @@ def update_portfolio_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
-    portfolio_options = {
-        k: v.replace("\n", "<br>") for k, v in portfolio_options.items()
-    }
     portfolios = TypeAdapter(list[Json[Portfolio]]).validate_python(portfolio_strs)
     portfolios_df = pd.concat(
         [
@@ -1061,7 +1052,6 @@ def update_portfolio_graph(
         {
             "df": portfolios_df,
             "trace_colourmap": portfolios_colourmap,
-            "trace_options": portfolio_options,
             "y_var": y_var,
             "log_scale": log_scale,
             "percent_scale": percent_scale,
@@ -1070,7 +1060,6 @@ def update_portfolio_graph(
             "return_interval": return_interval,
             "return_annualisation": return_annualisation,
             "baseline_trace": baseline_portfolio,
-            "baseline_trace_options": baseline_portfolio_options,
             "rolling_returns_presentation": rolling_returns_presentation,
             "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
             "relayout_data": relayout_data,
