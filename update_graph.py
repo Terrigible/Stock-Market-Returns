@@ -481,8 +481,6 @@ class PriceGraphParams(BaseGraphParam[Literal[YVar.PRICE]]):
 
 
 class DrawdownGraphParams(BaseGraphParam[Literal[YVar.DRAWDOWN]]):
-    pass
-
     def update_graph(self) -> tuple[list[go.Scatter], go.Layout]:
         return update_drawdown_graph(
             self.df, self.trace_colourmap, self.trace_options, self.layout
