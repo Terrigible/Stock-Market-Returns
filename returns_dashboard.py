@@ -722,12 +722,12 @@ app.clientside_callback(
     Input("return-duration-selection", "value"),
     Input("return-interval-selection", "value"),
     Input("return-annualisation-selection", "value"),
-    Input("interval-selection", "value"),
     Input("baseline-security-selection", "value"),
     Input("rolling-returns-presentation-selection", "value"),
     Input("rolling-returns-distribution-chart-type-selection", "value"),
     Input("graph", "relayoutData"),
     State("graph-last-layout-state-store", "data"),
+    Input("interval-selection", "value"),
 )
 def update_security_graph(
     selected_securities_strs: list[str],
@@ -742,13 +742,14 @@ def update_security_graph(
     return_duration: ReturnDuration,
     return_interval: ReturnInterval,
     return_annualisation: ReturnAnnualisation,
-    interval: Interval,
     baseline_security: str,
     rolling_returns_presentation: RollingReturnsPresentation,
     rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
     prev_layout: PrevLayout | None,
+    interval: Interval,
 ):
+    interval = Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval
     if not selected_securities_strs:
         return no_update
     securities_colourmap = dict(
@@ -765,7 +766,7 @@ def update_security_graph(
             selected_security.model_dump_json(): transform_data(
                 load_series(
                     selected_security,
-                    Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval,
+                    interval,
                     currency,
                     adjust_for_inflation,
                     cached_securities,
@@ -965,43 +966,44 @@ app.clientside_callback(
 @app.callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
+    State("portfolios", "options"),
+    State("cached-securities-store", "data"),
     Input("portfolio-currency-selection", "value"),
     Input("portfolio-inflation-adjustment-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
+    Input("portfolio-log-scale-switch", "value"),
+    Input("portfolio-percent-scale-switch", "value"),
+    Input("portfolio-auto-scale-switch", "value"),
     Input("portfolio-return-duration-selection", "value"),
     Input("portfolio-return-interval-selection", "value"),
     Input("portfolio-return-annualisation-selection", "value"),
     Input("portfolio-baseline-security-selection", "value"),
-    Input("portfolio-log-scale-switch", "value"),
-    Input("portfolio-percent-scale-switch", "value"),
-    Input("portfolio-auto-scale-switch", "value"),
     Input("portfolio-rolling-returns-presentation-selection", "value"),
     Input("portfolio-rolling-returns-distribution-chart-type-selection", "value"),
     Input("portfolio-graph", "relayoutData"),
-    State("portfolios", "options"),
-    State("cached-securities-store", "data"),
     State("portfolio-graph-last-layout-state-store", "data"),
     prevent_initial_call=True,
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
+    portfolio_options: dict[str, str],
+    yf_securities: dict[str, str],
     currency: Currency,
     adjust_for_inflation: bool,
     y_var: YVar,
+    log_scale: bool,
+    percent_scale: bool,
+    auto_scale: bool,
     return_duration: ReturnDuration,
     return_interval: ReturnInterval,
     return_annualisation: ReturnAnnualisation,
     baseline_portfolio: str,
-    log_scale: bool,
-    percent_scale: bool,
-    auto_scale: bool,
     rolling_returns_presentation: RollingReturnsPresentation,
     rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
-    portfolio_options: dict[str, str],
-    yf_securities: dict[str, str],
     prev_layout: PrevLayout | None,
 ):
+    interval = Interval.MONTHLY
     if not portfolio_strs:
         return no_update
     portfolios_colourmap = dict(
@@ -1011,25 +1013,24 @@ def update_portfolio_graph(
         )
     )
     portfolios = TypeAdapter(list[Json[Portfolio]]).validate_python(portfolio_strs)
-    portfolios_df = pd.concat(
-        [
-            transform_data(
+    portfolios_df = pd.DataFrame(
+        {
+            portfolio.model_dump_json(): transform_data(
                 load_series(
                     portfolio,
-                    Interval.MONTHLY,
+                    interval,
                     currency,
                     adjust_for_inflation,
                     yf_securities,
                 ),
-                Interval.MONTHLY,
+                interval,
                 y_var,
                 return_duration,
                 return_interval,
                 return_annualisation,
-            ).rename(portfolio.model_dump_json())
+            )
             for portfolio in portfolios
-        ],
-        axis=1,
+        }
     )
 
     uirevision = (
