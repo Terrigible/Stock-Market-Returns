@@ -708,6 +708,97 @@ app.clientside_callback(
 )
 
 
+def update_holding_graph(
+    selected_holdings_strs: list[str],
+    selected_holdings_options: dict[str, str],
+    cached_securities: dict[str, str],
+    currency: Currency,
+    adjust_for_inflation: bool,
+    y_var: YVar,
+    log_scale: bool,
+    percent_scale: bool,
+    auto_scale: bool,
+    return_duration: ReturnDuration,
+    return_interval: ReturnInterval,
+    return_annualisation: ReturnAnnualisation,
+    baseline_trace: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
+    relayout_data: RelayoutData | None,
+    prev_layout: PrevLayout | None,
+    interval: Interval,
+):
+    if not selected_holdings_strs:
+        return no_update
+    securities_colourmap = dict(
+        zip(
+            selected_holdings_options.keys(),
+            cycle(DEFAULT_PLOTLY_COLORS),
+        )
+    )
+    selected_holdings = TypeAdapter(list[Json[Holding]]).validate_python(
+        selected_holdings_strs
+    )
+    df = pd.DataFrame(
+        {
+            selected_security.model_dump_json(): transform_data(
+                load_series(
+                    selected_security,
+                    interval,
+                    currency,
+                    adjust_for_inflation,
+                    cached_securities,
+                ),
+                interval,
+                y_var,
+                return_duration,
+                return_interval,
+                return_annualisation,
+            )
+            for selected_security in selected_holdings
+        }
+    )
+
+    uirevision = (
+        currency
+        + str(adjust_for_inflation)
+        + y_var
+        + str(log_scale)
+        + str(percent_scale)
+        + return_duration
+        + return_interval
+        + return_annualisation
+        + baseline_trace
+        + rolling_returns_presentation
+        + rolling_returns_distribution_chart_type
+    )
+
+    relayout_data = relayout_data or {"autosize": True}
+
+    graph_params: GraphParams = TypeAdapter(GraphParams).validate_python(
+        {
+            "df": df,
+            "trace_colourmap": securities_colourmap,
+            "y_var": y_var,
+            "log_scale": log_scale,
+            "percent_scale": percent_scale,
+            "auto_scale": auto_scale,
+            "return_duration": return_duration,
+            "return_interval": return_interval,
+            "return_annualisation": return_annualisation,
+            "baseline_trace": baseline_trace,
+            "rolling_returns_presentation": rolling_returns_presentation,
+            "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
+            "relayout_data": relayout_data,
+            "uirevision": uirevision,
+            "prev_layout": prev_layout,
+        }
+    )
+
+    data, layout = graph_params.update_graph()
+    return dict(data=data, layout=layout)
+
+
 @app.callback(
     Output("graph", "figure"),
     Input("selected-securities", "value"),
@@ -750,75 +841,26 @@ def update_security_graph(
     interval: Interval,
 ):
     interval = Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval
-    if not selected_securities_strs:
-        return no_update
-    securities_colourmap = dict(
-        zip(
-            selected_securities_options.keys(),
-            cycle(DEFAULT_PLOTLY_COLORS),
-        )
+    return update_holding_graph(
+        selected_securities_strs,
+        selected_securities_options,
+        cached_securities,
+        currency,
+        adjust_for_inflation,
+        y_var,
+        log_scale,
+        percent_scale,
+        auto_scale,
+        return_duration,
+        return_interval,
+        return_annualisation,
+        baseline_security,
+        rolling_returns_presentation,
+        rolling_returns_distribution_chart_type,
+        relayout_data,
+        prev_layout,
+        interval,
     )
-    selected_securities = TypeAdapter(list[Json[Security]]).validate_python(
-        selected_securities_strs
-    )
-    df = pd.DataFrame(
-        {
-            selected_security.model_dump_json(): transform_data(
-                load_series(
-                    selected_security,
-                    interval,
-                    currency,
-                    adjust_for_inflation,
-                    cached_securities,
-                ),
-                interval,
-                y_var,
-                return_duration,
-                return_interval,
-                return_annualisation,
-            )
-            for selected_security in selected_securities
-        }
-    )
-
-    uirevision = (
-        currency
-        + str(adjust_for_inflation)
-        + y_var
-        + str(log_scale)
-        + str(percent_scale)
-        + return_duration
-        + return_interval
-        + return_annualisation
-        + baseline_security
-        + rolling_returns_presentation
-        + rolling_returns_distribution_chart_type
-    )
-
-    relayout_data = relayout_data or {"autosize": True}
-
-    graph_params: GraphParams = TypeAdapter(GraphParams).validate_python(
-        {
-            "df": df,
-            "trace_colourmap": securities_colourmap,
-            "y_var": y_var,
-            "log_scale": log_scale,
-            "percent_scale": percent_scale,
-            "auto_scale": auto_scale,
-            "return_duration": return_duration,
-            "return_interval": return_interval,
-            "return_annualisation": return_annualisation,
-            "baseline_trace": baseline_security,
-            "rolling_returns_presentation": rolling_returns_presentation,
-            "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
-            "relayout_data": relayout_data,
-            "uirevision": uirevision,
-            "prev_layout": prev_layout,
-        }
-    )
-
-    data, layout = graph_params.update_graph()
-    return dict(data=data, layout=layout)
 
 
 app.clientside_callback(
@@ -1004,72 +1046,26 @@ def update_portfolio_graph(
     prev_layout: PrevLayout | None,
 ):
     interval = Interval.MONTHLY
-    if not portfolio_strs:
-        return no_update
-    portfolios_colourmap = dict(
-        zip(
-            portfolio_options.keys(),
-            cycle(DEFAULT_PLOTLY_COLORS),
-        )
+    return update_holding_graph(
+        portfolio_strs,
+        portfolio_options,
+        yf_securities,
+        currency,
+        adjust_for_inflation,
+        y_var,
+        log_scale,
+        percent_scale,
+        auto_scale,
+        return_duration,
+        return_interval,
+        return_annualisation,
+        baseline_portfolio,
+        rolling_returns_presentation,
+        rolling_returns_distribution_chart_type,
+        relayout_data,
+        prev_layout,
+        interval,
     )
-    portfolios = TypeAdapter(list[Json[Portfolio]]).validate_python(portfolio_strs)
-    portfolios_df = pd.DataFrame(
-        {
-            portfolio.model_dump_json(): transform_data(
-                load_series(
-                    portfolio,
-                    interval,
-                    currency,
-                    adjust_for_inflation,
-                    yf_securities,
-                ),
-                interval,
-                y_var,
-                return_duration,
-                return_interval,
-                return_annualisation,
-            )
-            for portfolio in portfolios
-        }
-    )
-
-    uirevision = (
-        currency
-        + str(adjust_for_inflation)
-        + y_var
-        + str(log_scale)
-        + str(percent_scale)
-        + return_duration
-        + return_interval
-        + return_annualisation
-        + baseline_portfolio
-        + rolling_returns_presentation
-        + rolling_returns_distribution_chart_type
-    )
-
-    relayout_data = relayout_data or {"autosize": True}
-
-    graph_params: GraphParams = TypeAdapter(GraphParams).validate_python(
-        {
-            "df": portfolios_df,
-            "trace_colourmap": portfolios_colourmap,
-            "y_var": y_var,
-            "log_scale": log_scale,
-            "percent_scale": percent_scale,
-            "auto_scale": auto_scale,
-            "return_duration": return_duration,
-            "return_interval": return_interval,
-            "return_annualisation": return_annualisation,
-            "baseline_trace": baseline_portfolio,
-            "rolling_returns_presentation": rolling_returns_presentation,
-            "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
-            "relayout_data": relayout_data,
-            "uirevision": uirevision,
-            "prev_layout": prev_layout,
-        }
-    )
-    data, layout = graph_params.update_graph()
-    return dict(data=data, layout=layout)
 
 
 app.clientside_callback(
