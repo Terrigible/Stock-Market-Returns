@@ -78,7 +78,6 @@ from schemas import (
     WithdrawalBootstrapStrategy,
     WithdrawalStrategy,
     YfSecurity,
-    parse_security,
 )
 from update_graph import GraphParams, PrevLayout, RelayoutData
 
@@ -798,7 +797,7 @@ def add_allocation(
     if weight is None:
         return no_update
     new_allocation = Allocation(
-        security=parse_security(security_str),
+        security=TypeAdapter(Security).validate_json(security_str),
         weight=weight,
     )
     if new_allocation in portfolio.root:

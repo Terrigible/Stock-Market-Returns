@@ -9,7 +9,6 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    TypeAdapter,
     field_validator,
     model_validator,
 )
@@ -372,8 +371,6 @@ Security = Annotated[
     IndexSecurity | YfSecurity | FtSecurity | FundSecurity,
     Field(discriminator="source"),
 ]
-
-parse_security = TypeAdapter(Security).validate_json
 
 
 class Allocation(BaseModel):
