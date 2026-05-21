@@ -57,7 +57,11 @@ def resample_bme(series: pd.Series):
     return df["price"].set_axis(new_index)
 
 
-class MsciSecurity(BaseModel):
+class BaseSecurity(BaseModel):
+    holding_type: Literal["Security"] = "Security"
+
+
+class MsciSecurity(BaseSecurity):
     source: Literal["MSCI"] = "MSCI"
     msci_base_index: MSCIRegionalIndex | MSCICountryIndex
     msci_size: MSCISize
@@ -108,7 +112,7 @@ class MsciSecurity(BaseModel):
         )
 
 
-class FredTreasurySecurity(BaseModel):
+class FredTreasurySecurity(BaseSecurity):
     source: Literal["FRED"] = "FRED"
     fred_index: Literal[FREDIndex.US_T] = FREDIndex.US_T
     us_treasury_duration: USTreasuryDuration
@@ -129,7 +133,7 @@ class FredTreasurySecurity(BaseModel):
         return series
 
 
-class FredFfrSecurity(BaseModel):
+class FredFfrSecurity(BaseSecurity):
     source: Literal["FRED"] = "FRED"
     fred_index: Literal[FREDIndex.FFR] = FREDIndex.FFR
     currency: Literal["USD"] = "USD"
@@ -152,7 +156,7 @@ FredSecurity = Annotated[
 ]
 
 
-class MasSgsSecurity(BaseModel):
+class MasSgsSecurity(BaseSecurity):
     source: Literal["MAS"] = "MAS"
     mas_index: Literal[MASIndex.SGS] = MASIndex.SGS
     sgs_duration: SGSDuration
@@ -171,7 +175,7 @@ class MasSgsSecurity(BaseModel):
         return series
 
 
-class MasSoraSecurity(BaseModel):
+class MasSoraSecurity(BaseSecurity):
     source: Literal["MAS"] = "MAS"
     mas_index: Literal[MASIndex.SORA] = MASIndex.SORA
     currency: Literal["SGD"] = "SGD"
@@ -197,7 +201,7 @@ MasSecurity = Annotated[
 OthersIndexT = TypeVar("OthersIndexT", bound=OthersIndex)
 
 
-class BaseOthersIndexSecurity(BaseModel, Generic[OthersIndexT]):
+class BaseOthersIndexSecurity(BaseSecurity, Generic[OthersIndexT]):
     source: Literal["Others"] = "Others"
     others_index: OthersIndexT
     others_tax_treatment: TaxTreatment
@@ -252,7 +256,7 @@ OthersIndexSecurity = Annotated[
 ]
 
 
-class YfSecurity(BaseModel):
+class YfSecurity(BaseSecurity):
     source: Literal["YF"] = "YF"
     ticker: str
     currency: str
@@ -269,7 +273,7 @@ class YfSecurity(BaseModel):
         return series
 
 
-class FtSecurity(BaseModel):
+class FtSecurity(BaseSecurity):
     source: Literal["FT"] = "FT"
     ticker: str
     currency: str
@@ -286,7 +290,7 @@ class FtSecurity(BaseModel):
         return series
 
 
-class GreatlinkSecurity(BaseModel):
+class GreatlinkSecurity(BaseSecurity):
     source: Literal["Fund"] = "Fund"
     fund_company: Literal[FundCompany.GREATLINK] = FundCompany.GREATLINK
     fund: GreatLinkFund
@@ -303,7 +307,7 @@ class GreatlinkSecurity(BaseModel):
         return series
 
 
-class GMOSecurity(BaseModel):
+class GMOSecurity(BaseSecurity):
     source: Literal["Fund"] = "Fund"
     fund_company: Literal[FundCompany.GMO] = FundCompany.GMO
     fund: GMOFund
@@ -320,7 +324,7 @@ class GMOSecurity(BaseModel):
         return series
 
 
-class FundsmithSecurity(BaseModel):
+class FundsmithSecurity(BaseSecurity):
     source: Literal["Fund"] = "Fund"
     fund_company: Literal[FundCompany.FUNDSMITH] = FundCompany.FUNDSMITH
     fund: FundsmithFund
@@ -337,7 +341,7 @@ class FundsmithSecurity(BaseModel):
         return series
 
 
-class DimensionalSecurity(BaseModel):
+class DimensionalSecurity(BaseSecurity):
     source: Literal["Fund"] = "Fund"
     fund_company: Literal[FundCompany.DIMENSIONAL] = FundCompany.DIMENSIONAL
     fund: DimensionalFund
@@ -384,6 +388,7 @@ class Allocation(BaseModel):
 class Portfolio(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
+    holding_type: Literal["Portfolio"] = "Portfolio"
     allocations: list[Allocation]
 
     @property
@@ -403,6 +408,19 @@ class Portfolio(BaseModel):
             allocation.model_dump_json(exclude_none=True): allocation.label
             for allocation in self.allocations
         }
+
+
+class NoneHolding(BaseModel):
+    holding_type: Literal["None"] = "None"
+
+    @property
+    def label(self) -> str:
+        return "None"
+
+
+Holding = Annotated[
+    Security | Portfolio | NoneHolding, Field(discriminator="holding_type")
+]
 
 
 def convert_percent_to_decimal(v: float) -> float:

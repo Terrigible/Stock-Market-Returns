@@ -70,8 +70,10 @@ from schemas import (
     AccumulationBootstrapStrategy,
     AccumulationStrategy,
     Allocation,
+    BaseSecurity,
     FtSecurity,
     FundSecurity,
+    Holding,
     IndexSecurity,
     Portfolio,
     Security,
@@ -106,7 +108,7 @@ def convert_price_to_usd(
 
 
 @cache
-def load_data(
+def load_security(
     security_str: str,
     interval: Interval,
     currency: Currency,
@@ -133,6 +135,69 @@ def load_data(
             .reindex(series.index)
         )
     return series.rename_axis("date").rename("price")
+
+
+def load_portfolio(
+    portfolio: Portfolio,
+    currency: Currency,
+    adjust_for_inflation: bool,
+    yf_securities: dict[str, str],
+):
+    securities = [allocation.security for allocation in portfolio.allocations]
+    weights = [allocation.weight for allocation in portfolio.allocations]
+    portfolio_df = pd.concat(
+        [
+            load_security(
+                security.model_dump_json(),
+                Interval.MONTHLY,
+                currency,
+                adjust_for_inflation,
+                yf_securities.get(security.model_dump_json()),
+            )
+            for security in securities
+        ],
+        axis=1,
+    )
+    portfolio_series = (
+        portfolio_df.pct_change()
+        .mul(weights)
+        .div(100)
+        .sum(axis=1, skipna=False)
+        .add(1)
+        .cumprod()
+        .rename("price")
+    )
+    portfolio_series.iloc[
+        portfolio_series.index.get_indexer(
+            pd.Index([portfolio_series.first_valid_index()])
+        )[0]
+        - 1
+    ] = 1
+    portfolio_series = portfolio_series.dropna()
+    return portfolio_series
+
+
+def load_series(
+    holding: Holding,
+    interval: Interval,
+    currency: Currency,
+    adjust_for_inflation: bool,
+    cached_securities: dict[str, str],
+):
+    if isinstance(holding, BaseSecurity):
+        return load_security(
+            holding.model_dump_json(),
+            interval,
+            currency,
+            adjust_for_inflation,
+            cached_securities.get(holding.model_dump_json()),
+        )
+    if isinstance(holding, Portfolio):
+        return load_portfolio(
+            holding, currency, adjust_for_inflation, cached_securities
+        )
+    else:
+        raise ValueError(f"Invalid holding type: {holding.holding_type}")
 
 
 def transform_data(
@@ -700,12 +765,12 @@ def update_security_graph(
     df = pd.DataFrame(
         {
             selected_security.model_dump_json(): transform_data(
-                load_data(
-                    selected_security.model_dump_json(),
+                load_series(
+                    selected_security,
                     Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval,
                     currency,
                     adjust_for_inflation,
-                    cached_securities.get(selected_security.model_dump_json()),
+                    cached_securities,
                 ),
                 interval,
                 y_var,
@@ -892,46 +957,6 @@ app.clientside_callback(
 )
 
 
-def load_portfolio(
-    portfolio: Portfolio,
-    currency: Currency,
-    adjust_for_inflation: bool,
-    yf_securities: dict[str, str],
-):
-    securities = [allocation.security for allocation in portfolio.allocations]
-    weights = [allocation.weight for allocation in portfolio.allocations]
-    portfolio_df = pd.concat(
-        [
-            load_data(
-                security.model_dump_json(),
-                Interval.MONTHLY,
-                currency,
-                adjust_for_inflation,
-                yf_securities.get(security.model_dump_json()),
-            )
-            for security in securities
-        ],
-        axis=1,
-    )
-    portfolio_series = (
-        portfolio_df.pct_change()
-        .mul(weights)
-        .div(100)
-        .sum(axis=1, skipna=False)
-        .add(1)
-        .cumprod()
-        .rename("price")
-    )
-    portfolio_series.iloc[
-        portfolio_series.index.get_indexer(
-            pd.Index([portfolio_series.first_valid_index()])
-        )[0]
-        - 1
-    ] = 1
-    portfolio_series = portfolio_series.dropna()
-    return portfolio_series
-
-
 app.clientside_callback(
     ClientsideFunction(namespace="state", function_name="updateLastLayoutStore"),
     Output("portfolio-graph-last-layout-state-store", "data"),
@@ -998,8 +1023,12 @@ def update_portfolio_graph(
     portfolios_df = pd.concat(
         [
             transform_data(
-                load_portfolio(
-                    portfolio, currency, adjust_for_inflation, yf_securities
+                load_series(
+                    portfolio,
+                    Interval.MONTHLY,
+                    currency,
+                    adjust_for_inflation,
+                    yf_securities,
                 ),
                 Interval.MONTHLY,
                 y_var,
@@ -1177,8 +1206,12 @@ def update_backtest_accumulation_strategies(
 def simulate_backtest_accumulation_strategy(
     yf_securities: dict[str, str], strategy: AccumulationStrategy
 ):
-    strategy_series = load_portfolio(
-        strategy.strategy_portfolio, strategy.currency, False, yf_securities
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
     )
     cash_returns = (
         (
@@ -1487,8 +1520,12 @@ def simulate_backtest_withdrawal_strategy(
     yf_securities: dict[str, str], strategy: WithdrawalStrategy
 ):
 
-    strategy_series = load_portfolio(
-        strategy.strategy_portfolio, strategy.currency, False, yf_securities
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
     )
     cpi = (
         np.ones(len(strategy_series))
@@ -1773,8 +1810,12 @@ def simulate_bootstrap_accumulation_strategy(
     strategy: AccumulationBootstrapStrategy,
 ):
 
-    strategy_series = load_portfolio(
-        strategy.strategy_portfolio, strategy.currency, False, yf_securities
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
     ).pct_change()
     cpi = load_cpi(strategy.currency).pct_change()
     cash_returns = (
@@ -1823,8 +1864,12 @@ def simulate_bootstrap_withdrawal_strategy(
     strategy: WithdrawalBootstrapStrategy,
 ):
 
-    strategy_series = load_portfolio(
-        strategy.strategy_portfolio, strategy.currency, False, yf_securities
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
     )
     if strategy.adjust_for_inflation:
         cpi_series = load_cpi(strategy.currency)
