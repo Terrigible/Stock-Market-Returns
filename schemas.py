@@ -19,6 +19,7 @@ from funcs.loaders import (
     load_sgd_interest_rates_returns,
     load_sgs_returns,
     load_us_treasury_returns,
+    load_yf_data,
     read_ft_data,
     read_greatlink_data,
     read_msci_data,
@@ -266,8 +267,8 @@ class YfSecurity(BaseSecurity):
     def label(self) -> str:
         return f"yfinance: {self.ticker} {self.tax_treatment.label}"
 
-    def load_data(self, interval: Interval, cached_security: str | None):
-        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
+    def load_data(self, interval: Interval):
+        series = load_yf_data(self.ticker, self.tax_treatment)
         if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
         return series

@@ -10,12 +10,10 @@ import plotly.graph_objects as go
 import polars as pl
 import python_calamine  # noqa: F401 # Reduces latency for first pd.read_excel call
 import scipy.interpolate  # noqa: F401 # Reduces latency for first pd.Resampler.interpolate call
-import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from pydantic import Json, TypeAdapter, ValidationError
-from yfinance.exceptions import YFException
 
 from funcs.calcs_numpy import (
     calculate_dca_portfolio_value_with_fees_and_interest_vector,
@@ -34,6 +32,7 @@ from funcs.loaders import (
     load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
     load_usdsgd,
+    validate_yf_ticker,
 )
 from layout import app_layout
 from models import (
@@ -83,8 +82,6 @@ from schemas import (
 )
 from update_graph import GraphParams, PrevLayout, RelayoutData
 
-yf.config.debug.hide_exceptions = False
-
 
 def convert_price_to_usd(
     series: pd.Series,
@@ -116,7 +113,7 @@ def load_security(
     cached_security: str | None,
 ):
     security: Security = TypeAdapter(Security).validate_json(security_str)
-    if isinstance(security, (YfSecurity, FtSecurity)):
+    if isinstance(security, FtSecurity):
         series = security.load_data(interval, cached_security)
     else:
         series = security.load_data(interval)
@@ -428,14 +425,16 @@ def add_index(
 @app.callback(
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
-    Output("cached-securities-store", "data"),
+    Output("yf-valid-securities-store", "data"),
+    Output("yf-ticker-currency-store", "data"),
     Input("add-yf-security-button", "n_clicks"),
     State("selected-securities", "value"),
     State("selected-securities", "options"),
     State("yf-security-input", "value"),
     State("yf-security-tax-treatment-selection", "value"),
     State("yf-invalid-securities-store", "data"),
-    State("cached-securities-store", "data"),
+    State("yf-valid-securities-store", "data"),
+    State("yf-ticker-currency-store", "data"),
     prevent_initial_call=True,
     running=[(Output("add-yf-security-button", "disabled"), True, False)],
 )
@@ -445,88 +444,68 @@ def add_yf_security(
     selected_securities_options: dict[str, str],
     yf_security: str | None,
     tax_treatment: TaxTreatment,
-    yf_invalid_securities_store: list[str],
-    yf_securities_store: dict[str, str],
+    yf_invalid_ticker_store: list[str],
+    yf_valid_ticker_store: dict[str, str],
+    yf_ticker_currency_store: dict[str, str | None],
 ):
     if not yf_security:
         return no_update
     if ";" in yf_security:
         set_props("toast-store", {"data": "Invalid character: ;"})
         return no_update
-    if yf_security in yf_invalid_securities_store:
+    if yf_security in yf_invalid_ticker_store:
         set_props("toast-store", {"data": "The selected ticker is not available"})
         return no_update
-    for stored_yf_security_str in yf_securities_store:
-        stored_yf_security = json.loads(stored_yf_security_str)
-        if yf_security != stored_yf_security["ticker"]:
-            continue
-        if tax_treatment != stored_yf_security["tax_treatment"]:
-            continue
-        if stored_yf_security_str in selected_securities:
-            return no_update
-        if stored_yf_security_str in selected_securities_options:
-            selected_securities.append(stored_yf_security_str)
-            return (
-                selected_securities,
-                selected_securities_options,
-                no_update,
-            )
-    ticker = yf.Ticker(yf_security)
-    if ticker.history_metadata == {}:
-        yf_invalid_securities_store.append(yf_security)
+    if yf_security in yf_valid_ticker_store:
+        yf_security = yf_valid_ticker_store[yf_security]
+    if yf_security in yf_valid_ticker_store.values():
+        new_yf_security = YfSecurity(
+            ticker=yf_security,
+            currency=yf_ticker_currency_store[yf_security] or "USD",
+            tax_treatment=tax_treatment,
+        )
+        new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
+        if new_yf_security_json in selected_securities_options:
+            selected_securities.append(new_yf_security_json)
+            return selected_securities, no_update, no_update, no_update
+        selected_securities.append(new_yf_security_json)
+        selected_securities_options[new_yf_security_json] = new_yf_security.label
+
+        return (selected_securities, selected_securities_options, no_update, no_update)
+
+    (validated_ticker, currency) = validate_yf_ticker(yf_security)
+
+    if validated_ticker is None:
+        yf_invalid_ticker_store.append(yf_security)
         set_props("toast-store", {"data": "The selected ticker is not available"})
-        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
+        set_props("yf-invalid-securities-store", {"data": yf_invalid_ticker_store})
         return no_update
-    ticker_symbol = ticker.ticker
-    if not ticker_symbol:
-        yf_invalid_securities_store.append(yf_security)
-        set_props("toast-store", {"data": "The selected ticker is not available"})
-        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
-        return no_update
-    if "currency" not in ticker.history_metadata:
-        currency = "USD"
+
+    if currency is None:
         set_props(
             "toast-store",
             {
                 "data": "The selected ticker does not have currency information. Defaulting to USD."
             },
         )
-    else:
-        currency = ticker.history_metadata["currency"]
+
+    yf_valid_ticker_store[yf_security] = validated_ticker
+    yf_ticker_currency_store[validated_ticker] = currency
+
     new_yf_security = YfSecurity(
-        ticker=ticker_symbol,
-        currency=currency,
+        ticker=validated_ticker,
+        currency=currency or "USD",
         tax_treatment=tax_treatment,
     )
     new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
     selected_securities.append(new_yf_security_json)
     selected_securities_options[new_yf_security_json] = new_yf_security.label
-    try:
-        df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
-    except YFException as e:
-        yf_invalid_securities_store.append(yf_security)
-        set_props("toast-store", {"data": f"The selected ticker is not available: {e}"})
-        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
-        return no_update
-    if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
-        manually_adjusted = (
-            df["Close"]
-            .add(df["Dividends"].mul(0.7))
-            .div(df["Close"].shift(1))
-            .fillna(1)
-            .cumprod()
-        )
-        df["Adj Close"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
-            df["Adj Close"].iloc[-1]
-        )
-    yf_securities_store[new_yf_security_json] = df["Adj Close"].to_json(
-        orient="index", date_format="iso"
-    )
 
     return (
         selected_securities,
         selected_securities_options,
-        yf_securities_store,
+        yf_valid_ticker_store,
+        yf_ticker_currency_store,
     )
 
 

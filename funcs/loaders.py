@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re
+from functools import lru_cache
 from glob import glob
 from io import StringIO
 from json import JSONDecodeError
@@ -9,8 +10,11 @@ from json import JSONDecodeError
 import httpx
 import numpy as np
 import pandas as pd
+import yfinance as yf
 from bs4 import BeautifulSoup
 from pandas.tseries.offsets import BDay, BMonthEnd, Day, MonthEnd, Week
+
+from models import TaxTreatment
 
 
 def fast_bday_upsample(series: pd.Series):
@@ -750,6 +754,49 @@ def get_sgx_dividends(ticker: str):
     return df
 
 
+def validate_yf_ticker(
+    input_ticker: str,
+) -> tuple[
+    str | None,
+    str | None,
+]:
+    ticker = yf.Ticker(input_ticker)
+    if len(ticker.info) < 10:
+        return (None, None)
+
+    validated_ticker = ticker.ticker
+    if not validated_ticker:
+        return (None, None)
+    if "currency" not in ticker.history_metadata:
+        currency = None
+    else:
+        currency: str | None = ticker.history_metadata.get("currency")
+
+    return (validated_ticker, currency)
+
+
+@lru_cache
+def download_yf_data(ticker_str: str):
+    ticker = yf.Ticker(ticker_str)
+    return ticker.history(period="max", auto_adjust=False).tz_localize(None)
+
+
+def load_yf_data(ticker_str: str, tax_treatment: TaxTreatment):
+    df = download_yf_data(ticker_str).copy()
+    if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
+        manually_adjusted = (
+            df["Close"]
+            .add(df["Dividends"].mul(0.7))
+            .div(df["Close"].shift(1))
+            .fillna(1)
+            .cumprod()
+        )
+        df["Adj Close"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
+            df["Adj Close"].iloc[-1]
+        )
+    return df["Adj Close"]
+
+
 __all__ = [
     "fast_bday_upsample",
     "fast_bday_downsample",
@@ -779,4 +826,6 @@ __all__ = [
     "get_ft_api_key",
     "download_ft_data",
     "get_sgx_dividends",
+    "validate_yf_ticker",
+    "load_yf_data",
 ]

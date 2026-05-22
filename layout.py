@@ -227,6 +227,16 @@ app_layout = html.Div(
                                     data=[],
                                 ),
                                 dcc.Store(
+                                    id="yf-valid-securities-store",
+                                    storage_type="memory",
+                                    data={},
+                                ),
+                                dcc.Store(
+                                    id="yf-ticker-currency-store",
+                                    storage_type="memory",
+                                    data={},
+                                ),
+                                dcc.Store(
                                     id="cached-securities-store",
                                     storage_type="memory",
                                     data={},
