@@ -6,6 +6,7 @@ from functools import lru_cache
 from glob import glob
 from io import StringIO
 from json import JSONDecodeError
+from typing import TypedDict
 
 import httpx
 import numpy as np
@@ -646,6 +647,7 @@ def read_greatlink_data(fund_name: str):
     )["price"]
 
 
+@lru_cache
 def get_ft_api_key():
     res = httpx.get("https://markets.ft.com/research/webservices/securities/v1/docs")
     source = re.search("source=([0-9a-f]*)", res.content.decode())
@@ -657,12 +659,24 @@ def get_ft_api_key():
     return api_key
 
 
-def download_ft_data(
-    symbol: str, api_key: str | None = None
-) -> tuple[pd.Series, str, str, str]:
+class Basic(TypedDict):
+    symbol: str
+    currency: str
+
+
+class Details(TypedDict):
+    issueType: str
+    inceptionDate: str
+
+
+class FtSymbolInfo(TypedDict):
+    basic: Basic
+    details: Details
+
+
+def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
+    api_key = get_ft_api_key()
     with httpx.Client() as client:
-        if api_key is None:
-            api_key = get_ft_api_key()
         details_response = client.get(
             "https://markets.ft.com/research/webservices/securities/v1/details",
             params={
@@ -670,32 +684,55 @@ def download_ft_data(
                 "symbols": symbol,
             },
         )
-        if details_response.is_client_error:
-            if (
-                details_response.json()["error"]["errors"][0]["reason"]
-                == "MissingAPIKey"
-            ):
-                api_key = get_ft_api_key()
-                details_response = client.get(
-                    "https://markets.ft.com/research/webservices/securities/v1/details",
-                    params={
-                        "source": api_key,
-                        "symbols": symbol,
-                    },
-                )
-            else:
-                raise ValueError(
-                    details_response.json()["error"]["errors"][0]["message"]
-                )
-        else:
-            details_response.raise_for_status()
-        item = details_response.json()["data"]["items"][0]
-        ticker = item["basic"]["symbol"]
-        currency = item["basic"]["currency"]
-        if item["details"]["issueType"] == "OF":
+        if (
+            details_response.is_client_error
+            and details_response.json()["error"]["errors"][0]["reason"]
+            == "MissingAPIKey"
+        ):
+            get_ft_api_key.cache_clear()
+            api_key = get_ft_api_key()
+            details_response = client.get(
+                "https://markets.ft.com/research/webservices/securities/v1/details",
+                params={
+                    "source": api_key,
+                    "symbols": symbol,
+                },
+            )
+        if (
+            details_response.is_client_error
+            and details_response.json()["error"]["errors"][0]["reason"]
+            == "InvalidParameter"
+        ):
+            return None
+        details_response.raise_for_status()
+        response = client.get(
+            "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
+            params={
+                "source": api_key,
+                "symbols": symbol,
+                "dayCount": 7,
+            },
+        )
+        response.raise_for_status()
+        if (
+            response.json()["data"]["items"][0]["historicalSeries"].get(
+                "historicalQuoteData"
+            )
+            is None
+        ):
+            return None
+        info: FtSymbolInfo = details_response.json()["data"]["items"][0]
+        return info
+
+
+@lru_cache
+def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pd.Series:
+    api_key = get_ft_api_key()
+    with httpx.Client() as client:
+        if issue_type == "OF":
             historical_tearsheet_response = client.get(
                 "https://markets.ft.com/data/funds/tearsheet/historical",
-                params={"s": ticker},
+                params={"s": symbol},
                 headers={},
             )
             historical_prices_mod = BeautifulSoup(
@@ -703,16 +740,17 @@ def download_ft_data(
             ).select_one(".mod-tearsheet-historical-prices")
 
             if historical_prices_mod is None:
-                raise ValueError("Unable to retrieve inception date")
-            data_mod_config = historical_prices_mod["data-mod-config"]
-            if isinstance(data_mod_config, str) and "inception" in data_mod_config:
-                start_date = pd.Timestamp(
-                    json.loads(data_mod_config)["inception"]
-                ).tz_convert(None)
+                start_date = pd.Timestamp(inception_date)
             else:
-                raise ValueError("Unable to retrieve inception date")
+                data_mod_config = historical_prices_mod["data-mod-config"]
+                if isinstance(data_mod_config, str) and "inception" in data_mod_config:
+                    start_date = pd.Timestamp(
+                        json.loads(data_mod_config)["inception"]
+                    ).tz_convert(None)
+                else:
+                    start_date = pd.Timestamp(inception_date)
         else:
-            start_date = pd.Timestamp(item["details"]["inceptionDate"])
+            start_date = pd.Timestamp(inception_date)
         response = client.get(
             "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
             params={
@@ -722,12 +760,20 @@ def download_ft_data(
             },
         )
         if (
-            response.json()["data"]["items"][0]["historicalSeries"].get(
-                "historicalQuoteData"
-            )
-            is None
+            response.is_client_error
+            and response.json()["error"]["errors"][0]["reason"] == "MissingAPIKey"
         ):
-            raise ValueError("No data for this fund or index.")
+            get_ft_api_key.cache_clear()
+            api_key = get_ft_api_key()
+            response = client.get(
+                "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
+                params={
+                    "source": api_key,
+                    "symbols": symbol,
+                    "dayCount": (pd.Timestamp.today() - start_date).days,
+                },
+            )
+        response.raise_for_status()
         df = (
             pd.DataFrame(
                 response.json()["data"]["items"][0]["historicalSeries"][
@@ -739,9 +785,10 @@ def download_ft_data(
         )
         series = df["close"].rename("price")
 
-        return series, ticker, currency, api_key
+        return series
 
 
+@lru_cache
 def get_sgx_dividends(ticker: str):
     res = httpx.get(f"https://www.dividends.sg/view/{ticker}")
     df = pd.read_html(StringIO(res.content.decode()))[0][["Ex Date", "Amount"]].rename(
@@ -752,6 +799,18 @@ def get_sgx_dividends(ticker: str):
     df.loc[:, "date"] = pd.to_datetime(df["date"])
     df = df.groupby(df["date"])["dividends"].sum().astype(float)
     return df
+
+
+def load_ft_data(symbol: str, issue_type: str, inception_date: str, dividends: bool):
+    series = download_ft_data(symbol, issue_type, inception_date).copy()
+    if dividends:
+        dividends_series = get_sgx_dividends(symbol.removesuffix(":SES")).copy()
+        dividends_series = dividends_series.reindex(series.index, fill_value=0)
+        manually_adjusted = (
+            series.add(dividends_series).div(series.shift(1)).fillna(1).cumprod()
+        )
+        series = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(series.iloc[-1])
+    return series
 
 
 def validate_yf_ticker(

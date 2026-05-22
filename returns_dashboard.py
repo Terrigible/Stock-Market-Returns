@@ -1,4 +1,3 @@
-import json
 from functools import cache, partial
 from itertools import cycle
 from typing import TypedDict
@@ -24,8 +23,7 @@ from funcs.calcs_numpy import (
     simulate_bootstrap_withdrawal,
 )
 from funcs.loaders import (
-    download_ft_data,
-    get_sgx_dividends,
+    get_ft_symbol_info,
     load_cpi,
     load_fed_funds_returns,
     load_fred_usd_fx,
@@ -113,10 +111,7 @@ def load_security(
     cached_security: str | None,
 ):
     security: Security = TypeAdapter(Security).validate_json(security_str)
-    if isinstance(security, FtSecurity):
-        series = security.load_data(interval, cached_security)
-    else:
-        series = security.load_data(interval)
+    series = security.load_data(interval)
 
     series = convert_price_to_usd(series, security.currency)
     if currency == Currency.SGD:
@@ -512,15 +507,15 @@ def add_yf_security(
 @app.callback(
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
-    Output("cached-securities-store", "data", allow_duplicate=True),
-    Output("ft-api-key-store", "data"),
+    Output("ft-valid-securities-store", "data", allow_duplicate=True),
+    Output("ft-ticker-info-store", "data"),
     Input("add-ft-security-button", "n_clicks"),
     State("selected-securities", "value"),
     State("selected-securities", "options"),
     State("ft-security-input", "value"),
     State("ft-invalid-securities-store", "data"),
-    State("cached-securities-store", "data"),
-    State("ft-api-key-store", "data"),
+    State("ft-valid-securities-store", "data"),
+    State("ft-ticker-info-store", "data"),
     prevent_initial_call=True,
     running=[(Output("add-ft-security-button", "disabled"), True, False)],
 )
@@ -529,71 +524,65 @@ def add_ft_security(
     selected_securities: list[str],
     selected_securities_options: dict,
     ft_security: str,
-    ft_invalid_securities_store: list[str],
-    ft_securities_store: dict[str, str],
-    stored_ft_api_key: str | None,
+    ft_invalid_ticker_store: list[str],
+    ft_valid_ticker_store: dict[str, str],
+    ft_ticker_info_store: dict[str, str],
 ):
     if not ft_security:
         return no_update
-    if ";" in ft_security:
-        set_props("toast-store", {"data": "Invalid character: ;"})
-        return no_update
-    if ft_security in ft_invalid_securities_store:
-        set_props("toast-store", {"data": "The selected ticker is not available"})
-        return no_update
-    for ft_security_str in ft_securities_store:
-        stored_ft_security = json.loads(ft_security_str)
-        if ft_security != stored_ft_security["ticker"]:
-            continue
-        if ft_security_str in selected_securities:
+    if ft_security in ft_valid_ticker_store:
+        ft_security = ft_valid_ticker_store[ft_security]
+    if ft_security in ft_valid_ticker_store.values():
+        new_ft_security_str = ft_ticker_info_store[ft_security]
+        if new_ft_security_str in selected_securities:
             return no_update
-        if ft_security_str in selected_securities_options:
-            selected_securities.append(ft_security_str)
+        if new_ft_security_str in selected_securities_options:
+            selected_securities.append(new_ft_security_str)
             return (
                 selected_securities,
                 selected_securities_options,
                 no_update,
                 no_update,
             )
-    try:
-        series, ticker, currency, ft_api_key = download_ft_data(
-            ft_security, stored_ft_api_key
+
+        new_ft_security = FtSecurity.model_validate_json(new_ft_security_str)
+        selected_securities.append(new_ft_security_str)
+        selected_securities_options[new_ft_security_str] = new_ft_security.label
+        return (
+            selected_securities,
+            selected_securities_options,
+            no_update,
+            no_update,
         )
-    except ValueError as e:
-        ft_invalid_securities_store.append(ft_security)
-        set_props("toast-store", {"data": f"Error: {e}"})
-        set_props("ft-invalid-securities-store", {"data": ft_invalid_securities_store})
+
+    symbol_info = get_ft_symbol_info(ft_security)
+    if symbol_info is None:
+        ft_invalid_ticker_store.append(ft_security)
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        set_props("ft-invalid-securities-store", {"data": ft_invalid_ticker_store})
         return no_update
 
-    dividends = False
+    ft_valid_ticker_store[ft_security] = symbol_info["basic"]["symbol"]
 
-    if ft_security.upper().endswith(":SES"):
-        dividends = True
-        dividends_series = get_sgx_dividends(ticker.removesuffix(":SES"))
-        dividends_series = dividends_series.reindex(series.index, fill_value=0)
-        manually_adjusted = (
-            series.add(dividends_series).div(series.shift(1)).fillna(1).cumprod()
-        )
-        series = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(series.iloc[-1])
+    dividends = ft_security.upper().endswith(":SES")
 
     new_ft_security = FtSecurity(
-        ticker=ticker,
-        currency=currency,
+        ticker=symbol_info["basic"]["symbol"],
+        currency=symbol_info["basic"]["currency"],
+        issue_type=symbol_info["details"]["issueType"],
+        inception_date=symbol_info["details"]["inceptionDate"],
         dividends=dividends,
     )
     new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
+    ft_ticker_info_store[symbol_info["basic"]["symbol"]] = new_ft_security_str
     selected_securities.append(new_ft_security_str)
     selected_securities_options[new_ft_security_str] = new_ft_security.label
-
-    ft_securities_store[new_ft_security_str] = series.to_json(
-        orient="index", date_format="iso"
-    )
 
     return (
         selected_securities,
         selected_securities_options,
-        ft_securities_store,
-        ft_api_key,
+        ft_valid_ticker_store,
+        ft_ticker_info_store,
     )
 
 

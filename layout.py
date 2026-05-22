@@ -280,14 +280,19 @@ app_layout = html.Div(
                                     id="ft-security-selection-container",
                                 ),
                                 dcc.Store(
-                                    id="ft-api-key-store",
-                                    storage_type="local",
-                                    data=None,
-                                ),
-                                dcc.Store(
                                     id="ft-invalid-securities-store",
                                     storage_type="memory",
                                     data=[],
+                                ),
+                                dcc.Store(
+                                    id="ft-valid-securities-store",
+                                    storage_type="memory",
+                                    data={},
+                                ),
+                                dcc.Store(
+                                    id="ft-ticker-info-store",
+                                    storage_type="memory",
+                                    data={},
                                 ),
                                 dcc.Store(
                                     id="toast-store", storage_type="memory", data=""

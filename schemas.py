@@ -1,5 +1,4 @@
 from glob import glob
-from io import StringIO
 from typing import Annotated, Generic, Literal, TypeVar
 
 import pandas as pd
@@ -16,6 +15,7 @@ from funcs.loaders import (
     fast_bday_downsample,
     fast_bday_upsample,
     load_fed_funds_returns,
+    load_ft_data,
     load_sgd_interest_rates_returns,
     load_sgs_returns,
     load_us_treasury_returns,
@@ -278,14 +278,18 @@ class FtSecurity(BaseSecurity):
     source: Literal["FT"] = "FT"
     ticker: str
     currency: str
+    issue_type: str
+    inception_date: str
     dividends: bool
 
     @property
     def label(self) -> str:
         return f"FT: {self.ticker} {('(With Dividends)') * self.dividends}"
 
-    def load_data(self, interval: Interval, cached_security: str | None):
-        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
+    def load_data(self, interval: Interval):
+        series = load_ft_data(
+            self.ticker, self.issue_type, self.inception_date, self.dividends
+        )
         if interval == Interval.MONTHLY:
             series = series.pipe(resample_bme)
         return series
