@@ -108,7 +108,6 @@ def load_security(
     interval: Interval,
     currency: Currency,
     adjust_for_inflation: bool,
-    cached_security: str | None,
 ):
     security: Security = TypeAdapter(Security).validate_json(security_str)
     series = security.load_data(interval)
@@ -133,7 +132,6 @@ def load_portfolio(
     portfolio: Portfolio,
     currency: Currency,
     adjust_for_inflation: bool,
-    yf_securities: dict[str, str],
 ):
     securities = [allocation.security for allocation in portfolio.allocations]
     weights = [allocation.weight for allocation in portfolio.allocations]
@@ -144,7 +142,6 @@ def load_portfolio(
                 Interval.MONTHLY,
                 currency,
                 adjust_for_inflation,
-                yf_securities.get(security.model_dump_json()),
             )
             for security in securities
         ],
@@ -174,7 +171,6 @@ def load_series(
     interval: Interval,
     currency: Currency,
     adjust_for_inflation: bool,
-    cached_securities: dict[str, str],
 ):
     if isinstance(holding, BaseSecurity):
         return load_security(
@@ -182,12 +178,9 @@ def load_series(
             interval,
             currency,
             adjust_for_inflation,
-            cached_securities.get(holding.model_dump_json()),
         )
     if isinstance(holding, Portfolio):
-        return load_portfolio(
-            holding, currency, adjust_for_inflation, cached_securities
-        )
+        return load_portfolio(holding, currency, adjust_for_inflation)
     else:
         raise ValueError(f"Invalid holding type: {holding.holding_type}")
 
@@ -679,7 +672,6 @@ app.clientside_callback(
 def update_holding_graph(
     selected_holdings_strs: list[str],
     selected_holdings_options: dict[str, str],
-    cached_securities: dict[str, str],
     currency: Currency,
     adjust_for_inflation: bool,
     y_var: YVar,
@@ -715,7 +707,6 @@ def update_holding_graph(
                     interval,
                     currency,
                     adjust_for_inflation,
-                    cached_securities,
                 ),
                 interval,
                 y_var,
@@ -771,7 +762,6 @@ def update_holding_graph(
     Output("graph", "figure"),
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
-    Input("cached-securities-store", "data"),
     Input("currency-selection", "value"),
     Input("inflation-adjustment-switch", "value"),
     Input("y-var-selection", "value"),
@@ -791,7 +781,6 @@ def update_holding_graph(
 def update_security_graph(
     selected_securities_strs: list[str],
     selected_securities_options: dict[str, str],
-    cached_securities: dict[str, str],
     currency: Currency,
     adjust_for_inflation: bool,
     y_var: YVar,
@@ -812,7 +801,6 @@ def update_security_graph(
     return update_holding_graph(
         selected_securities_strs,
         selected_securities_options,
-        cached_securities,
         currency,
         adjust_for_inflation,
         y_var,
@@ -977,7 +965,6 @@ app.clientside_callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     State("portfolios", "options"),
-    State("cached-securities-store", "data"),
     Input("portfolio-currency-selection", "value"),
     Input("portfolio-inflation-adjustment-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
@@ -997,7 +984,6 @@ app.clientside_callback(
 def update_portfolio_graph(
     portfolio_strs: list[str],
     portfolio_options: dict[str, str],
-    yf_securities: dict[str, str],
     currency: Currency,
     adjust_for_inflation: bool,
     y_var: YVar,
@@ -1017,7 +1003,6 @@ def update_portfolio_graph(
     return update_holding_graph(
         portfolio_strs,
         portfolio_options,
-        yf_securities,
         currency,
         adjust_for_inflation,
         y_var,
@@ -1157,15 +1142,12 @@ def update_backtest_accumulation_strategies(
     return strategies, strategy_options
 
 
-def simulate_backtest_accumulation_strategy(
-    yf_securities: dict[str, str], strategy: AccumulationStrategy
-):
+def simulate_backtest_accumulation_strategy(strategy: AccumulationStrategy):
     strategy_series = load_series(
         strategy.strategy_portfolio,
         Interval.MONTHLY,
         strategy.currency,
         False,
-        yf_securities,
     )
     cash_returns = (
         (
@@ -1210,7 +1192,6 @@ def simulate_backtest_accumulation_strategy(
     Input("backtest-accumulation-index-by-start-date", "value"),
     Input("backtest-accumulation-y-var-selection", "value"),
     Input("backtest-accumulation-drawdown-type-selection", "value"),
-    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_backtest_accumulation_strategy_graph(
@@ -1219,7 +1200,6 @@ def update_backtest_accumulation_strategy_graph(
     index_by_start_date: bool,
     y_var: BacktestYVar,
     drawdown_type: DrawdownType,
-    yf_securities: dict[str, str],
 ):
     if not strategy_strs:
         return {
@@ -1237,9 +1217,7 @@ def update_backtest_accumulation_strategy_graph(
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
         strategy = AccumulationStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_accumulation_strategy(
-            yf_securities, strategy
-        )
+        portfolio_values = simulate_backtest_accumulation_strategy(strategy)
         investment_horizon = strategy.investment_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
@@ -1325,7 +1303,6 @@ def handle_backtest_accumulation_strategy_graph_interaction(click_data: ClickDat
     State("backtest-accumulation-strategies", "value"),
     State("backtest-accumulation-strategies", "options"),
     State("backtest-accumulation-index-by-start-date", "value"),
-    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def show_backtest_accumulation_strategy_modal(
@@ -1334,7 +1311,6 @@ def show_backtest_accumulation_strategy_modal(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
-    yf_securities: dict[str, str],
 ):
     if not clicked_date_str:
         return False, {}
@@ -1348,9 +1324,7 @@ def show_backtest_accumulation_strategy_modal(
     traces = []
     for strategy_str in strategy_strs:
         strategy = AccumulationStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_accumulation_strategy(
-            yf_securities, strategy
-        )
+        portfolio_values = simulate_backtest_accumulation_strategy(strategy)
         investment_horizon = strategy.investment_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
@@ -1470,16 +1444,13 @@ def update_backtest_withdrawal_strategies(
     return strategies, strategy_options
 
 
-def simulate_backtest_withdrawal_strategy(
-    yf_securities: dict[str, str], strategy: WithdrawalStrategy
-):
+def simulate_backtest_withdrawal_strategy(strategy: WithdrawalStrategy):
 
     strategy_series = load_series(
         strategy.strategy_portfolio,
         Interval.MONTHLY,
         strategy.currency,
         False,
-        yf_securities,
     )
     cpi = (
         np.ones(len(strategy_series))
@@ -1512,7 +1483,6 @@ def simulate_backtest_withdrawal_strategy(
     Input("backtest-withdrawal-index-by-start-date", "value"),
     Input("backtest-withdrawal-y-var-selection", "value"),
     Input("backtest-withdrawal-drawdown-type-selection", "value"),
-    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_backtest_withdrawal_strategy_graph(
@@ -1521,7 +1491,6 @@ def update_backtest_withdrawal_strategy_graph(
     index_by_start_date: bool,
     y_var: BacktestYVar,
     drawdown_type: DrawdownType,
-    yf_securities: dict[str, str],
 ):
     if not strategy_strs:
         return {
@@ -1539,9 +1508,7 @@ def update_backtest_withdrawal_strategy_graph(
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
         strategy = WithdrawalStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_withdrawal_strategy(
-            yf_securities, strategy
-        )
+        portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
         withdrawal_horizon = strategy.withdrawal_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)
@@ -1619,7 +1586,6 @@ def handle_backtest_withdrawal_strategy_graph_interaction(click_data: ClickData,
     State("backtest-withdrawal-strategies", "value"),
     State("backtest-withdrawal-strategies", "options"),
     State("backtest-withdrawal-index-by-start-date", "value"),
-    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def show_backtest_withdrawal_strategy_modal(
@@ -1628,7 +1594,6 @@ def show_backtest_withdrawal_strategy_modal(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
-    yf_securities: dict[str, str],
 ):
     if not clicked_date_str:
         return False, {}
@@ -1642,9 +1607,7 @@ def show_backtest_withdrawal_strategy_modal(
     traces = []
     for strategy_str in strategy_strs:
         strategy = WithdrawalStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_withdrawal_strategy(
-            yf_securities, strategy
-        )
+        portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
         withdrawal_horizon = strategy.withdrawal_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)
@@ -1759,17 +1722,12 @@ def _build_quantile_fan_traces(
     return traces
 
 
-def simulate_bootstrap_accumulation_strategy(
-    yf_securities: dict[str, str],
-    strategy: AccumulationBootstrapStrategy,
-):
-
+def simulate_bootstrap_accumulation_strategy(strategy: AccumulationBootstrapStrategy):
     strategy_series = load_series(
         strategy.strategy_portfolio,
         Interval.MONTHLY,
         strategy.currency,
         False,
-        yf_securities,
     ).pct_change()
     cpi = load_cpi(strategy.currency).pct_change()
     cash_returns = (
@@ -1814,7 +1772,6 @@ def simulate_bootstrap_accumulation_strategy(
 
 
 def simulate_bootstrap_withdrawal_strategy(
-    yf_securities: dict[str, str],
     strategy: WithdrawalBootstrapStrategy,
 ):
 
@@ -1823,7 +1780,6 @@ def simulate_bootstrap_withdrawal_strategy(
         Interval.MONTHLY,
         strategy.currency,
         False,
-        yf_securities,
     )
     if strategy.adjust_for_inflation:
         cpi_series = load_cpi(strategy.currency)
@@ -1958,7 +1914,6 @@ def update_bootstrap_accumulation_strategies(
     State("bootstrap-accumulation-strategies", "options"),
     Input("bootstrap-accumulation-y-var-selection", "value"),
     Input("bootstrap-accumulation-log-scale-switch", "value"),
-    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_bootstrap_accumulation_graph(
@@ -1966,7 +1921,6 @@ def update_bootstrap_accumulation_graph(
     strategy_options: dict[str, str],
     y_var: BootstrapYVar,
     log_scale: bool,
-    yf_securities: dict[str, str],
 ):
     if not strategy_strs:
         return {
@@ -1981,9 +1935,7 @@ def update_bootstrap_accumulation_graph(
     all_traces = []
     for strategy_str in strategy_strs:
         strategy = AccumulationBootstrapStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_bootstrap_accumulation_strategy(
-            yf_securities, strategy
-        )
+        portfolio_values = simulate_bootstrap_accumulation_strategy(strategy)
         investment_horizon = strategy.investment_horizon
         months = np.arange(investment_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
@@ -2107,7 +2059,6 @@ def update_bootstrap_withdrawal_strategies(
     State("bootstrap-withdrawal-strategies", "options"),
     Input("bootstrap-withdrawal-y-var-selection", "value"),
     Input("bootstrap-withdrawal-log-scale-switch", "value"),
-    State("cached-securities-store", "data"),
     prevent_initial_call=True,
 )
 def update_bootstrap_withdrawal_graph(
@@ -2115,7 +2066,6 @@ def update_bootstrap_withdrawal_graph(
     strategy_options: dict[str, str],
     y_var: BootstrapYVar,
     log_scale: bool,
-    yf_securities: dict[str, str],
 ):
     if not strategy_strs:
         return {
@@ -2130,9 +2080,7 @@ def update_bootstrap_withdrawal_graph(
     all_traces = []
     for strategy_str in strategy_strs:
         strategy = WithdrawalBootstrapStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_bootstrap_withdrawal_strategy(
-            yf_securities, strategy
-        )
+        portfolio_values = simulate_bootstrap_withdrawal_strategy(strategy)
         withdrawal_horizon = strategy.withdrawal_horizon
         months = np.arange(withdrawal_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:

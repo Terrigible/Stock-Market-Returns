@@ -236,11 +236,6 @@ app_layout = html.Div(
                                     storage_type="memory",
                                     data={},
                                 ),
-                                dcc.Store(
-                                    id="cached-securities-store",
-                                    storage_type="memory",
-                                    data={},
-                                ),
                                 html.Div(
                                     [
                                         dbc.Label(
