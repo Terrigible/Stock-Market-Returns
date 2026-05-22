@@ -7,10 +7,11 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              *
              * @param {object} figure An object containing a 'layout' property (e.g., a Plotly figure object).
              * @param {string} yVar The key (Y-axis variable name) under which to store the layout.
+             *   Corresponds to Python enum YVar.PRICE.
              * @returns {object} The updated layout store object.
              */
             function (figure, yVar) {
-                if (yVar === "price") {
+                if (yVar === "price") { // YVar.PRICE
                     return JSON.parse(JSON.stringify(figure.layout));
                 }
             },
@@ -53,6 +54,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Hides tax treatment selection for certain indices.
              *
              * @param {string} othersIndex The selected others index value.
+             *   Compared against Python enum OthersIndex.SREIT.
              * @returns {Object} Style object for the container.
              */
             function (othersIndex) {
@@ -66,6 +68,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Hides duration selection for FFR index.
              *
              * @param {string} fredIndex The selected FRED index value.
+             *   Compared against Python enum FREDIndex.FFR.
              * @returns {Object} Style object for the container.
              */
             function (fredIndex) {
@@ -77,6 +80,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Hides duration selection for SORA index.
              *
              * @param {string} masIndex The selected MAS index value.
+             *   Compared against Python enum MASIndex.SORA.
              * @returns {Object} Style object for the container.
              */
             function (masIndex) {
@@ -88,6 +92,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Helper function to compute visibility styles based on y_var.
              *
              * @param {string} yVar The selected y-axis variable.
+             *   Compared against Python enum YVar values: PRICE, ROLLING_RETURNS, CALENDAR_RETURNS.
              * @returns {Array} Array of style objects for containers.
              */
             function (yVar) {
@@ -117,6 +122,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Shows drawdown type container for max_drawdown selection.
              *
              * @param {string} yVar The selected y-axis variable.
+             *   Compared against Python enum BacktestYVar.MAX_DRAWDOWN / BootstrapYVar.MAX_DRAWDOWN.
              * @returns {Object} Style object for the container.
              */
             function (yVar) {
@@ -128,6 +134,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
              * Shows chart type container for distribution presentation.
              *
              * @param {string} presentation The selected presentation type.
+             *   Compared against Python enum RollingReturnsPresentation.DISTRIBUTION.
              * @returns {Object} Style object for the container.
              */
             function (presentation) {
@@ -216,9 +223,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 var total = 0;
                 for (var i = 0; i < allocationStrings.length; i++) {
                     var allocation = JSON.parse(allocationStrings[i]);
-                    for (var key in allocation) {
-                        total += allocation[key];
-                    }
+                    total += allocation["weight"];
                 }
                 return "Sum of Weights: " + total + "%";
             },

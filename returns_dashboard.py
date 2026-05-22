@@ -1,7 +1,5 @@
 import json
-from functools import cache, partial, reduce
-from glob import glob
-from io import StringIO
+from functools import cache, partial
 from itertools import cycle
 from typing import TypedDict
 
@@ -16,6 +14,7 @@ import yfinance as yf
 from dash import ClientsideFunction, Dash, ctx, no_update, set_props
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
+from pydantic import Json, TypeAdapter, ValidationError
 from yfinance.exceptions import YFException
 
 from funcs.calcs_numpy import (
@@ -28,46 +27,63 @@ from funcs.calcs_numpy import (
 )
 from funcs.loaders import (
     download_ft_data,
-    fast_bday_downsample,
-    fast_bday_upsample,
     get_sgx_dividends,
     load_cpi,
     load_fed_funds_returns,
     load_fred_usd_fx,
     load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
-    load_sgs_returns,
-    load_us_treasury_returns,
     load_usdsgd,
-    read_ft_data,
-    read_greatlink_data,
-    read_msci_data,
-    read_shiller_sp500_data,
 )
 from layout import app_layout
 from models import (
+    BacktestYVar,
+    BootstrapYVar,
+    Currency,
     DimensionalFund,
+    DistributionChartType,
+    DrawdownType,
+    FREDIndex,
+    FundCompany,
     FundsmithFund,
     GMOFund,
     GreatLinkFund,
+    IndexProvider,
+    Interval,
+    MASIndex,
     MSCICountryIndex,
+    MSCIIndexType,
     MSCIRegionalIndex,
+    MSCISize,
+    MSCIStyle,
+    OthersIndex,
+    ReturnAnnualisation,
+    ReturnDuration,
+    ReturnInterval,
+    RollingReturnsPresentation,
+    SGSDuration,
+    TaxTreatment,
+    USTreasuryDuration,
+    YVar,
 )
-from update_graph import PrevLayout, RelayoutData, update_graph
+from schemas import (
+    AccumulationBootstrapStrategy,
+    AccumulationStrategy,
+    Allocation,
+    BaseSecurity,
+    FtSecurity,
+    FundSecurity,
+    Holding,
+    IndexSecurity,
+    Portfolio,
+    Security,
+    WithdrawalBootstrapStrategy,
+    WithdrawalStrategy,
+    YfSecurity,
+)
+from update_graph import GraphParams, PrevLayout, RelayoutData
 
 yf.config.debug.hide_exceptions = False
-
-
-def resample_bme(series: pd.Series):
-    df = (
-        series.rename("price")
-        .to_frame()
-        .assign(date=series.index)
-        .resample("BME")
-        .last()
-    )
-    new_index = df.index[:-1].union([df["date"].iloc[-1]])
-    return df["price"].set_axis(new_index)
 
 
 def convert_price_to_usd(
@@ -92,101 +108,21 @@ def convert_price_to_usd(
 
 
 @cache
-def load_data(
+def load_security(
     security_str: str,
-    interval: str,
-    currency: str,
+    interval: Interval,
+    currency: Currency,
     adjust_for_inflation: bool,
     cached_security: str | None,
 ):
-    security: dict[str, str] = json.loads(security_str)
-    source = security["source"]
-    if source == "MSCI":
-        series = read_msci_data(
-            f"data/"
-            f"MSCI/"
-            f"{security['msci_base_index']}/"
-            f"{security['msci_size']}/"
-            f"{security['msci_style']}/"
-            f"*{security['msci_tax_treatment']} {interval}.csv"
-        )
-    elif source == "FRED":
-        if security["fred_index"] == "US-T":
-            series = (
-                load_us_treasury_returns()[security["us_treasury_duration"]]
-                .dropna()
-                .pipe(fast_bday_downsample)
-            )
-            if interval == "Monthly":
-                series = series.pipe(resample_bme)
-        elif security["fred_index"] == "FFR":
-            fed_funds_returns = load_fed_funds_returns()
-            series = fed_funds_returns.pipe(fast_bday_downsample)
-            if interval == "Monthly":
-                series = fed_funds_returns.pipe(resample_bme)
-        else:
-            raise ValueError(f"Invalid index: {security}")
-    elif source == "MAS":
-        if security["mas_index"] == "SGS":
-            series = (
-                load_sgs_returns()[security["sgs_duration"]]
-                .dropna()
-                .pipe(fast_bday_downsample)
-            )
-            series = convert_price_to_usd(series, "SGD")
-            if interval == "Monthly":
-                series = series.pipe(resample_bme)
-        elif security["mas_index"] == "SORA":
-            sgd_interest_rates_returns = load_sgd_interest_rates_returns()
-            sgd_interest_rates_returns = convert_price_to_usd(
-                sgd_interest_rates_returns, "SGD"
-            )
-            series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
-            if interval == "Monthly":
-                series = sgd_interest_rates_returns.pipe(resample_bme)
-        else:
-            raise ValueError(f"Invalid index: {security}")
-    elif source == "Others":
-        if security["others_index"] == "SPX":
-            series = read_ft_data(f"S&P 500 USD {security['others_tax_treatment']}")
-            if interval == "Daily":
-                series = series.pipe(fast_bday_upsample)
-        elif security["others_index"] == "SHILLER_SPX":
-            series = read_shiller_sp500_data(security["others_tax_treatment"])
-            if interval == "Daily":
-                series = series.pipe(fast_bday_upsample)
-        elif security["others_index"] == "SREIT":
-            series = read_ft_data("iEdge S-REIT Leaders USD Gross")
-        else:
-            raise ValueError(f"Invalid index: {security}")
-        if interval == "Monthly":
-            series = series.pipe(resample_bme)
-    elif source in ["YF", "FT"]:
-        ticker_currency = security["currency"]
-        series = pd.read_json(StringIO(cached_security), orient="index", typ="series")
-        series = convert_price_to_usd(series, ticker_currency)
-        if interval == "Monthly":
-            series = series.pipe(resample_bme)
-    elif source == "Fund":
-        fund_company = security["fund_company"]
-        fund = security["fund"]
-        fund_currency = security["currency"]
-        if fund_company == "GreatLink":
-            series = read_greatlink_data(fund)
-        elif fund_company == "GMO":
-            series = read_ft_data("GMO Quality Investment Fund")
-        elif fund_company == "Fundsmith":
-            series = read_ft_data(f"Fundsmith {fund.replace('Class ', '')} EUR Acc")
-        elif fund_company == "Dimensional":
-            series = read_ft_data(f"Dimensional {fund} GBP Accumulation")
-        else:
-            raise ValueError(f"Invalid fund: {fund}")
-        series = convert_price_to_usd(series, fund_currency)
-        if interval == "Monthly":
-            series = series.pipe(resample_bme)
+    security: Security = TypeAdapter(Security).validate_json(security_str)
+    if isinstance(security, (YfSecurity, FtSecurity)):
+        series = security.load_data(interval, cached_security)
     else:
-        raise ValueError(f"Invalid index: {security}")
-    if currency == "SGD":
+        series = security.load_data(interval)
+
+    series = convert_price_to_usd(series, security.currency)
+    if currency == Currency.SGD:
         series = series.mul(
             load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
         )
@@ -201,17 +137,80 @@ def load_data(
     return series.rename_axis("date").rename("price")
 
 
+def load_portfolio(
+    portfolio: Portfolio,
+    currency: Currency,
+    adjust_for_inflation: bool,
+    yf_securities: dict[str, str],
+):
+    securities = [allocation.security for allocation in portfolio.allocations]
+    weights = [allocation.weight for allocation in portfolio.allocations]
+    portfolio_df = pd.concat(
+        [
+            load_security(
+                security.model_dump_json(),
+                Interval.MONTHLY,
+                currency,
+                adjust_for_inflation,
+                yf_securities.get(security.model_dump_json()),
+            )
+            for security in securities
+        ],
+        axis=1,
+    )
+    portfolio_series = (
+        portfolio_df.pct_change()
+        .mul(weights)
+        .div(100)
+        .sum(axis=1, skipna=False)
+        .add(1)
+        .cumprod()
+        .rename("price")
+    )
+    portfolio_series.iloc[
+        portfolio_series.index.get_indexer(
+            pd.Index([portfolio_series.first_valid_index()])
+        )[0]
+        - 1
+    ] = 1
+    portfolio_series = portfolio_series.dropna()
+    return portfolio_series
+
+
+def load_series(
+    holding: Holding,
+    interval: Interval,
+    currency: Currency,
+    adjust_for_inflation: bool,
+    cached_securities: dict[str, str],
+):
+    if isinstance(holding, BaseSecurity):
+        return load_security(
+            holding.model_dump_json(),
+            interval,
+            currency,
+            adjust_for_inflation,
+            cached_securities.get(holding.model_dump_json()),
+        )
+    if isinstance(holding, Portfolio):
+        return load_portfolio(
+            holding, currency, adjust_for_inflation, cached_securities
+        )
+    else:
+        raise ValueError(f"Invalid holding type: {holding.holding_type}")
+
+
 def transform_data(
     series: pd.Series,
-    interval: str,
-    y_var: str,
-    return_duration: str,
-    return_interval: str,
-    return_annualisation: str,
+    interval: Interval,
+    y_var: YVar,
+    return_duration: ReturnDuration,
+    return_interval: ReturnInterval,
+    return_annualisation: ReturnAnnualisation,
 ) -> pd.Series:
-    if y_var == "price":
+    if y_var == YVar.PRICE:
         return series
-    if y_var == "drawdown":
+    if y_var == YVar.DRAWDOWN:
         return series.div(series.cummax()).sub(1)
     return_durations = {
         "1mo": 1,
@@ -227,10 +226,10 @@ def transform_data(
         "25y": 300,
         "30y": 360,
     }
-    if y_var == "rolling_returns":
-        if interval == "Monthly":
+    if y_var == YVar.ROLLING_RETURNS:
+        if interval == Interval.MONTHLY:
             series = series.pct_change(return_durations[return_duration])
-        elif interval == "Daily":
+        elif interval == Interval.DAILY:
             series = series.div(
                 series.reindex(
                     series.index
@@ -241,10 +240,10 @@ def transform_data(
             ).sub(1)
         else:
             raise ValueError("Invalid interval")
-        if return_annualisation == "annualised":
+        if return_annualisation == ReturnAnnualisation.ANNUALISED:
             series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
         return series.dropna()
-    if y_var == "calendar_returns":
+    if y_var == YVar.CALENDAR_RETURNS:
         df_pl = pl.from_pandas(series.reset_index())
         df_pl = (
             df_pl.sort("date")
@@ -308,11 +307,9 @@ app.clientside_callback(
     Output("msci-index-selection", "value"),
     Input("msci-index-type-selection", "value"),
 )
-def update_msci_index_options(index_type: str):
-    if index_type == "Regional":
-        return MSCIRegionalIndex.to_dict(), MSCIRegionalIndex.WORLD
-    if index_type == "Country":
-        return MSCICountryIndex.to_dict(), MSCICountryIndex.AUSTRALIA
+def update_msci_index_options(index_type: MSCIIndexType):
+    options = MSCIIndexType(index_type).indexes
+    return options.to_dict(), list(options)[0]
 
 
 app.clientside_callback(
@@ -358,150 +355,66 @@ app.clientside_callback(
     State("selected-securities", "value"),
     State("selected-securities", "options"),
     State("index-provider-selection", "value"),
-    State("index-provider-selection", "options"),
     State("msci-index-selection", "value"),
-    State("msci-index-selection", "options"),
     State("msci-size-selection", "value"),
-    State("msci-size-selection", "options"),
     State("msci-style-selection", "value"),
-    State("msci-style-selection", "options"),
     State("msci-tax-treatment-selection", "value"),
     State("fred-index-selection", "value"),
-    State("fred-index-selection", "options"),
     State("us-treasury-duration-selection", "value"),
-    State("us-treasury-duration-selection", "options"),
     State("mas-index-selection", "value"),
-    State("mas-index-selection", "options"),
     State("sgs-duration-selection", "value"),
-    State("sgs-duration-selection", "options"),
     State("others-index-selection", "value"),
-    State("others-index-selection", "options"),
     State("others-tax-treatment-selection", "value"),
 )
 def add_index(
     _,
     selected_securities: None | list[str],
     selected_securities_options: dict[str, str],
-    index_provider: str,
-    index_provider_options: dict[str, str],
-    msci_base_index: str,
-    msci_base_index_options: dict[str, str],
-    msci_size: str,
-    msci_size_options: dict[str, str],
-    msci_style: str,
-    msci_style_options: dict[str, str],
-    msci_tax_treatment: str,
-    fred_index: str,
-    fred_index_options: dict[str, str],
-    us_treasury_duration: str,
-    us_treasury_duration_options: dict[str, str],
-    mas_index: str,
-    mas_index_options: dict[str, str],
-    sgs_duration: str,
-    sgs_duration_options: dict[str, str],
-    others_index: str,
-    others_index_options: dict[str, str],
-    others_tax_treatment: str,
+    index_provider: IndexProvider,
+    msci_base_index: MSCIRegionalIndex | MSCICountryIndex,
+    msci_size: MSCISize,
+    msci_style: MSCIStyle,
+    msci_tax_treatment: TaxTreatment,
+    fred_index: FREDIndex,
+    us_treasury_duration: USTreasuryDuration,
+    mas_index: MASIndex,
+    sgs_duration: SGSDuration,
+    others_index: OthersIndex,
+    others_tax_treatment: TaxTreatment,
 ):
-    if index_provider == "MSCI":
-        if not glob(
-            f"data/"
-            f"{index_provider}/"
-            f"{msci_base_index}/"
-            f"{msci_size}/"
-            f"{msci_style}/"
-            f"* {msci_tax_treatment}*.csv"
-        ):
-            set_props("toast-store", {"data": "The constructed index is not available"})
-            return no_update
-
-        index_json = json.dumps(
+    try:
+        model: IndexSecurity = TypeAdapter(IndexSecurity).validate_python(
             {
-                "source": "MSCI",
+                "source": index_provider,
                 "msci_base_index": msci_base_index,
                 "msci_size": msci_size,
                 "msci_style": msci_style,
                 "msci_tax_treatment": msci_tax_treatment,
-            }
-        )
-        index_name_template = [
-            index_provider_options[index_provider],
-            msci_base_index_options[msci_base_index],
-            (None if msci_size == "STANDARD" else msci_size_options[msci_size]),
-            (
-                "Cap"
-                if msci_size in ["SMALL", "SMID", "MID", "LARGE"]
-                and msci_style == "BLEND"
-                else None
-            ),
-            (None if msci_style == "BLEND" else msci_style_options[msci_style]),
-            msci_tax_treatment,
-        ]
-        index_name = " ".join(
-            field for field in index_name_template if field is not None
-        )
-
-    elif index_provider == "FRED":
-        if fred_index == "US-T":
-            index_json = json.dumps(
-                {
-                    "source": "FRED",
-                    "fred_index": fred_index,
-                    "us_treasury_duration": us_treasury_duration,
-                }
-            )
-            index_name = (
-                f"{us_treasury_duration_options[us_treasury_duration]} "
-                f"{fred_index_options[fred_index]}"
-            )
-        elif fred_index == "FFR":
-            index_json = json.dumps(
-                {
-                    "source": "FRED",
-                    "fred_index": fred_index,
-                }
-            )
-            index_name = fred_index_options[fred_index]
-        else:
-            set_props("toast-store", {"data": "The constructed index is not available"})
-            return no_update
-
-    elif index_provider == "MAS":
-        if mas_index == "SGS":
-            index_json = json.dumps(
-                {
-                    "source": "MAS",
-                    "mas_index": mas_index,
-                    "sgs_duration": sgs_duration,
-                }
-            )
-            index_name = (
-                f"{sgs_duration_options[sgs_duration]} {mas_index_options[mas_index]}"
-            )
-        elif mas_index == "SORA":
-            index_json = json.dumps(
-                {
-                    "source": "MAS",
-                    "mas_index": mas_index,
-                }
-            )
-            index_name = mas_index_options[mas_index]
-        else:
-            set_props("toast-store", {"data": "The constructed index is not available"})
-            return no_update
-
-    else:
-        others_tax_treatment = (
-            "Gross" if others_index in ["SREIT"] else others_tax_treatment
-        )
-        index_json = json.dumps(
-            {
-                "source": "Others",
+                "fred_index": fred_index,
+                "us_treasury_duration": us_treasury_duration,
+                "mas_index": mas_index,
+                "sgs_duration": sgs_duration,
                 "others_index": others_index,
                 "others_tax_treatment": others_tax_treatment,
             }
         )
-        index_name = f"{others_index_options[others_index]} {others_tax_treatment}"
+    except ValidationError as e:
+        set_props(
+            "toast-store",
+            {
+                "data": "\n".join(
+                    err["msg"]
+                    for err in e.errors(
+                        include_url=False,
+                        include_context=False,
+                        include_input=False,
+                    )
+                )
+            },
+        )
+        return no_update
+    index_json = model.model_dump_json(exclude_none=True)
+    index_name = model.label
 
     if selected_securities is None:
         return [index_json], {index_json: index_name}
@@ -531,7 +444,7 @@ def add_yf_security(
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
     yf_security: str | None,
-    tax_treatment: str,
+    tax_treatment: TaxTreatment,
     yf_invalid_securities_store: list[str],
     yf_securities_store: dict[str, str],
 ):
@@ -565,6 +478,11 @@ def add_yf_security(
         set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
         return no_update
     ticker_symbol = ticker.ticker
+    if not ticker_symbol:
+        yf_invalid_securities_store.append(yf_security)
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
+        return no_update
     if "currency" not in ticker.history_metadata:
         currency = "USD"
         set_props(
@@ -575,18 +493,14 @@ def add_yf_security(
         )
     else:
         currency = ticker.history_metadata["currency"]
-    new_yf_security = json.dumps(
-        {
-            "source": "YF",
-            "ticker": ticker_symbol,
-            "currency": currency,
-            "tax_treatment": tax_treatment,
-        }
+    new_yf_security = YfSecurity(
+        ticker=ticker_symbol,
+        currency=currency,
+        tax_treatment=tax_treatment,
     )
-    selected_securities.append(new_yf_security)
-    selected_securities_options[new_yf_security] = (
-        f"yfinance: {ticker_symbol} {tax_treatment}"
-    )
+    new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
+    selected_securities.append(new_yf_security_json)
+    selected_securities_options[new_yf_security_json] = new_yf_security.label
     try:
         df = ticker.history(period="max", auto_adjust=False).tz_localize(None)
     except YFException as e:
@@ -594,7 +508,7 @@ def add_yf_security(
         set_props("toast-store", {"data": f"The selected ticker is not available: {e}"})
         set_props("yf-invalid-securities-store", {"data": yf_invalid_securities_store})
         return no_update
-    if tax_treatment == "Net" and "Dividends" in df.columns:
+    if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
             .add(df["Dividends"].mul(0.7))
@@ -605,7 +519,7 @@ def add_yf_security(
         df["Adj Close"] = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(
             df["Adj Close"].iloc[-1]
         )
-    yf_securities_store[new_yf_security] = df["Adj Close"].to_json(
+    yf_securities_store[new_yf_security_json] = df["Adj Close"].to_json(
         orient="index", date_format="iso"
     )
 
@@ -672,27 +586,25 @@ def add_ft_security(
         set_props("ft-invalid-securities-store", {"data": ft_invalid_securities_store})
         return no_update
 
-    new_ft_security = {
-        "source": "FT",
-        "ticker": ticker,
-        "currency": currency,
-        "dividends": False,
-    }
+    dividends = False
 
     if ft_security.upper().endswith(":SES"):
-        new_ft_security["dividends"] = True
-        dividends = get_sgx_dividends(ticker.removesuffix(":SES"))
-        dividends = dividends.reindex(series.index, fill_value=0)
+        dividends = True
+        dividends_series = get_sgx_dividends(ticker.removesuffix(":SES"))
+        dividends_series = dividends_series.reindex(series.index, fill_value=0)
         manually_adjusted = (
-            series.add(dividends).div(series.shift(1)).fillna(1).cumprod()
+            series.add(dividends_series).div(series.shift(1)).fillna(1).cumprod()
         )
         series = manually_adjusted.div(manually_adjusted.iloc[-1]).mul(series.iloc[-1])
 
-    new_ft_security_str = json.dumps(new_ft_security)
-    selected_securities.append(new_ft_security_str)
-    selected_securities_options[new_ft_security_str] = (
-        f"FT: {ticker} {('(With Dividends)') * new_ft_security['dividends']}"
+    new_ft_security = FtSecurity(
+        ticker=ticker,
+        currency=currency,
+        dividends=dividends,
     )
+    new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
+    selected_securities.append(new_ft_security_str)
+    selected_securities_options[new_ft_security_str] = new_ft_security.label
 
     ft_securities_store[new_ft_security_str] = series.to_json(
         orient="index", date_format="iso"
@@ -711,19 +623,11 @@ def add_ft_security(
     Output("fund-selection", "value"),
     Input("fund-company-selection", "value"),
 )
-def update_fund_selection_options(fund_company: str):
-    if fund_company == "GreatLink":
-        return GreatLinkFund.to_dict(), GreatLinkFund.ASEAN_GROWTH_FUND
-    if fund_company == "GMO":
-        return GMOFund.to_dict(), GMOFund.QUALITY_INVESTMENT_FUND
-    if fund_company == "Fundsmith":
-        return FundsmithFund.to_dict(), FundsmithFund.EQUITY_FUND_CLASS_T
-    if fund_company == "Dimensional":
-        return DimensionalFund.to_dict(), DimensionalFund.WORLD_EQUITY_FUND
-    return (
-        {},
-        None,
-    )
+def update_fund_selection_options(fund_company: FundCompany | None):
+    if fund_company is None:
+        return {}, None
+    fund_class = FundCompany(fund_company).funds
+    return fund_class.to_dict(), list(fund_class)[0]
 
 
 @app.callback(
@@ -740,28 +644,17 @@ def add_fund(
     _,
     selected_securities: list[str],
     selected_securities_options: dict[str, str],
-    fund_company: str,
-    fund: str,
+    fund_company: FundCompany,
+    fund: GreatLinkFund | GMOFund | FundsmithFund | DimensionalFund,
 ):
-    if fund_company == "GreatLink":
-        currency = "SGD"
-    elif fund_company == "GMO":
-        currency = "USD"
-    elif fund_company == "Fundsmith":
-        currency = "EUR"
-    elif fund_company == "Dimensional":
-        currency = "GBP"
-    else:
-        return no_update
-    security_json = json.dumps(
+    fund_security: FundSecurity = TypeAdapter(FundSecurity).validate_python(
         {
-            "source": "Fund",
             "fund_company": fund_company,
             "fund": fund,
-            "currency": currency,
         }
     )
-    security_name = f"{fund_company} {fund}"
+    security_json = fund_security.model_dump_json(exclude_none=True)
+    security_name = fund_security.label
     if security_json in selected_securities:
         return no_update
     selected_securities.append(security_json)
@@ -815,70 +708,46 @@ app.clientside_callback(
 )
 
 
-@app.callback(
-    Output("graph", "figure"),
-    Input("selected-securities", "value"),
-    Input("selected-securities", "options"),
-    Input("cached-securities-store", "data"),
-    Input("currency-selection", "value"),
-    Input("inflation-adjustment-switch", "value"),
-    Input("y-var-selection", "value"),
-    Input("log-scale-switch", "value"),
-    Input("percent-scale-switch", "value"),
-    Input("auto-scale-switch", "value"),
-    Input("return-duration-selection", "value"),
-    Input("return-duration-selection", "options"),
-    Input("return-interval-selection", "value"),
-    Input("return-interval-selection", "options"),
-    Input("return-annualisation-selection", "value"),
-    Input("return-annualisation-selection", "options"),
-    Input("interval-selection", "value"),
-    Input("baseline-security-selection", "value"),
-    Input("baseline-security-selection", "options"),
-    Input("rolling-returns-presentation-selection", "value"),
-    Input("rolling-returns-distribution-chart-type-selection", "value"),
-    Input("graph", "relayoutData"),
-    State("graph-last-layout-state-store", "data"),
-)
-def update_security_graph(
-    selected_securities: list[str],
-    selected_securities_options: dict[str, str],
+def update_holding_graph(
+    selected_holdings_strs: list[str],
+    selected_holdings_options: dict[str, str],
     cached_securities: dict[str, str],
-    currency: str,
+    currency: Currency,
     adjust_for_inflation: bool,
-    y_var: str,
+    y_var: YVar,
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    return_duration: str,
-    return_duration_options: dict[str, str],
-    return_interval: str,
-    return_interval_options: dict[str, str],
-    return_annualisation: str,
-    return_annualisation_options: dict[str, str],
-    interval: str,
-    baseline_security: str,
-    baseline_security_options: dict[str, str],
-    rolling_returns_presentation: str,
-    rolling_returns_distribution_chart_type: str,
+    return_duration: ReturnDuration,
+    return_interval: ReturnInterval,
+    return_annualisation: ReturnAnnualisation,
+    baseline_trace: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
     prev_layout: PrevLayout | None,
+    interval: Interval,
 ):
+    if not selected_holdings_strs:
+        return no_update
     securities_colourmap = dict(
         zip(
-            selected_securities_options.keys(),
+            selected_holdings_options.keys(),
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
+    selected_holdings = TypeAdapter(list[Json[Holding]]).validate_python(
+        selected_holdings_strs
+    )
     df = pd.DataFrame(
         {
-            selected_security: transform_data(
-                load_data(
+            selected_security.model_dump_json(): transform_data(
+                load_series(
                     selected_security,
-                    "Monthly" if y_var == "calendar_returns" else interval,
+                    interval,
                     currency,
                     adjust_for_inflation,
-                    cached_securities.get(selected_security),
+                    cached_securities,
                 ),
                 interval,
                 y_var,
@@ -886,7 +755,7 @@ def update_security_graph(
                 return_interval,
                 return_annualisation,
             )
-            for selected_security in selected_securities
+            for selected_security in selected_holdings
         }
     )
 
@@ -899,34 +768,99 @@ def update_security_graph(
         + return_duration
         + return_interval
         + return_annualisation
-        + baseline_security
+        + baseline_trace
         + rolling_returns_presentation
         + rolling_returns_distribution_chart_type
     )
 
-    data, layout = update_graph(
-        df,
-        securities_colourmap,
+    relayout_data = relayout_data or {"autosize": True}
+
+    graph_params: GraphParams = TypeAdapter(GraphParams).validate_python(
+        {
+            "df": df,
+            "trace_colourmap": securities_colourmap,
+            "y_var": y_var,
+            "log_scale": log_scale,
+            "percent_scale": percent_scale,
+            "auto_scale": auto_scale,
+            "return_duration": return_duration,
+            "return_interval": return_interval,
+            "return_annualisation": return_annualisation,
+            "baseline_trace": baseline_trace,
+            "rolling_returns_presentation": rolling_returns_presentation,
+            "rolling_returns_distribution_chart_type": rolling_returns_distribution_chart_type,
+            "relayout_data": relayout_data,
+            "uirevision": uirevision,
+            "prev_layout": prev_layout,
+        }
+    )
+
+    data, layout = graph_params.update_graph()
+    return dict(data=data, layout=layout)
+
+
+@app.callback(
+    Output("graph", "figure"),
+    Input("selected-securities", "value"),
+    Input("selected-securities", "options"),
+    Input("cached-securities-store", "data"),
+    Input("currency-selection", "value"),
+    Input("inflation-adjustment-switch", "value"),
+    Input("y-var-selection", "value"),
+    Input("log-scale-switch", "value"),
+    Input("percent-scale-switch", "value"),
+    Input("auto-scale-switch", "value"),
+    Input("return-duration-selection", "value"),
+    Input("return-interval-selection", "value"),
+    Input("return-annualisation-selection", "value"),
+    Input("baseline-security-selection", "value"),
+    Input("rolling-returns-presentation-selection", "value"),
+    Input("rolling-returns-distribution-chart-type-selection", "value"),
+    Input("graph", "relayoutData"),
+    State("graph-last-layout-state-store", "data"),
+    Input("interval-selection", "value"),
+)
+def update_security_graph(
+    selected_securities_strs: list[str],
+    selected_securities_options: dict[str, str],
+    cached_securities: dict[str, str],
+    currency: Currency,
+    adjust_for_inflation: bool,
+    y_var: YVar,
+    log_scale: bool,
+    percent_scale: bool,
+    auto_scale: bool,
+    return_duration: ReturnDuration,
+    return_interval: ReturnInterval,
+    return_annualisation: ReturnAnnualisation,
+    baseline_security: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
+    relayout_data: RelayoutData | None,
+    prev_layout: PrevLayout | None,
+    interval: Interval,
+):
+    interval = Interval.MONTHLY if y_var == YVar.CALENDAR_RETURNS else interval
+    return update_holding_graph(
+        selected_securities_strs,
         selected_securities_options,
+        cached_securities,
+        currency,
+        adjust_for_inflation,
         y_var,
         log_scale,
         percent_scale,
         auto_scale,
         return_duration,
-        return_duration_options,
         return_interval,
-        return_interval_options,
         return_annualisation,
-        return_annualisation_options,
         baseline_security,
-        baseline_security_options,
         rolling_returns_presentation,
         rolling_returns_distribution_chart_type,
         relayout_data,
-        uirevision,
         prev_layout,
+        interval,
     )
-    return dict(data=data, layout=layout)
 
 
 app.clientside_callback(
@@ -945,9 +879,7 @@ app.clientside_callback(
     Output("portfolio-allocations", "options"),
     Input("add-security-button", "n_clicks"),
     Input("portfolio-allocations", "value"),
-    State("portfolio-allocations", "options"),
     State("portfolio-security-selection", "value"),
-    State("portfolio-security-selection", "options"),
     State("security-weight", "value"),
     allow_duplicate=True,
     prevent_initial_call=True,
@@ -955,42 +887,27 @@ app.clientside_callback(
 def add_allocation(
     _,
     portfolio_allocation_strs: list[str] | None,
-    portfolio_allocation_options: dict[str, str],
-    security: str,
-    security_options: dict[str, str],
+    security_str: str,
     weight: float | int | None,
 ):
-    if ctx.triggered_id == "add-security-button":
-        if weight is None:
-            return no_update
-        new_allocation = json.dumps({security: weight})
-        if not portfolio_allocation_strs:
-            return [new_allocation], {
-                new_allocation: f"{weight}% {security_options[security]}"
-            }
-        if new_allocation in portfolio_allocation_strs:
-            return no_update
-        portfolio_allocations: dict[str, int | float] = reduce(
-            dict.__or__, map(json.loads, portfolio_allocation_strs)
+    portfolio = Portfolio(
+        allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+            portfolio_allocation_strs or []
         )
-        if security in portfolio_allocations:
-            old_weight = portfolio_allocations[security]
-            portfolio_allocation_strs.remove(json.dumps({security: old_weight}))
-            portfolio_allocation_options.pop(json.dumps({security: old_weight}))
-
-        portfolio_allocation_strs.append(new_allocation)
-        portfolio_allocation_options.update(
-            {new_allocation: f"{weight}% {security_options[security]}"}
-        )
-        return portfolio_allocation_strs, portfolio_allocation_options
+    )
     if ctx.triggered_id == "portfolio-allocations":
-        if portfolio_allocation_strs is None:
-            raise ValueError("This should not happen")
-        return portfolio_allocation_strs, {
-            portfolio_allocation: portfolio_allocation_options[portfolio_allocation]
-            for portfolio_allocation in portfolio_allocation_strs
-        }
-    return no_update
+        return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
+
+    if weight is None:
+        return no_update
+    new_allocation = Allocation(
+        security=TypeAdapter(Security).validate_json(security_str),
+        weight=weight,
+    )
+    if new_allocation in portfolio.allocations:
+        return no_update
+    portfolio.add_allocation(new_allocation=new_allocation)
+    return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
 
 
 app.clientside_callback(
@@ -1013,7 +930,6 @@ app.clientside_callback(
     State("portfolios", "value"),
     State("portfolios", "options"),
     State("portfolio-allocations", "value"),
-    State("portfolio-allocations", "options"),
     prevent_initial_call=True,
 )
 def add_portfolio(
@@ -1021,38 +937,24 @@ def add_portfolio(
     portfolio_strs: list[str] | None,
     portfolio_options: dict[str, str],
     portfolio_allocation_strs: list[str] | None,
-    portfolio_allocations_options: dict[str, str],
 ):
     if not portfolio_allocation_strs:
         return no_update
-    portfolio_allocations: dict[str, int | float] = reduce(
-        dict.__or__, map(json.loads, portfolio_allocation_strs)
-    )
-    weights = portfolio_allocations.values()
-    if sum(weights) != 100:
-        return no_update
-    portfolio_str = json.dumps(portfolio_allocation_strs)
-    portfolio_title = ",\n".join(
-        portfolio_allocations_options[portfolio_allocation]
-        for portfolio_allocation in portfolio_allocation_strs
-    )
-    if portfolio_strs is None:
-        return (
-            [portfolio_str],
-            {portfolio_str: portfolio_title},
-            [],
-            {},
+    portfolio = Portfolio(
+        allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
+            portfolio_allocation_strs
         )
+    )
+    if sum([allocation.weight for allocation in portfolio.allocations]) != 100:
+        return no_update
+    portfolio_str = portfolio.model_dump_json(exclude_none=True)
+    if portfolio_strs is None:
+        return ([portfolio_str], {portfolio_str: portfolio.label}, [], {})
     if portfolio_str in portfolio_strs:
         return no_update
     portfolio_strs.append(portfolio_str)
-    portfolio_options.update({portfolio_str: portfolio_title})
-    return (
-        portfolio_strs,
-        portfolio_options,
-        [],
-        {},
-    )
+    portfolio_options.update({portfolio_str: portfolio.label})
+    return (portfolio_strs, portfolio_options, [], {})
 
 
 app.clientside_callback(
@@ -1094,50 +996,6 @@ app.clientside_callback(
 )
 
 
-def load_portfolio(
-    portfolio_str: str,
-    currency: str,
-    adjust_for_inflation: bool,
-    yf_securities: dict[str, str],
-):
-    portfolio_allocation_strs: list[str] = json.loads(portfolio_str)
-    portfolio_allocations: dict[str, int | float] = reduce(
-        dict.__or__, map(json.loads, portfolio_allocation_strs)
-    )
-    securities = portfolio_allocations.keys()
-    weights = list(portfolio_allocations.values())
-    portfolio_df = pd.concat(
-        [
-            load_data(
-                security,
-                "Monthly",
-                currency,
-                adjust_for_inflation,
-                yf_securities.get(security),
-            )
-            for security in securities
-        ],
-        axis=1,
-    )
-    portfolio_series = (
-        portfolio_df.pct_change()
-        .mul(weights)
-        .div(100)
-        .sum(axis=1, skipna=False)
-        .add(1)
-        .cumprod()
-        .rename("price")
-    )
-    portfolio_series.iloc[
-        portfolio_series.index.get_indexer(
-            pd.Index([portfolio_series.first_valid_index()])
-        )[0]
-        - 1
-    ] = 1
-    portfolio_series = portfolio_series.dropna()
-    return portfolio_series
-
-
 app.clientside_callback(
     ClientsideFunction(namespace="state", function_name="updateLastLayoutStore"),
     Output("portfolio-graph-last-layout-state-store", "data"),
@@ -1150,116 +1008,64 @@ app.clientside_callback(
 @app.callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
+    State("portfolios", "options"),
+    State("cached-securities-store", "data"),
     Input("portfolio-currency-selection", "value"),
     Input("portfolio-inflation-adjustment-switch", "value"),
     Input("portfolio-y-var-selection", "value"),
-    Input("portfolio-return-duration-selection", "value"),
-    Input("portfolio-return-duration-selection", "options"),
-    Input("portfolio-return-interval-selection", "value"),
-    Input("portfolio-return-interval-selection", "options"),
-    Input("portfolio-return-annualisation-selection", "value"),
-    Input("portfolio-return-annualisation-selection", "options"),
-    Input("portfolio-baseline-security-selection", "value"),
-    Input("portfolio-baseline-security-selection", "options"),
     Input("portfolio-log-scale-switch", "value"),
     Input("portfolio-percent-scale-switch", "value"),
     Input("portfolio-auto-scale-switch", "value"),
+    Input("portfolio-return-duration-selection", "value"),
+    Input("portfolio-return-interval-selection", "value"),
+    Input("portfolio-return-annualisation-selection", "value"),
+    Input("portfolio-baseline-security-selection", "value"),
     Input("portfolio-rolling-returns-presentation-selection", "value"),
     Input("portfolio-rolling-returns-distribution-chart-type-selection", "value"),
     Input("portfolio-graph", "relayoutData"),
-    State("portfolios", "options"),
-    State("cached-securities-store", "data"),
     State("portfolio-graph-last-layout-state-store", "data"),
     prevent_initial_call=True,
 )
 def update_portfolio_graph(
     portfolio_strs: list[str],
-    currency: str,
+    portfolio_options: dict[str, str],
+    yf_securities: dict[str, str],
+    currency: Currency,
     adjust_for_inflation: bool,
-    y_var: str,
-    return_duration: str,
-    return_duration_options: dict[str, str],
-    return_interval: str,
-    return_interval_options: dict[str, str],
-    return_annualisation: str,
-    return_annualisation_options: dict[str, str],
-    baseline_portfolio: str,
-    baseline_portfolio_options: dict[str, str],
+    y_var: YVar,
     log_scale: bool,
     percent_scale: bool,
     auto_scale: bool,
-    rolling_returns_presentation: str,
-    rolling_returns_distribution_chart_type: str,
+    return_duration: ReturnDuration,
+    return_interval: ReturnInterval,
+    return_annualisation: ReturnAnnualisation,
+    baseline_portfolio: str,
+    rolling_returns_presentation: RollingReturnsPresentation,
+    rolling_returns_distribution_chart_type: DistributionChartType,
     relayout_data: RelayoutData | None,
-    portfolio_options: dict[str, str],
-    yf_securities: dict[str, str],
     prev_layout: PrevLayout | None,
 ):
-    if not portfolio_strs:
-        return no_update
-    portfolios_colourmap = dict(
-        zip(
-            portfolio_options.keys(),
-            cycle(DEFAULT_PLOTLY_COLORS),
-        )
-    )
-    portfolio_options = {
-        k: v.replace("\n", "<br>") for k, v in portfolio_options.items()
-    }
-    portfolios_df = pd.concat(
-        [
-            transform_data(
-                load_portfolio(
-                    portfolio_str, currency, adjust_for_inflation, yf_securities
-                ),
-                "Monthly",
-                y_var,
-                return_duration,
-                return_interval,
-                return_annualisation,
-            ).rename(portfolio_str)
-            for portfolio_str in portfolio_strs
-        ],
-        axis=1,
-    )
-
-    uirevision = (
-        currency
-        + str(adjust_for_inflation)
-        + y_var
-        + str(log_scale)
-        + str(percent_scale)
-        + return_duration
-        + return_interval
-        + return_annualisation
-        + baseline_portfolio
-        + rolling_returns_presentation
-        + rolling_returns_distribution_chart_type
-    )
-
-    data, layout = update_graph(
-        portfolios_df,
-        portfolios_colourmap,
+    interval = Interval.MONTHLY
+    return update_holding_graph(
+        portfolio_strs,
         portfolio_options,
+        yf_securities,
+        currency,
+        adjust_for_inflation,
         y_var,
         log_scale,
         percent_scale,
         auto_scale,
         return_duration,
-        return_duration_options,
         return_interval,
-        return_interval_options,
         return_annualisation,
-        return_annualisation_options,
         baseline_portfolio,
-        baseline_portfolio_options,
         rolling_returns_presentation,
         rolling_returns_distribution_chart_type,
         relayout_data,
-        uirevision,
         prev_layout,
+        interval,
     )
-    return dict(data=data, layout=layout)
 
 
 app.clientside_callback(
@@ -1305,7 +1111,6 @@ app.clientside_callback(
     State("backtest-accumulation-strategies", "value"),
     State("backtest-accumulation-strategies", "options"),
     State("backtest-accumulation-strategy-portfolio", "value"),
-    State("backtest-accumulation-strategy-portfolio", "options"),
     State("backtest-accumulation-strategy-currency-selection", "value"),
     State("backtest-accumulation-investment-amount-input", "value"),
     State("backtest-accumulation-monthly-investment-input", "value"),
@@ -1326,8 +1131,7 @@ def update_backtest_accumulation_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    strategy_portfolio_options: dict[str, str],
-    currency: str,
+    currency: Currency,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
@@ -1341,55 +1145,40 @@ def update_backtest_accumulation_strategies(
 ):
     if strategy_portfolio is None:
         return no_update
-    if dca_interval is None:
-        dca_interval = 1
-
-    if dca_length is None:
+    try:
+        strategy = AccumulationStrategy(
+            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+            currency=currency,
+            investment_amount=investment_amount or 0,
+            monthly_investment=monthly_investment or 0,
+            adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
+            investment_horizon=investment_horizon or dca_length or 0,
+            dca_length=dca_length or 0,
+            dca_interval=dca_interval or 1,
+            variable_transaction_fees=variable_transaction_fees or 0,
+            fixed_transaction_fees=fixed_transaction_fees or 0,
+            annualised_holding_fees=annualised_holding_fees or 0,
+            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
+        )
+    except ValidationError:
+        # TODO
+        # set_props(
+        #     "toast-store",
+        #     {
+        #         "data": "\n".join(
+        #             err["msg"]
+        #             for err in e.errors(
+        #                 include_url=False,
+        #                 include_context=False,
+        #                 include_input=False,
+        #             )
+        #         )
+        #     },
+        # )
         return no_update
-    if investment_horizon is None:
-        investment_horizon = dca_length
 
-    if variable_transaction_fees is None:
-        variable_transaction_fees = 0
-    if fixed_transaction_fees is None:
-        fixed_transaction_fees = 0
-    if annualised_holding_fees is None:
-        annualised_holding_fees = 0
-
-    if dca_length > investment_horizon:
-        return no_update
-
-    investment_amount = investment_amount or 0
-    monthly_investment = monthly_investment or 0
-    if investment_amount == 0 and monthly_investment == 0:
-        return no_update
-    strategy_str = json.dumps(
-        {
-            "strategy_portfolio": strategy_portfolio,
-            "currency": currency,
-            "investment_amount": investment_amount,
-            "investment_horizon": investment_horizon,
-            "monthly_investment": monthly_investment,
-            "adjust_monthly_investment_for_inflation": adjust_monthly_investment_for_inflation,
-            "dca_length": dca_length,
-            "dca_interval": dca_interval,
-            "variable_transaction_fees": variable_transaction_fees,
-            "fixed_transaction_fees": fixed_transaction_fees,
-            "annualised_holding_fees": annualised_holding_fees,
-            "adjust_portfolio_value_for_inflation": adjust_portfolio_value_for_inflation,
-        }
-    )
-    strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
-        f"${investment_amount} initial capital\n"
-        f"${monthly_investment} invested monthly"
-        f"{', inflation adjusted' if adjust_monthly_investment_for_inflation else ''}\n"
-        f"for {dca_length} months every {dca_interval} months\n"
-        f"held for {investment_horizon} months\n"
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
-        f"{annualised_holding_fees}% p.a. Holding Fees\n"
-        f"Portfolio value {'' if adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
-    )
+    strategy_str = strategy.model_dump_json()
+    strategy_name = strategy.label
 
     if strategies is None:
         return [strategy_str], {strategy_str: strategy_name}
@@ -1401,33 +1190,19 @@ def update_backtest_accumulation_strategies(
 
 
 def simulate_backtest_accumulation_strategy(
-    yf_securities: dict[str, str], strategy_str: str
+    yf_securities: dict[str, str], strategy: AccumulationStrategy
 ):
-    strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
-    currency = str(strategy["currency"])
-    investment_amount = float(strategy["investment_amount"])
-    investment_horizon = int(strategy["investment_horizon"])
-    monthly_investment = float(strategy["monthly_investment"])
-    adjust_monthly_investment_for_inflation = bool(
-        strategy["adjust_monthly_investment_for_inflation"]
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
     )
-    dca_length = int(strategy["dca_length"])
-    dca_interval = int(strategy["dca_interval"])
-    variable_transaction_fees = float(strategy["variable_transaction_fees"])
-    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-    annualised_holding_fees = float(strategy["annualised_holding_fees"])
-    adjust_portfolio_value_for_inflation = bool(
-        strategy["adjust_portfolio_value_for_inflation"]
-    )
-
-    variable_transaction_fees /= 100
-    annualised_holding_fees /= 100
-    strategy_series = load_portfolio(strategy_portfolio, currency, False, yf_securities)
     cash_returns = (
         (
             load_fed_funds_returns()
-            if currency == "USD"
+            if strategy.currency == Currency.USD
             else load_sgd_interest_rates_returns()
         )
         .resample("BME")
@@ -1436,26 +1211,26 @@ def simulate_backtest_accumulation_strategy(
         .reindex(strategy_series.index)
         .to_numpy()
     )
-    cpi = load_cpi(currency).reindex(strategy_series.index).to_numpy()
+    cpi = load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
 
     portfolio_values = pd.DataFrame(
         calculate_dca_portfolio_value_with_fees_and_interest_vector(
             strategy_series.pct_change().to_numpy(),
-            dca_length,
-            dca_interval,
-            investment_horizon,
-            investment_amount,
-            monthly_investment,
-            adjust_monthly_investment_for_inflation,
-            variable_transaction_fees,
-            fixed_transaction_fees,
-            annualised_holding_fees,
-            adjust_portfolio_value_for_inflation,
+            strategy.dca_length,
+            strategy.dca_interval,
+            strategy.investment_horizon,
+            strategy.investment_amount,
+            strategy.monthly_investment,
+            strategy.adjust_monthly_investment_for_inflation,
+            strategy.variable_transaction_fees,
+            strategy.fixed_transaction_fees,
+            strategy.annualised_holding_fees,
+            strategy.adjust_portfolio_value_for_inflation,
             cpi,
             cash_returns,
         ),
         index=strategy_series.index,
-        columns=range(investment_horizon + 1),
+        columns=range(strategy.investment_horizon + 1),
     )
     return portfolio_values
 
@@ -1474,8 +1249,8 @@ def update_backtest_accumulation_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
-    y_var: str,
-    drawdown_type: str,
+    y_var: BacktestYVar,
+    drawdown_type: DrawdownType,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -1493,21 +1268,22 @@ def update_backtest_accumulation_strategy_graph(
     )
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
+        strategy = AccumulationStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_accumulation_strategy(
-            yf_securities, strategy_str
+            yf_securities, strategy
         )
-        investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
+        investment_horizon = strategy.investment_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
-    if y_var == "ending_values":
+    if y_var == BacktestYVar.ENDING_VALUES:
         values = pd.concat(
             [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
         )
-    elif y_var == "max_drawdown":
-        if drawdown_type == "percent":
+    elif y_var == BacktestYVar.MAX_DRAWDOWN:
+        if drawdown_type == DrawdownType.PERCENT:
             values = pd.concat(
                 [
                     df.T.div(df.T.cummax()).sub(1).min().rename(name)
@@ -1603,10 +1379,11 @@ def show_backtest_accumulation_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
+        strategy = AccumulationStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_accumulation_strategy(
-            yf_securities, strategy_str
+            yf_securities, strategy
         )
-        investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
+        investment_horizon = strategy.investment_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-investment_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
@@ -1655,7 +1432,6 @@ def show_backtest_accumulation_strategy_modal(
     State("backtest-withdrawal-strategies", "value"),
     State("backtest-withdrawal-strategies", "options"),
     State("backtest-withdrawal-strategy-portfolio", "value"),
-    State("backtest-withdrawal-strategy-portfolio", "options"),
     State("backtest-withdrawal-strategy-currency-selection", "value"),
     State("backtest-withdrawal-initial-capital-input", "value"),
     State("backtest-withdrawal-monthly-amount-input", "value"),
@@ -1672,8 +1448,7 @@ def update_backtest_withdrawal_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    strategy_portfolio_options: dict[str, str],
-    currency: str,
+    currency: Currency,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
     adjust_for_inflation: bool,
@@ -1685,48 +1460,38 @@ def update_backtest_withdrawal_strategies(
 ):
     if strategy_portfolio is None:
         return no_update
-    if initial_capital is None:
+    try:
+        strategy = WithdrawalStrategy(
+            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+            currency=currency,
+            initial_capital=initial_capital or 0,
+            monthly_withdrawal=monthly_withdrawal or 0,
+            adjust_for_inflation=adjust_for_inflation,
+            withdrawal_horizon=withdrawal_horizon or 0,
+            withdrawal_interval=withdrawal_interval or 1,
+            variable_transaction_fees=variable_transaction_fees or 0,
+            fixed_transaction_fees=fixed_transaction_fees or 0,
+            annualised_holding_fees=annualised_holding_fees or 0,
+        )
+    except ValidationError:
+        # TODO
+        # set_props(
+        #     "toast-store",
+        #     {
+        #         "data": "\n".join(
+        #             err["msg"]
+        #             for err in e.errors(
+        #                 include_url=False,
+        #                 include_context=False,
+        #                 include_input=False,
+        #             )
+        #         )
+        #     },
+        # )
         return no_update
-    if monthly_withdrawal is None:
-        return no_update
-    if withdrawal_horizon is None:
-        return no_update
-    if withdrawal_interval is None:
-        withdrawal_interval = 1
 
-    if variable_transaction_fees is None:
-        variable_transaction_fees = 0
-    if fixed_transaction_fees is None:
-        fixed_transaction_fees = 0
-    if annualised_holding_fees is None:
-        annualised_holding_fees = 0
-
-    if initial_capital <= monthly_withdrawal * withdrawal_interval:
-        return no_update
-    strategy_str = json.dumps(
-        {
-            "strategy_portfolio": strategy_portfolio,
-            "currency": currency,
-            "initial_capital": initial_capital,
-            "withdrawal_horizon": withdrawal_horizon,
-            "monthly_withdrawal": monthly_withdrawal,
-            "adjust_for_inflation": adjust_for_inflation,
-            "withdrawal_interval": withdrawal_interval,
-            "variable_transaction_fees": variable_transaction_fees,
-            "fixed_transaction_fees": fixed_transaction_fees,
-            "annualised_holding_fees": annualised_holding_fees,
-        }
-    )
-
-    strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
-        f"${initial_capital} initial capital\n"
-        f"${monthly_withdrawal} withdrawn monthly"
-        f"{', inflation adjusted' if adjust_for_inflation else ''}\n"
-        f"every {withdrawal_interval} months for {withdrawal_horizon} months\n"
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
-        f"{annualised_holding_fees}% p.a. Holding Fees"
-    )
+    strategy_str = strategy.model_dump_json()
+    strategy_name = strategy.label
 
     if strategies is None:
         return [strategy_str], {strategy_str: strategy_name}
@@ -1738,43 +1503,36 @@ def update_backtest_withdrawal_strategies(
 
 
 def simulate_backtest_withdrawal_strategy(
-    yf_securities: dict[str, str], strategy_str: str
+    yf_securities: dict[str, str], strategy: WithdrawalStrategy
 ):
-    strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
-    currency = str(strategy["currency"])
-    initial_capital = float(strategy["initial_capital"])
-    withdrawal_horizon = int(strategy["withdrawal_horizon"])
-    monthly_withdrawal = float(strategy["monthly_withdrawal"])
-    adjust_for_inflation = bool(strategy["adjust_for_inflation"])
-    withdrawal_interval = int(strategy["withdrawal_interval"])
-    variable_transaction_fees = float(strategy["variable_transaction_fees"])
-    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-    annualised_holding_fees = float(strategy["annualised_holding_fees"])
-    variable_transaction_fees /= 100
-    annualised_holding_fees /= 100
 
-    strategy_series = load_portfolio(strategy_portfolio, currency, False, yf_securities)
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
+    )
     cpi = (
         np.ones(len(strategy_series))
-        if not adjust_for_inflation
-        else load_cpi(currency).reindex(strategy_series.index).to_numpy()
+        if not strategy.adjust_for_inflation
+        else load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
     )
 
     portfolio_values = pd.DataFrame(
         calculate_withdrawal_portfolio_value_with_fees_vector(
             strategy_series.pct_change().to_numpy(),
-            withdrawal_horizon,
-            withdrawal_interval,
-            initial_capital,
-            monthly_withdrawal,
+            strategy.withdrawal_horizon,
+            strategy.withdrawal_interval,
+            strategy.initial_capital,
+            strategy.monthly_withdrawal,
             cpi,
-            variable_transaction_fees,
-            fixed_transaction_fees,
-            annualised_holding_fees,
+            strategy.variable_transaction_fees,
+            strategy.fixed_transaction_fees,
+            strategy.annualised_holding_fees,
         ),
         index=strategy_series.index,
-        columns=range(withdrawal_horizon + 1),
+        columns=range(strategy.withdrawal_horizon + 1),
     )
     return portfolio_values
 
@@ -1793,8 +1551,8 @@ def update_backtest_withdrawal_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
-    y_var: str,
-    drawdown_type: str,
+    y_var: BacktestYVar,
+    drawdown_type: DrawdownType,
     yf_securities: dict[str, str],
 ):
     if not strategy_strs:
@@ -1812,21 +1570,22 @@ def update_backtest_withdrawal_strategy_graph(
     )
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
+        strategy = WithdrawalStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_withdrawal_strategy(
-            yf_securities, strategy_str
+            yf_securities, strategy
         )
-        withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
+        withdrawal_horizon = strategy.withdrawal_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
-    if y_var == "ending_values":
+    if y_var == BacktestYVar.ENDING_VALUES:
         values = pd.concat(
             [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
         )
-    elif y_var == "max_drawdown":
-        if drawdown_type == "percent":
+    elif y_var == BacktestYVar.MAX_DRAWDOWN:
+        if drawdown_type == DrawdownType.PERCENT:
             values = pd.concat(
                 [
                     df.T.div(df.T.cummax()).sub(1).min().rename(name)
@@ -1914,10 +1673,11 @@ def show_backtest_withdrawal_strategy_modal(
 
     traces = []
     for strategy_str in strategy_strs:
+        strategy = WithdrawalStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_withdrawal_strategy(
-            yf_securities, strategy_str
+            yf_securities, strategy
         )
-        withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
+        withdrawal_horizon = strategy.withdrawal_horizon
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-withdrawal_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
@@ -2033,38 +1793,21 @@ def _build_quantile_fan_traces(
 
 def simulate_bootstrap_accumulation_strategy(
     yf_securities: dict[str, str],
-    strategy_str: str,
+    strategy: AccumulationBootstrapStrategy,
 ):
-    strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
-    currency = str(strategy["currency"])
-    investment_amount = float(strategy["investment_amount"])
-    investment_horizon = int(strategy["investment_horizon"])
-    monthly_investment = float(strategy["monthly_investment"])
-    adjust_monthly_investment_for_inflation = bool(
-        strategy["adjust_monthly_investment_for_inflation"]
-    )
-    dca_length = int(strategy["dca_length"])
-    dca_interval = int(strategy["dca_interval"])
-    variable_transaction_fees = float(strategy["variable_transaction_fees"])
-    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-    annualised_holding_fees = float(strategy["annualised_holding_fees"])
-    adjust_portfolio_value_for_inflation = bool(
-        strategy["adjust_portfolio_value_for_inflation"]
-    )
-    num_samples = int(strategy["num_bootstrap_samples"])
-    avg_block_len = float(strategy["avg_block_length"])
-    variable_transaction_fees /= 100
-    annualised_holding_fees /= 100
 
-    strategy_series = load_portfolio(
-        strategy_portfolio, currency, False, yf_securities
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
     ).pct_change()
-    cpi = load_cpi(currency).pct_change()
+    cpi = load_cpi(strategy.currency).pct_change()
     cash_returns = (
         (
             load_fed_funds_returns()
-            if currency == "USD"
+            if strategy.currency == Currency.USD
             else load_sgd_interest_rates_returns()
         )
         .resample("BME")
@@ -2079,52 +1822,43 @@ def simulate_bootstrap_accumulation_strategy(
     cash_returns = cash_returns.loc[common_idx].to_numpy()
 
     n_data = len(strategy_series)
-    sample_length = investment_horizon + 1
+    sample_length = strategy.investment_horizon + 1
     indices = generate_bootstrap_indices(
-        num_samples, sample_length, n_data, avg_block_len
+        strategy.num_bootstrap_samples, sample_length, n_data, strategy.avg_block_length
     )
     portfolio_values = simulate_bootstrap_accumulation(
         strategy_series,
         cpi,
         cash_returns,
         indices,
-        dca_length,
-        dca_interval,
-        investment_horizon,
-        investment_amount,
-        monthly_investment,
-        adjust_monthly_investment_for_inflation,
-        variable_transaction_fees,
-        fixed_transaction_fees,
-        annualised_holding_fees,
-        adjust_portfolio_value_for_inflation,
+        strategy.dca_length,
+        strategy.dca_interval,
+        strategy.investment_horizon,
+        strategy.investment_amount,
+        strategy.monthly_investment,
+        strategy.adjust_monthly_investment_for_inflation,
+        strategy.variable_transaction_fees,
+        strategy.fixed_transaction_fees,
+        strategy.annualised_holding_fees,
+        strategy.adjust_portfolio_value_for_inflation,
     )
     return portfolio_values
 
 
 def simulate_bootstrap_withdrawal_strategy(
     yf_securities: dict[str, str],
-    strategy_str: str,
+    strategy: WithdrawalBootstrapStrategy,
 ):
-    strategy: dict[str, str | int | float] = json.loads(strategy_str)
-    strategy_portfolio = str(strategy["strategy_portfolio"])
-    currency = str(strategy["currency"])
-    initial_capital = float(strategy["initial_capital"])
-    withdrawal_horizon = int(strategy["withdrawal_horizon"])
-    monthly_withdrawal = float(strategy["monthly_withdrawal"])
-    adjust_for_inflation = bool(strategy["adjust_for_inflation"])
-    withdrawal_interval = int(strategy["withdrawal_interval"])
-    variable_transaction_fees = float(strategy["variable_transaction_fees"])
-    fixed_transaction_fees = float(strategy["fixed_transaction_fees"])
-    annualised_holding_fees = float(strategy["annualised_holding_fees"])
-    num_samples = int(strategy["num_bootstrap_samples"])
-    avg_block_len = float(strategy["avg_block_length"])
-    variable_transaction_fees /= 100
-    annualised_holding_fees /= 100
 
-    strategy_series = load_portfolio(strategy_portfolio, currency, False, yf_securities)
-    if adjust_for_inflation:
-        cpi_series = load_cpi(currency)
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+        yf_securities,
+    )
+    if strategy.adjust_for_inflation:
+        cpi_series = load_cpi(strategy.currency)
         common_idx = strategy_series.index.intersection(cpi_series.index)
         strategy_series = strategy_series.loc[common_idx]
         cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
@@ -2135,21 +1869,24 @@ def simulate_bootstrap_withdrawal_strategy(
     cpi = cpi[1:]
 
     n_data = len(monthly_returns)
-    sample_length = withdrawal_horizon + 1
+    sample_length = strategy.withdrawal_horizon + 1
     indices = generate_bootstrap_indices(
-        num_samples, sample_length, n_data, avg_block_len
+        strategy.num_bootstrap_samples,
+        sample_length,
+        n_data,
+        strategy.avg_block_length,
     )
     portfolio_values = simulate_bootstrap_withdrawal(
         monthly_returns,
         cpi,
         indices,
-        withdrawal_horizon,
-        withdrawal_interval,
-        initial_capital,
-        monthly_withdrawal,
-        variable_transaction_fees,
-        fixed_transaction_fees,
-        annualised_holding_fees,
+        strategy.withdrawal_horizon,
+        strategy.withdrawal_interval,
+        strategy.initial_capital,
+        strategy.monthly_withdrawal,
+        strategy.variable_transaction_fees,
+        strategy.fixed_transaction_fees,
+        strategy.annualised_holding_fees,
     )
     return portfolio_values
 
@@ -2161,7 +1898,6 @@ def simulate_bootstrap_withdrawal_strategy(
     State("bootstrap-accumulation-strategies", "value"),
     State("bootstrap-accumulation-strategies", "options"),
     State("bootstrap-accumulation-strategy-portfolio", "value"),
-    State("bootstrap-accumulation-strategy-portfolio", "options"),
     State("bootstrap-accumulation-strategy-currency-selection", "value"),
     State("bootstrap-accumulation-investment-amount-input", "value"),
     State("bootstrap-accumulation-monthly-investment-input", "value"),
@@ -2186,8 +1922,7 @@ def update_bootstrap_accumulation_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    strategy_portfolio_options: dict[str, str],
-    currency: str,
+    currency: Currency,
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
@@ -2203,60 +1938,42 @@ def update_bootstrap_accumulation_strategies(
 ):
     if strategy_portfolio is None:
         return no_update
-    if dca_interval is None:
-        dca_interval = 1
-    if dca_length is None:
-        return no_update
-    if investment_horizon is None:
-        investment_horizon = dca_length
-    if variable_transaction_fees is None:
-        variable_transaction_fees = 0
-    if fixed_transaction_fees is None:
-        fixed_transaction_fees = 0
-    if annualised_holding_fees is None:
-        annualised_holding_fees = 0
-    if num_samples is None:
-        num_samples = 1000
-    if avg_block_len is None:
-        avg_block_len = 120
-    if dca_length > investment_horizon:
+    try:
+        strategy = AccumulationBootstrapStrategy(
+            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+            currency=currency,
+            investment_amount=investment_amount or 0,
+            monthly_investment=monthly_investment or 0,
+            adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
+            investment_horizon=investment_horizon or dca_length or 0,
+            dca_length=dca_length or 0,
+            dca_interval=dca_interval or 1,
+            variable_transaction_fees=variable_transaction_fees or 0,
+            fixed_transaction_fees=fixed_transaction_fees or 0,
+            annualised_holding_fees=annualised_holding_fees or 0,
+            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
+            num_bootstrap_samples=num_samples or 1000,
+            avg_block_length=avg_block_len or 120,
+        )
+    except ValidationError:
+        # TODO
+        # set_props(
+        #     "toast-store",
+        #     {
+        #         "data": "\n".join(
+        #             err["msg"]
+        #             for err in e.errors(
+        #                 include_url=False,
+        #                 include_context=False,
+        #                 include_input=False,
+        #             )
+        #         )
+        #     },
+        # )
         return no_update
 
-    investment_amount = investment_amount or 0
-    monthly_investment = monthly_investment or 0
-    if investment_amount == 0 and monthly_investment == 0:
-        return no_update
-
-    strategy_str = json.dumps(
-        {
-            "strategy_portfolio": strategy_portfolio,
-            "currency": currency,
-            "investment_amount": investment_amount,
-            "investment_horizon": investment_horizon,
-            "monthly_investment": monthly_investment,
-            "adjust_monthly_investment_for_inflation": adjust_monthly_investment_for_inflation,
-            "dca_length": dca_length,
-            "dca_interval": dca_interval,
-            "variable_transaction_fees": variable_transaction_fees,
-            "fixed_transaction_fees": fixed_transaction_fees,
-            "annualised_holding_fees": annualised_holding_fees,
-            "adjust_portfolio_value_for_inflation": adjust_portfolio_value_for_inflation,
-            "num_bootstrap_samples": num_samples,
-            "avg_block_length": avg_block_len,
-        }
-    )
-    strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
-        f"${investment_amount} initial capital\n"
-        f"${monthly_investment} invested monthly"
-        f"{', inflation adjusted' if adjust_monthly_investment_for_inflation else ''}\n"
-        f"for {dca_length} months every {dca_interval} months\n"
-        f"held for {investment_horizon} months\n"
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
-        f"{annualised_holding_fees}% p.a. Holding Fees\n"
-        f"Portfolio value {'' if adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation\n"
-        f"{num_samples} samples, {avg_block_len}mo avg block"
-    )
+    strategy_str = strategy.model_dump_json()
+    strategy_name = strategy.label
 
     if strategies is None:
         return [strategy_str], {strategy_str: strategy_name}
@@ -2279,7 +1996,7 @@ def update_bootstrap_accumulation_strategies(
 def update_bootstrap_accumulation_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
-    y_var: str,
+    y_var: BootstrapYVar,
     log_scale: bool,
     yf_securities: dict[str, str],
 ):
@@ -2295,12 +2012,13 @@ def update_bootstrap_accumulation_graph(
     )
     all_traces = []
     for strategy_str in strategy_strs:
+        strategy = AccumulationBootstrapStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_bootstrap_accumulation_strategy(
-            yf_securities, strategy_str
+            yf_securities, strategy
         )
-        investment_horizon = int(json.loads(strategy_str)["investment_horizon"])
+        investment_horizon = strategy.investment_horizon
         months = np.arange(investment_horizon + 1)
-        if y_var == "portfolio_values":
+        if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
             values = compute_bootstrap_max_drawdown(portfolio_values)
@@ -2320,7 +2038,7 @@ def update_bootstrap_accumulation_graph(
             title="Bootstrap Accumulation Strategy",
             xaxis_title="Month",
             yaxis_title="Portfolio Value ($)"
-            if y_var == "portfolio_values"
+            if y_var == BootstrapYVar.PORTFOLIO_VALUES
             else "Max Drawdown ($)",
             hovermode="x",
             showlegend=True,
@@ -2339,7 +2057,6 @@ def update_bootstrap_accumulation_graph(
     State("bootstrap-withdrawal-strategies", "value"),
     State("bootstrap-withdrawal-strategies", "options"),
     State("bootstrap-withdrawal-strategy-portfolio", "value"),
-    State("bootstrap-withdrawal-strategy-portfolio", "options"),
     State("bootstrap-withdrawal-strategy-currency-selection", "value"),
     State("bootstrap-withdrawal-initial-capital-input", "value"),
     State("bootstrap-withdrawal-monthly-amount-input", "value"),
@@ -2358,8 +2075,7 @@ def update_bootstrap_withdrawal_strategies(
     strategies: list[str] | None,
     strategy_options: dict[str, str],
     strategy_portfolio: str | None,
-    strategy_portfolio_options: dict[str, str],
-    currency: str,
+    currency: Currency,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
     adjust_for_inflation: bool,
@@ -2373,53 +2089,40 @@ def update_bootstrap_withdrawal_strategies(
 ):
     if strategy_portfolio is None:
         return no_update
-    if initial_capital is None:
-        return no_update
-    if monthly_withdrawal is None:
-        return no_update
-    if withdrawal_horizon is None:
-        return no_update
-    if withdrawal_interval is None:
-        withdrawal_interval = 1
-    if variable_transaction_fees is None:
-        variable_transaction_fees = 0
-    if fixed_transaction_fees is None:
-        fixed_transaction_fees = 0
-    if annualised_holding_fees is None:
-        annualised_holding_fees = 0
-    if num_samples is None:
-        num_samples = 1000
-    if avg_block_len is None:
-        avg_block_len = 120
-    if initial_capital <= monthly_withdrawal * withdrawal_interval:
+    try:
+        strategy = WithdrawalBootstrapStrategy(
+            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+            currency=currency,
+            initial_capital=initial_capital or 0,
+            monthly_withdrawal=monthly_withdrawal or 0,
+            adjust_for_inflation=adjust_for_inflation,
+            withdrawal_horizon=withdrawal_horizon or 0,
+            withdrawal_interval=withdrawal_interval or 1,
+            variable_transaction_fees=variable_transaction_fees or 0,
+            fixed_transaction_fees=fixed_transaction_fees or 0,
+            annualised_holding_fees=annualised_holding_fees or 0,
+            num_bootstrap_samples=num_samples or 1000,
+            avg_block_length=avg_block_len or 120,
+        )
+    except ValidationError:
+        # TODO
+        # set_props(
+        #     "toast-store",
+        #     {
+        #         "data": "\n".join(
+        #             err["msg"]
+        #             for err in e.errors(
+        #                 include_url=False,
+        #                 include_context=False,
+        #                 include_input=False,
+        #             )
+        #         )
+        #     },
+        # )
         return no_update
 
-    strategy_str = json.dumps(
-        {
-            "strategy_portfolio": strategy_portfolio,
-            "currency": currency,
-            "initial_capital": initial_capital,
-            "withdrawal_horizon": withdrawal_horizon,
-            "monthly_withdrawal": monthly_withdrawal,
-            "adjust_for_inflation": adjust_for_inflation,
-            "withdrawal_interval": withdrawal_interval,
-            "variable_transaction_fees": variable_transaction_fees,
-            "fixed_transaction_fees": fixed_transaction_fees,
-            "annualised_holding_fees": annualised_holding_fees,
-            "num_bootstrap_samples": num_samples,
-            "avg_block_length": avg_block_len,
-        }
-    )
-    strategy_name = (
-        f"{strategy_portfolio_options[strategy_portfolio]} {currency}\n"
-        f"${initial_capital} initial capital\n"
-        f"${monthly_withdrawal} withdrawn monthly"
-        f"{', inflation adjusted' if adjust_for_inflation else ''}\n"
-        f"every {withdrawal_interval} months for {withdrawal_horizon} months\n"
-        f"{variable_transaction_fees}% + ${fixed_transaction_fees} Fee\n"
-        f"{annualised_holding_fees}% p.a. Holding Fees\n"
-        f"{num_samples} samples, {avg_block_len}mo avg block"
-    )
+    strategy_str = strategy.model_dump_json()
+    strategy_name = strategy.label
 
     if strategies is None:
         return [strategy_str], {strategy_str: strategy_name}
@@ -2442,7 +2145,7 @@ def update_bootstrap_withdrawal_strategies(
 def update_bootstrap_withdrawal_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
-    y_var: str,
+    y_var: BootstrapYVar,
     log_scale: bool,
     yf_securities: dict[str, str],
 ):
@@ -2458,12 +2161,13 @@ def update_bootstrap_withdrawal_graph(
     )
     all_traces = []
     for strategy_str in strategy_strs:
+        strategy = WithdrawalBootstrapStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_bootstrap_withdrawal_strategy(
-            yf_securities, strategy_str
+            yf_securities, strategy
         )
-        withdrawal_horizon = int(json.loads(strategy_str)["withdrawal_horizon"])
+        withdrawal_horizon = strategy.withdrawal_horizon
         months = np.arange(withdrawal_horizon + 1)
-        if y_var == "portfolio_values":
+        if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
             values = compute_bootstrap_max_drawdown(portfolio_values)
@@ -2483,7 +2187,7 @@ def update_bootstrap_withdrawal_graph(
             title="Bootstrap Withdrawal Strategy",
             xaxis_title="Month",
             yaxis_title="Portfolio Value ($)"
-            if y_var == "portfolio_values"
+            if y_var == BootstrapYVar.PORTFOLIO_VALUES
             else "Max Drawdown ($)",
             hovermode="x",
             showlegend=True,
@@ -2496,4 +2200,4 @@ def update_bootstrap_withdrawal_graph(
 
 
 if __name__ == "__main__":
-    app.run("0.0.0.0")
+    app.run("0.0.0.0", debug=True)

@@ -19,6 +19,7 @@ dependencies = [
     "lxml>=6.1.0",
     "numba>=0.65.1",
     "orjson>=3.11.9",
+    "pydantic>=2.13.4",
 ]
 
 [dependency-groups]

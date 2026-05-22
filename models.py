@@ -29,11 +29,6 @@ class IndexProvider(Option):
     OTHERS = ("Others", "Others")
 
 
-class MSCIIndexType(Option):
-    REGIONAL = ("Regional", "Regional")
-    COUNTRY = ("Country", "Country")
-
-
 class MSCIRegionalIndex(Option):
     WORLD = ("WORLD", "World")
     ACWI = ("ACWI", "ACWI")
@@ -68,6 +63,25 @@ class MSCICountryIndex(Option):
     SWITZERLAND = ("SWITZERLAND", "Switzerland")
     UNITED_KINGDOM = ("UNITED KINGDOM", "United Kingdom")
     USA = ("USA", "USA")
+
+
+class MSCIIndexType(Option):
+    indexes: type[Option]
+
+    REGIONAL = ("Regional", "Regional", MSCIRegionalIndex)
+    COUNTRY = ("Country", "Country", MSCICountryIndex)
+
+    def __new__(
+        cls,
+        value: str,
+        label: str,
+        indexes: type[MSCIRegionalIndex | MSCICountryIndex],
+    ):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.label = label
+        obj.indexes = indexes
+        return obj
 
 
 class MSCISize(Option):
@@ -129,13 +143,6 @@ class OthersIndex(Option):
     SPX = ("SPX", "S&P 500")
     SHILLER_SPX = ("SHILLER_SPX", "Shiller S&P 500")
     SREIT = ("SREIT", "iEdge S-REIT Leaders")
-
-
-class FundCompany(Option):
-    GREATLINK = ("GreatLink", "GreatLink")
-    GMO = ("GMO", "GMO")
-    FUNDSMITH = ("Fundsmith", "Fundsmith")
-    DIMENSIONAL = ("Dimensional", "Dimensional")
 
 
 class GreatLinkFund(Option):
@@ -246,6 +253,27 @@ class FundsmithFund(Option):
 
 class DimensionalFund(Option):
     WORLD_EQUITY_FUND = ("World Equity Fund", "World Equity Fund")
+
+
+class FundCompany(Option):
+    funds: type[Option]
+
+    GREATLINK = ("GreatLink", "GreatLink", GreatLinkFund)
+    GMO = ("GMO", "GMO", GMOFund)
+    FUNDSMITH = ("Fundsmith", "Fundsmith", FundsmithFund)
+    DIMENSIONAL = ("Dimensional", "Dimensional", DimensionalFund)
+
+    def __new__(
+        cls,
+        value: str,
+        label: str,
+        funds: type[GreatLinkFund | GMOFund | FundsmithFund | DimensionalFund],
+    ):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.label = label
+        obj.funds = funds
+        return obj
 
 
 class Interval(Option):
