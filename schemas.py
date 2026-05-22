@@ -92,7 +92,7 @@ class MsciSecurity(BaseSecurity):
     def check_valid(self):
         if not glob(
             f"data/"
-            f"{self.source}/"
+            f"MSCI/"
             f"{self.msci_base_index}/"
             f"{self.msci_size}/"
             f"{self.msci_style}/"
