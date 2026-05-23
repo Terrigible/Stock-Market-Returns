@@ -979,6 +979,12 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                 ),
+                                dbc.Switch(
+                                    "backtest-withdrawal-portfolio-value-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust Portfolio Value for Inflation",
+                                    style={"marginTop": "0"},
+                                ),
                                 html.P(),
                                 dbc.Button(
                                     "Add Strategy",
@@ -1374,6 +1380,12 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
+                                ),
+                                dbc.Switch(
+                                    "bootstrap-withdrawal-portfolio-value-inflation-adjustment-switch",
+                                    value=False,
+                                    label="Adjust Portfolio Value for Inflation",
+                                    style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
                                     "Num. Bootstrap Samples",

@@ -1383,6 +1383,7 @@ def show_backtest_accumulation_strategy_modal(
     State("backtest-withdrawal-variable-transaction-fees-input", "value"),
     State("backtest-withdrawal-fixed-transaction-fees-input", "value"),
     State("backtest-withdrawal-annualised-holding-fees-input", "value"),
+    State("backtest-withdrawal-portfolio-value-inflation-adjustment-switch", "value"),
     prevent_initial_call=True,
 )
 def update_backtest_withdrawal_strategies(
@@ -1393,12 +1394,13 @@ def update_backtest_withdrawal_strategies(
     currency: Currency,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
-    adjust_for_inflation: bool,
+    adjust_withdrawals_for_inflation: bool,
     withdrawal_horizon: int | None,
     withdrawal_interval: int | None,
     variable_transaction_fees: int | float | None,
     fixed_transaction_fees: int | float | None,
     annualised_holding_fees: int | float | None,
+    adjust_portfolio_value_for_inflation: bool,
 ):
     if strategy_portfolio is None:
         return no_update
@@ -1408,7 +1410,8 @@ def update_backtest_withdrawal_strategies(
             currency=currency,
             initial_capital=initial_capital or 0,
             monthly_withdrawal=monthly_withdrawal or 0,
-            adjust_for_inflation=adjust_for_inflation,
+            adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
+            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
             withdrawal_horizon=withdrawal_horizon or 0,
             withdrawal_interval=withdrawal_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,
@@ -1452,11 +1455,7 @@ def simulate_backtest_withdrawal_strategy(strategy: WithdrawalStrategy):
         strategy.currency,
         False,
     )
-    cpi = (
-        np.ones(len(strategy_series))
-        if not strategy.adjust_for_inflation
-        else load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
-    )
+    cpi = load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
 
     portfolio_values = pd.DataFrame(
         calculate_withdrawal_portfolio_value_with_fees_vector(
@@ -1469,6 +1468,8 @@ def simulate_backtest_withdrawal_strategy(strategy: WithdrawalStrategy):
             strategy.variable_transaction_fees,
             strategy.fixed_transaction_fees,
             strategy.annualised_holding_fees,
+            strategy.adjust_withdrawals_for_inflation,
+            strategy.adjust_portfolio_value_for_inflation,
         ),
         index=strategy_series.index,
         columns=range(strategy.withdrawal_horizon + 1),
@@ -1781,13 +1782,10 @@ def simulate_bootstrap_withdrawal_strategy(
         strategy.currency,
         False,
     )
-    if strategy.adjust_for_inflation:
-        cpi_series = load_cpi(strategy.currency)
-        common_idx = strategy_series.index.intersection(cpi_series.index)
-        strategy_series = strategy_series.loc[common_idx]
-        cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
-    else:
-        cpi = np.zeros(len(strategy_series))
+    cpi_series = load_cpi(strategy.currency)
+    common_idx = strategy_series.index.intersection(cpi_series.index)
+    strategy_series = strategy_series.loc[common_idx]
+    cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
 
     monthly_returns = strategy_series.pct_change().to_numpy()[1:]
     cpi = cpi[1:]
@@ -1811,6 +1809,8 @@ def simulate_bootstrap_withdrawal_strategy(
         strategy.variable_transaction_fees,
         strategy.fixed_transaction_fees,
         strategy.annualised_holding_fees,
+        strategy.adjust_withdrawals_for_inflation,
+        strategy.adjust_portfolio_value_for_inflation,
     )
     return portfolio_values
 
@@ -1988,6 +1988,7 @@ def update_bootstrap_accumulation_graph(
     State("bootstrap-withdrawal-annualised-holding-fees-input", "value"),
     State("bootstrap-withdrawal-num-samples-input", "value"),
     State("bootstrap-withdrawal-avg-block-length-input", "value"),
+    State("bootstrap-withdrawal-portfolio-value-inflation-adjustment-switch", "value"),
     prevent_initial_call=True,
 )
 def update_bootstrap_withdrawal_strategies(
@@ -1998,7 +1999,7 @@ def update_bootstrap_withdrawal_strategies(
     currency: Currency,
     initial_capital: int | float | None,
     monthly_withdrawal: int | float | None,
-    adjust_for_inflation: bool,
+    adjust_withdrawals_for_inflation: bool,
     withdrawal_horizon: int | None,
     withdrawal_interval: int | None,
     variable_transaction_fees: int | float | None,
@@ -2006,6 +2007,7 @@ def update_bootstrap_withdrawal_strategies(
     annualised_holding_fees: int | float | None,
     num_samples: int | None,
     avg_block_len: int | float | None,
+    adjust_portfolio_value_for_inflation: bool,
 ):
     if strategy_portfolio is None:
         return no_update
@@ -2015,7 +2017,8 @@ def update_bootstrap_withdrawal_strategies(
             currency=currency,
             initial_capital=initial_capital or 0,
             monthly_withdrawal=monthly_withdrawal or 0,
-            adjust_for_inflation=adjust_for_inflation,
+            adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
+            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
             withdrawal_horizon=withdrawal_horizon or 0,
             withdrawal_interval=withdrawal_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,

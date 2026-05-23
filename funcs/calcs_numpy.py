@@ -82,6 +82,8 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         float64,
         float64,
         float64,
+        bool_,
+        bool_,
     )
 )
 def calculate_withdrawal_portfolio_value_with_fees_vector(
@@ -94,6 +96,8 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
+    adjust_withdrawals_for_inflation: bool,
+    adjust_portfolio_value_for_inflation: bool,
 ):
     initial_withdrawal_amount = initial_monthly_withdrawal * withdrawal_interval
     monthly_returns_with_fees = (1 + monthly_returns) * (
@@ -106,21 +110,23 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
         sample_monthly_returns = monthly_returns_with_fees[sample_slice]
         sample_cpi = cpi[sample_slice]
         share_value = initial_portfolio_value
+        withdrawal_amounts = np.full(withdrawal_horizon + 1, initial_withdrawal_amount)
+        if adjust_withdrawals_for_inflation:
+            withdrawal_amounts *= sample_cpi / sample_cpi[1]
         withdrawal_amounts = (
-            sample_cpi
-            / sample_cpi[1]
-            * initial_withdrawal_amount
-            * (1 + variable_transaction_fees)
+            withdrawal_amounts * (1 + variable_transaction_fees)
             + fixed_transaction_fees
         )
         for j in range(1, withdrawal_horizon + 1):
-            if (j - 1) % withdrawal_interval == 0:
+            share_value *= sample_monthly_returns[j]
+            if j % withdrawal_interval == 0:
                 share_value -= withdrawal_amounts[j]
                 if share_value <= 0:
                     res[i, j:] = 0
                     break
-            share_value *= sample_monthly_returns[j]
             res[i, j] = share_value
+        if adjust_portfolio_value_for_inflation:
+            res[i] /= sample_cpi / sample_cpi[0]
     return res
 
 
@@ -233,6 +239,8 @@ def simulate_bootstrap_accumulation(
         float64,
         float64,
         float64,
+        bool_,
+        bool_,
     )
 )
 def simulate_bootstrap_withdrawal(
@@ -246,6 +254,8 @@ def simulate_bootstrap_withdrawal(
     variable_transaction_fees: float,
     fixed_transaction_fees: float,
     annualised_holding_fees: float,
+    adjust_withdrawals_for_inflation: bool,
+    adjust_portfolio_value_for_inflation: bool,
 ) -> np.ndarray:
     num_samples = bootstrap_indices.shape[0]
     res = np.zeros((num_samples, withdrawal_horizon + 1))
@@ -259,23 +269,25 @@ def simulate_bootstrap_withdrawal(
         boot_cpi = cpi[idx]
         boot_cpi[0] = 0
         cum_cpi = (boot_cpi + 1).cumprod()
+        withdrawal_amounts = np.full(withdrawal_horizon + 1, initial_withdrawal_amount)
+        if adjust_withdrawals_for_inflation:
+            withdrawal_amounts = cum_cpi / cum_cpi[1] * withdrawal_amounts
         withdrawal_amounts = (
-            cum_cpi
-            / cum_cpi[1]
-            * initial_withdrawal_amount
-            * (1.0 + variable_transaction_fees)
+            withdrawal_amounts * (1.0 + variable_transaction_fees)
             + fixed_transaction_fees
         )
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         for t in range(1, withdrawal_horizon + 1):
-            if (t - 1) % withdrawal_interval == 0:
+            share_value *= boot_ret[t]
+            if t % withdrawal_interval == 0:
                 share_value -= withdrawal_amounts[t]
                 if share_value <= 0.0:
                     res[s, t:] = 0.0
                     break
-            share_value *= boot_ret[t]
             res[s, t] = share_value
+        if adjust_portfolio_value_for_inflation:
+            res[s] /= cum_cpi
     return res
 
 
