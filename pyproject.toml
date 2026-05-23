@@ -38,3 +38,6 @@ dev = [
 prod = [
     "gunicorn>=26.0.0",
 ]
+
+[tool.uv]
+exclude-newer = "1 days"

@@ -26,3 +26,6 @@ hooks = [
     # Run the formatter.
     { id = "ruff-format" },
 ]
+
+[auto_update]
+cooldown_days = 1
