@@ -181,8 +181,7 @@ def load_series(
         )
     if isinstance(holding, Portfolio):
         return load_portfolio(holding, currency, adjust_for_inflation)
-    else:
-        raise ValueError(f"Invalid holding type: {holding.holding_type}")
+    raise ValueError(f"Invalid holding type: {holding.holding_type}")
 
 
 def transform_data(
@@ -1105,7 +1104,7 @@ def update_backtest_accumulation_strategies(
             investment_amount=investment_amount or 0,
             monthly_investment=monthly_investment or 0,
             adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
-            investment_horizon=investment_horizon or dca_length or 0,
+            strategy_horizon=investment_horizon or dca_length or 0,
             dca_length=dca_length or 0,
             dca_interval=dca_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,
@@ -1168,7 +1167,7 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationStrategy):
             strategy_series.pct_change().to_numpy(),
             strategy.dca_length,
             strategy.dca_interval,
-            strategy.investment_horizon,
+            strategy.strategy_horizon,
             strategy.investment_amount,
             strategy.monthly_investment,
             strategy.adjust_monthly_investment_for_inflation,
@@ -1180,7 +1179,7 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationStrategy):
             cash_returns,
         ),
         index=strategy_series.index,
-        columns=range(strategy.investment_horizon + 1),
+        columns=range(strategy.strategy_horizon + 1),
     )
     return portfolio_values
 
@@ -1219,7 +1218,7 @@ def update_backtest_accumulation_strategy_graph(
         strategy = AccumulationStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_accumulation_strategy(strategy)
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.investment_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
@@ -1325,13 +1324,13 @@ def show_backtest_accumulation_strategy_modal(
         strategy = AccumulationStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_accumulation_strategy(strategy)
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.investment_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         if clicked_date not in portfolio_values.index:
             continue
 
         date_range = partial(
-            pd.date_range, periods=strategy.investment_horizon + 1, freq="BME"
+            pd.date_range, periods=strategy.strategy_horizon + 1, freq="BME"
         )
 
         if index_by_start_date:
@@ -1410,7 +1409,7 @@ def update_backtest_withdrawal_strategies(
             monthly_withdrawal=monthly_withdrawal or 0,
             adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
             adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
-            withdrawal_horizon=withdrawal_horizon or 0,
+            strategy_horizon=withdrawal_horizon or 0,
             withdrawal_interval=withdrawal_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,
             fixed_transaction_fees=fixed_transaction_fees or 0,
@@ -1458,7 +1457,7 @@ def simulate_backtest_withdrawal_strategy(strategy: WithdrawalStrategy):
     portfolio_values = pd.DataFrame(
         calculate_withdrawal_portfolio_value_with_fees_vector(
             strategy_series.pct_change().to_numpy(),
-            strategy.withdrawal_horizon,
+            strategy.strategy_horizon,
             strategy.withdrawal_interval,
             strategy.initial_capital,
             strategy.monthly_withdrawal,
@@ -1470,7 +1469,7 @@ def simulate_backtest_withdrawal_strategy(strategy: WithdrawalStrategy):
             strategy.adjust_portfolio_value_for_inflation,
         ),
         index=strategy_series.index,
-        columns=range(strategy.withdrawal_horizon + 1),
+        columns=range(strategy.strategy_horizon + 1),
     )
     return portfolio_values
 
@@ -1509,7 +1508,7 @@ def update_backtest_withdrawal_strategy_graph(
         strategy = WithdrawalStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.withdrawal_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
@@ -1607,14 +1606,14 @@ def show_backtest_withdrawal_strategy_modal(
         strategy = WithdrawalStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.withdrawal_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
 
         if clicked_date not in portfolio_values.index:
             continue
 
         date_range = partial(
-            pd.date_range, periods=strategy.withdrawal_horizon + 1, freq="BME"
+            pd.date_range, periods=strategy.strategy_horizon + 1, freq="BME"
         )
 
         if index_by_start_date:
@@ -1745,7 +1744,7 @@ def simulate_bootstrap_accumulation_strategy(strategy: AccumulationBootstrapStra
     cash_returns = cash_returns.loc[common_idx].to_numpy()
 
     n_data = len(strategy_series)
-    sample_length = strategy.investment_horizon + 1
+    sample_length = strategy.strategy_horizon + 1
     indices = generate_bootstrap_indices(
         strategy.num_bootstrap_samples, sample_length, n_data, strategy.avg_block_length
     )
@@ -1756,7 +1755,7 @@ def simulate_bootstrap_accumulation_strategy(strategy: AccumulationBootstrapStra
         indices,
         strategy.dca_length,
         strategy.dca_interval,
-        strategy.investment_horizon,
+        strategy.strategy_horizon,
         strategy.investment_amount,
         strategy.monthly_investment,
         strategy.adjust_monthly_investment_for_inflation,
@@ -1787,7 +1786,7 @@ def simulate_bootstrap_withdrawal_strategy(
     cpi = cpi[1:]
 
     n_data = len(monthly_returns)
-    sample_length = strategy.withdrawal_horizon + 1
+    sample_length = strategy.strategy_horizon + 1
     indices = generate_bootstrap_indices(
         strategy.num_bootstrap_samples,
         sample_length,
@@ -1798,7 +1797,7 @@ def simulate_bootstrap_withdrawal_strategy(
         monthly_returns,
         cpi,
         indices,
-        strategy.withdrawal_horizon,
+        strategy.strategy_horizon,
         strategy.withdrawal_interval,
         strategy.initial_capital,
         strategy.monthly_withdrawal,
@@ -1865,7 +1864,7 @@ def update_bootstrap_accumulation_strategies(
             investment_amount=investment_amount or 0,
             monthly_investment=monthly_investment or 0,
             adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
-            investment_horizon=investment_horizon or dca_length or 0,
+            strategy_horizon=investment_horizon or dca_length or 0,
             dca_length=dca_length or 0,
             dca_interval=dca_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,
@@ -1932,7 +1931,7 @@ def update_bootstrap_accumulation_graph(
     for strategy_str in strategy_strs:
         strategy = AccumulationBootstrapStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_bootstrap_accumulation_strategy(strategy)
-        months = np.arange(strategy.investment_horizon + 1)
+        months = np.arange(strategy.strategy_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
@@ -2014,7 +2013,7 @@ def update_bootstrap_withdrawal_strategies(
             monthly_withdrawal=monthly_withdrawal or 0,
             adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
             adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
-            withdrawal_horizon=withdrawal_horizon or 0,
+            strategy_horizon=withdrawal_horizon or 0,
             withdrawal_interval=withdrawal_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,
             fixed_transaction_fees=fixed_transaction_fees or 0,
@@ -2079,7 +2078,7 @@ def update_bootstrap_withdrawal_graph(
     for strategy_str in strategy_strs:
         strategy = WithdrawalBootstrapStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_bootstrap_withdrawal_strategy(strategy)
-        months = np.arange(strategy.withdrawal_horizon + 1)
+        months = np.arange(strategy.strategy_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:

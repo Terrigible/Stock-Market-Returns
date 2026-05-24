@@ -438,7 +438,7 @@ class AccumulationStrategy(BaseModel):
     investment_amount: float = Field(default=0, ge=0)
     monthly_investment: float = Field(default=0, ge=0)
     adjust_monthly_investment_for_inflation: bool = False
-    investment_horizon: int = Field(gt=0)
+    strategy_horizon: int = Field(gt=0)
     dca_length: int = Field(gt=0)
     dca_interval: int = Field(default=1, ge=1)
     adjust_portfolio_value_for_inflation: bool = False
@@ -452,7 +452,7 @@ class AccumulationStrategy(BaseModel):
 
     @model_validator(mode="after")
     def check_dca_length_le_horizon(self):
-        if self.dca_length > self.investment_horizon:
+        if self.dca_length > self.strategy_horizon:
             raise ValueError("DCA length must not exceed investment horizon")
         return self
 
@@ -472,7 +472,7 @@ class AccumulationStrategy(BaseModel):
             f"${self.monthly_investment:,.0f} invested monthly"
             f"{', inflation adjusted' if self.adjust_monthly_investment_for_inflation else ''}\n"
             f"for {self.dca_length} months every {self.dca_interval} months\n"
-            f"held for {self.investment_horizon} months\n"
+            f"held for {self.strategy_horizon} months\n"
             f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
             f"Portfolio value {'' if self.adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
@@ -498,7 +498,7 @@ class WithdrawalStrategy(BaseModel):
     monthly_withdrawal: float = Field(gt=0)
     adjust_withdrawals_for_inflation: bool = False
     adjust_portfolio_value_for_inflation: bool = False
-    withdrawal_horizon: int = Field(gt=0)
+    strategy_horizon: int = Field(gt=0)
     withdrawal_interval: int = Field(default=1, ge=1)
     variable_transaction_fees: Annotated[
         float, AfterValidator(convert_percent_to_decimal)
@@ -521,7 +521,7 @@ class WithdrawalStrategy(BaseModel):
             f"${self.initial_capital:,.0f} initial capital\n"
             f"${self.monthly_withdrawal:,.0f} withdrawn monthly"
             f"{', inflation adjusted' if self.adjust_withdrawals_for_inflation else ''}\n"
-            f"every {self.withdrawal_interval} months for {self.withdrawal_horizon} months\n"
+            f"every {self.withdrawal_interval} months for {self.strategy_horizon} months\n"
             f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
             f"Portfolio value {'' if self.adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
