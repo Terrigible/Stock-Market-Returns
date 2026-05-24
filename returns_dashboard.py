@@ -64,18 +64,20 @@ from models import (
     YVar,
 )
 from schemas import (
+    AccumulationBacktestStrategy,
     AccumulationBootstrapStrategy,
-    AccumulationStrategy,
     Allocation,
+    BacktestStrategy,
     BaseSecurity,
+    BootstrapStrategy,
     FtSecurity,
     FundSecurity,
     Holding,
     IndexSecurity,
     Portfolio,
     Security,
+    WithdrawalBacktestStrategy,
     WithdrawalBootstrapStrategy,
-    WithdrawalStrategy,
     YfSecurity,
 )
 from update_graph import GraphParams, PrevLayout, RelayoutData
@@ -1098,7 +1100,7 @@ def update_backtest_accumulation_strategies(
     if strategy_portfolio is None:
         return no_update
     try:
-        strategy = AccumulationStrategy(
+        strategy = AccumulationBacktestStrategy(
             strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
             currency=currency,
             investment_amount=investment_amount or 0,
@@ -1141,7 +1143,7 @@ def update_backtest_accumulation_strategies(
     return strategies, strategy_options
 
 
-def simulate_backtest_accumulation_strategy(strategy: AccumulationStrategy):
+def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrategy):
     strategy_series = load_series(
         strategy.strategy_portfolio,
         Interval.MONTHLY,
@@ -1184,16 +1186,47 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationStrategy):
     return portfolio_values
 
 
-@app.callback(
-    Output("backtest-accumulation-strategy-graph", "figure"),
-    Input("backtest-accumulation-strategies", "value"),
-    State("backtest-accumulation-strategies", "options"),
-    Input("backtest-accumulation-index-by-start-date", "value"),
-    Input("backtest-accumulation-y-var-selection", "value"),
-    Input("backtest-accumulation-drawdown-type-selection", "value"),
-    prevent_initial_call=True,
-)
-def update_backtest_accumulation_strategy_graph(
+def simulate_backtest_withdrawal_strategy(strategy: WithdrawalBacktestStrategy):
+
+    strategy_series = load_series(
+        strategy.strategy_portfolio,
+        Interval.MONTHLY,
+        strategy.currency,
+        False,
+    )
+    cpi = load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
+
+    portfolio_values = pd.DataFrame(
+        calculate_withdrawal_portfolio_value_with_fees_vector(
+            strategy_series.pct_change().to_numpy(),
+            strategy.strategy_horizon,
+            strategy.withdrawal_interval,
+            strategy.initial_capital,
+            strategy.monthly_withdrawal,
+            cpi,
+            strategy.variable_transaction_fees,
+            strategy.fixed_transaction_fees,
+            strategy.annualised_holding_fees,
+            strategy.adjust_withdrawals_for_inflation,
+            strategy.adjust_portfolio_value_for_inflation,
+        ),
+        index=strategy_series.index,
+        columns=range(strategy.strategy_horizon + 1),
+    )
+    return portfolio_values
+
+
+def simulate_backtest_strategy(
+    strategy: BacktestStrategy,
+):
+    if isinstance(strategy, AccumulationBacktestStrategy):
+        return simulate_backtest_accumulation_strategy(strategy)
+    if isinstance(strategy, WithdrawalBacktestStrategy):
+        return simulate_backtest_withdrawal_strategy(strategy)
+    raise ValueError("Invalid strategy type")
+
+
+def update_backtest_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     index_by_start_date: bool,
@@ -1215,8 +1248,10 @@ def update_backtest_accumulation_strategy_graph(
     )
     dfs: dict[str, pd.DataFrame] = {}
     for strategy_str in strategy_strs:
-        strategy = AccumulationStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_accumulation_strategy(strategy)
+        strategy: BacktestStrategy = TypeAdapter(BacktestStrategy).validate_json(
+            strategy_str
+        )
+        portfolio_values = simulate_backtest_strategy(strategy)
         if index_by_start_date:
             portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
@@ -1259,6 +1294,93 @@ def update_backtest_accumulation_strategy_graph(
         ],
         "layout": go.Layout(
             title="Strategy Performance",
+            hovermode="x",
+            showlegend=True,
+            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
+            yaxis_side="right",
+            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
+        ),
+    }
+
+
+@app.callback(
+    Output("backtest-accumulation-strategy-graph", "figure"),
+    Input("backtest-accumulation-strategies", "value"),
+    State("backtest-accumulation-strategies", "options"),
+    Input("backtest-accumulation-index-by-start-date", "value"),
+    Input("backtest-accumulation-y-var-selection", "value"),
+    Input("backtest-accumulation-drawdown-type-selection", "value"),
+    prevent_initial_call=True,
+)
+def update_backtest_accumulation_strategy_graph(
+    strategy_strs: list[str],
+    strategy_options: dict[str, str],
+    index_by_start_date: bool,
+    y_var: BacktestYVar,
+    drawdown_type: DrawdownType,
+):
+    return update_backtest_strategy_graph(
+        strategy_strs,
+        strategy_options,
+        index_by_start_date,
+        y_var,
+        drawdown_type,
+    )
+
+
+def show_backtest_strategy_modal(
+    clicked_date_str: str,
+    strategy_strs: list[str],
+    strategy_options: dict[str, str],
+    index_by_start_date: bool,
+):
+    if not clicked_date_str:
+        return False, {}
+
+    clicked_date = pd.to_datetime(clicked_date_str)
+
+    strategies_colourmap = dict(
+        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    )
+
+    traces = []
+    for strategy_str in strategy_strs:
+        strategy: BacktestStrategy = TypeAdapter(BacktestStrategy).validate_json(
+            strategy_str
+        )
+        portfolio_values = simulate_backtest_strategy(strategy)
+        if index_by_start_date:
+            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
+        portfolio_values = portfolio_values.dropna(how="all")
+        if clicked_date not in portfolio_values.index:
+            continue
+
+        date_range = partial(
+            pd.date_range, periods=strategy.strategy_horizon + 1, freq="BME"
+        )
+
+        if index_by_start_date:
+            dates = date_range(start=clicked_date)
+        else:
+            dates = date_range(end=clicked_date)
+
+        traces.append(
+            go.Scatter(
+                x=dates,
+                y=portfolio_values.loc[clicked_date].values,
+                mode="lines",
+                line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
+                name=strategy_options[strategy_str].replace("\n", "<br>"),
+            )
+        )
+
+    if not traces:
+        return False, {}
+
+    return True, {
+        "data": traces,
+        "layout": go.Layout(
+            title=f"Portfolio Value {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
             hovermode="x",
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
@@ -1310,58 +1432,12 @@ def show_backtest_accumulation_strategy_modal(
     strategy_options: dict[str, str],
     index_by_start_date: bool,
 ):
-    if not clicked_date_str:
-        return False, {}
-
-    clicked_date = pd.to_datetime(clicked_date_str)
-
-    strategies_colourmap = dict(
-        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    return show_backtest_strategy_modal(
+        clicked_date_str,
+        strategy_strs,
+        strategy_options,
+        index_by_start_date,
     )
-
-    traces = []
-    for strategy_str in strategy_strs:
-        strategy = AccumulationStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_accumulation_strategy(strategy)
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
-        if clicked_date not in portfolio_values.index:
-            continue
-
-        date_range = partial(
-            pd.date_range, periods=strategy.strategy_horizon + 1, freq="BME"
-        )
-
-        if index_by_start_date:
-            dates = date_range(start=clicked_date)
-        else:
-            dates = date_range(end=clicked_date)
-
-        traces.append(
-            go.Scatter(
-                x=dates,
-                y=portfolio_values.loc[clicked_date].values,
-                mode="lines",
-                line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
-                name=strategy_options[strategy_str].replace("\n", "<br>"),
-            )
-        )
-
-    if not traces:
-        return False, {}
-
-    return True, {
-        "data": traces,
-        "layout": go.Layout(
-            title=f"Portfolio Growth {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
-            hovermode="x",
-            showlegend=True,
-            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
-            yaxis_side="right",
-            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
-        ),
-    }
 
 
 @app.callback(
@@ -1402,7 +1478,7 @@ def update_backtest_withdrawal_strategies(
     if strategy_portfolio is None:
         return no_update
     try:
-        strategy = WithdrawalStrategy(
+        strategy = WithdrawalBacktestStrategy(
             strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
             currency=currency,
             initial_capital=initial_capital or 0,
@@ -1444,36 +1520,6 @@ def update_backtest_withdrawal_strategies(
     return strategies, strategy_options
 
 
-def simulate_backtest_withdrawal_strategy(strategy: WithdrawalStrategy):
-
-    strategy_series = load_series(
-        strategy.strategy_portfolio,
-        Interval.MONTHLY,
-        strategy.currency,
-        False,
-    )
-    cpi = load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
-
-    portfolio_values = pd.DataFrame(
-        calculate_withdrawal_portfolio_value_with_fees_vector(
-            strategy_series.pct_change().to_numpy(),
-            strategy.strategy_horizon,
-            strategy.withdrawal_interval,
-            strategy.initial_capital,
-            strategy.monthly_withdrawal,
-            cpi,
-            strategy.variable_transaction_fees,
-            strategy.fixed_transaction_fees,
-            strategy.annualised_holding_fees,
-            strategy.adjust_withdrawals_for_inflation,
-            strategy.adjust_portfolio_value_for_inflation,
-        ),
-        index=strategy_series.index,
-        columns=range(strategy.strategy_horizon + 1),
-    )
-    return portfolio_values
-
-
 @app.callback(
     Output("backtest-withdrawal-strategy-graph", "figure"),
     Input("backtest-withdrawal-strategies", "value"),
@@ -1490,72 +1536,13 @@ def update_backtest_withdrawal_strategy_graph(
     y_var: BacktestYVar,
     drawdown_type: DrawdownType,
 ):
-    if not strategy_strs:
-        return {
-            "data": [],
-            "layout": {
-                "title": "Strategy Performance",
-            },
-        }
-    strategies_colourmap = dict(
-        zip(
-            strategy_options.keys(),
-            cycle(DEFAULT_PLOTLY_COLORS),
-        )
+    return update_backtest_strategy_graph(
+        strategy_strs,
+        strategy_options,
+        index_by_start_date,
+        y_var,
+        drawdown_type,
     )
-    dfs: dict[str, pd.DataFrame] = {}
-    for strategy_str in strategy_strs:
-        strategy = WithdrawalStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
-        dfs.update({strategy_str: portfolio_values})
-
-    if y_var == BacktestYVar.ENDING_VALUES:
-        values = pd.concat(
-            [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
-        )
-    elif y_var == BacktestYVar.MAX_DRAWDOWN:
-        if drawdown_type == DrawdownType.PERCENT:
-            values = pd.concat(
-                [
-                    df.T.div(df.T.cummax()).sub(1).min().rename(name)
-                    for name, df in dfs.items()
-                ],
-                axis=1,
-            )
-        else:
-            values = pd.concat(
-                [
-                    df.T.sub(df.T.cummax()).min().rename(name)
-                    for name, df in dfs.items()
-                ],
-                axis=1,
-            )
-    else:
-        raise ValueError("Invalid y_var")
-
-    return {
-        "data": [
-            go.Scatter(
-                x=values.index,
-                y=values[strategy],
-                mode="lines",
-                line=go.scatter.Line(color=strategies_colourmap[strategy]),
-                name=strategy_options[strategy].replace("\n", "<br>"),
-            )
-            for strategy in values.columns
-        ],
-        "layout": go.Layout(
-            title="Strategy Performance",
-            hovermode="x",
-            showlegend=True,
-            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
-            yaxis_side="right",
-            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
-        ),
-    }
 
 
 @app.callback(
@@ -1592,59 +1579,12 @@ def show_backtest_withdrawal_strategy_modal(
     strategy_options: dict[str, str],
     index_by_start_date: bool,
 ):
-    if not clicked_date_str:
-        return False, {}
-
-    clicked_date = pd.to_datetime(clicked_date_str)
-
-    strategies_colourmap = dict(
-        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    return show_backtest_strategy_modal(
+        clicked_date_str,
+        strategy_strs,
+        strategy_options,
+        index_by_start_date,
     )
-
-    traces = []
-    for strategy_str in strategy_strs:
-        strategy = WithdrawalStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
-
-        if clicked_date not in portfolio_values.index:
-            continue
-
-        date_range = partial(
-            pd.date_range, periods=strategy.strategy_horizon + 1, freq="BME"
-        )
-
-        if index_by_start_date:
-            dates = date_range(start=clicked_date)
-        else:
-            dates = date_range(end=clicked_date)
-
-        traces.append(
-            go.Scatter(
-                x=dates,
-                y=portfolio_values.loc[clicked_date].values,
-                mode="lines",
-                line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
-                name=strategy_options[strategy_str].replace("\n", "<br>"),
-            )
-        )
-
-    if not traces:
-        return False, {}
-
-    return True, {
-        "data": traces,
-        "layout": go.Layout(
-            title=f"Portfolio Value {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
-            hovermode="x",
-            showlegend=True,
-            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
-            yaxis_side="right",
-            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
-        ),
-    }
 
 
 QUANTILE_KEYS = [0.01, 0.05, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99]
@@ -1810,6 +1750,16 @@ def simulate_bootstrap_withdrawal_strategy(
     return portfolio_values
 
 
+def simulate_bootstrap_strategy(
+    strategy: BootstrapStrategy,
+):
+    if isinstance(strategy, AccumulationBootstrapStrategy):
+        return simulate_bootstrap_accumulation_strategy(strategy)
+    if isinstance(strategy, WithdrawalBootstrapStrategy):
+        return simulate_bootstrap_withdrawal_strategy(strategy)
+    raise ValueError("Invalid strategy type")
+
+
 @app.callback(
     Output("bootstrap-accumulation-strategies", "value"),
     Output("bootstrap-accumulation-strategies", "options"),
@@ -1903,15 +1853,7 @@ def update_bootstrap_accumulation_strategies(
     return strategies, strategy_options
 
 
-@app.callback(
-    Output("bootstrap-accumulation-graph", "figure"),
-    Input("bootstrap-accumulation-strategies", "value"),
-    State("bootstrap-accumulation-strategies", "options"),
-    Input("bootstrap-accumulation-y-var-selection", "value"),
-    Input("bootstrap-accumulation-log-scale-switch", "value"),
-    prevent_initial_call=True,
-)
-def update_bootstrap_accumulation_graph(
+def update_bootstrap_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
     y_var: BootstrapYVar,
@@ -1921,7 +1863,7 @@ def update_bootstrap_accumulation_graph(
         return {
             "data": [],
             "layout": {
-                "title": "Bootstrap Accumulation Strategy",
+                "title": "Strategy Performance",
             },
         }
     strategies_colourmap = dict(
@@ -1929,8 +1871,10 @@ def update_bootstrap_accumulation_graph(
     )
     all_traces = []
     for strategy_str in strategy_strs:
-        strategy = AccumulationBootstrapStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_bootstrap_accumulation_strategy(strategy)
+        strategy: BootstrapStrategy = TypeAdapter(BootstrapStrategy).validate_json(
+            strategy_str
+        )
+        portfolio_values = simulate_bootstrap_strategy(strategy)
         months = np.arange(strategy.strategy_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
@@ -1949,7 +1893,7 @@ def update_bootstrap_accumulation_graph(
     return {
         "data": all_traces,
         "layout": go.Layout(
-            title="Bootstrap Accumulation Strategy",
+            title="Strategy Performance",
             xaxis_title="Month",
             yaxis_title="Portfolio Value ($)"
             if y_var == BootstrapYVar.PORTFOLIO_VALUES
@@ -1962,6 +1906,25 @@ def update_bootstrap_accumulation_graph(
             margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
+
+
+@app.callback(
+    Output("bootstrap-accumulation-graph", "figure"),
+    Input("bootstrap-accumulation-strategies", "value"),
+    State("bootstrap-accumulation-strategies", "options"),
+    Input("bootstrap-accumulation-y-var-selection", "value"),
+    Input("bootstrap-accumulation-log-scale-switch", "value"),
+    prevent_initial_call=True,
+)
+def update_bootstrap_accumulation_graph(
+    strategy_strs: list[str],
+    strategy_options: dict[str, str],
+    y_var: BootstrapYVar,
+    log_scale: bool,
+):
+    return update_bootstrap_strategy_graph(
+        strategy_strs, strategy_options, y_var, log_scale
+    )
 
 
 @app.callback(
@@ -2064,51 +2027,12 @@ def update_bootstrap_withdrawal_graph(
     y_var: BootstrapYVar,
     log_scale: bool,
 ):
-    if not strategy_strs:
-        return {
-            "data": [],
-            "layout": {
-                "title": "Bootstrap Withdrawal Strategy",
-            },
-        }
-    strategies_colourmap = dict(
-        zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
+    return update_bootstrap_strategy_graph(
+        strategy_strs,
+        strategy_options,
+        y_var,
+        log_scale,
     )
-    all_traces = []
-    for strategy_str in strategy_strs:
-        strategy = WithdrawalBootstrapStrategy.model_validate_json(strategy_str)
-        portfolio_values = simulate_bootstrap_withdrawal_strategy(strategy)
-        months = np.arange(strategy.strategy_horizon + 1)
-        if y_var == BootstrapYVar.PORTFOLIO_VALUES:
-            values = portfolio_values
-        else:
-            values = compute_bootstrap_max_drawdown(portfolio_values)
-        quantiles = dict(zip(QUANTILE_KEYS, np.quantile(values, QUANTILE_KEYS, axis=0)))
-        all_traces.extend(
-            _build_quantile_fan_traces(
-                months,
-                quantiles,
-                strategies_colourmap[strategy_str],
-                strategy_options[strategy_str],
-            )
-        )
-
-    return {
-        "data": all_traces,
-        "layout": go.Layout(
-            title="Bootstrap Withdrawal Strategy",
-            xaxis_title="Month",
-            yaxis_title="Portfolio Value ($)"
-            if y_var == BootstrapYVar.PORTFOLIO_VALUES
-            else "Max Drawdown ($)",
-            hovermode="x",
-            showlegend=True,
-            legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
-            yaxis_side="right",
-            yaxis_type="log" if log_scale else "linear",
-            margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
-        ),
-    }
 
 
 if __name__ == "__main__":

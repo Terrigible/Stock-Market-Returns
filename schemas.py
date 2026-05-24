@@ -432,7 +432,8 @@ def convert_percent_to_decimal(v: float) -> float:
     return v / 100
 
 
-class AccumulationStrategy(BaseModel):
+class BaseAccumulationStrategy(BaseModel):
+    strategy_phase: Literal["Accumulation"] = "Accumulation"
     strategy_portfolio: Portfolio
     currency: Currency
     investment_amount: float = Field(default=0, ge=0)
@@ -479,7 +480,11 @@ class AccumulationStrategy(BaseModel):
         )
 
 
-class AccumulationBootstrapStrategy(AccumulationStrategy):
+class AccumulationBacktestStrategy(BaseAccumulationStrategy):
+    pass
+
+
+class AccumulationBootstrapStrategy(BaseAccumulationStrategy):
     num_bootstrap_samples: int = Field(default=1000, gt=0)
     avg_block_length: float = Field(default=120, gt=0)
 
@@ -491,7 +496,8 @@ class AccumulationBootstrapStrategy(AccumulationStrategy):
         )
 
 
-class WithdrawalStrategy(BaseModel):
+class BaseWithdrawalStrategy(BaseModel):
+    strategy_phase: Literal["Withdrawal"] = "Withdrawal"
     strategy_portfolio: Portfolio
     currency: Currency
     initial_capital: float = Field(gt=0)
@@ -528,7 +534,11 @@ class WithdrawalStrategy(BaseModel):
         )
 
 
-class WithdrawalBootstrapStrategy(WithdrawalStrategy):
+class WithdrawalBacktestStrategy(BaseWithdrawalStrategy):
+    pass
+
+
+class WithdrawalBootstrapStrategy(BaseWithdrawalStrategy):
     num_bootstrap_samples: int = Field(default=1000, gt=0)
     avg_block_length: float = Field(default=120, gt=0)
 
@@ -538,3 +548,14 @@ class WithdrawalBootstrapStrategy(WithdrawalStrategy):
             f"{super().label}\n"
             f"{self.num_bootstrap_samples} samples, {self.avg_block_length:.0f}mo avg block"
         )
+
+
+BacktestStrategy = Annotated[
+    AccumulationBacktestStrategy | WithdrawalBacktestStrategy,
+    Field(discriminator="strategy_phase"),
+]
+
+BootstrapStrategy = Annotated[
+    AccumulationBootstrapStrategy | WithdrawalBootstrapStrategy,
+    Field(discriminator="strategy_phase"),
+]
