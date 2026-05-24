@@ -1218,9 +1218,8 @@ def update_backtest_accumulation_strategy_graph(
     for strategy_str in strategy_strs:
         strategy = AccumulationStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_accumulation_strategy(strategy)
-        investment_horizon = strategy.investment_horizon
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-investment_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.investment_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
@@ -1325,16 +1324,15 @@ def show_backtest_accumulation_strategy_modal(
     for strategy_str in strategy_strs:
         strategy = AccumulationStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_accumulation_strategy(strategy)
-        investment_horizon = strategy.investment_horizon
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-investment_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.investment_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         if clicked_date not in portfolio_values.index:
             continue
 
-        row = portfolio_values.loc[clicked_date]
-
-        date_range = partial(pd.date_range, periods=investment_horizon + 1, freq="BME")
+        date_range = partial(
+            pd.date_range, periods=strategy.investment_horizon + 1, freq="BME"
+        )
 
         if index_by_start_date:
             dates = date_range(start=clicked_date)
@@ -1344,7 +1342,7 @@ def show_backtest_accumulation_strategy_modal(
         traces.append(
             go.Scatter(
                 x=dates,
-                y=row.values,
+                y=portfolio_values.loc[clicked_date].values,
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
                 name=strategy_options[strategy_str].replace("\n", "<br>"),
@@ -1510,9 +1508,8 @@ def update_backtest_withdrawal_strategy_graph(
     for strategy_str in strategy_strs:
         strategy = WithdrawalStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
-        withdrawal_horizon = strategy.withdrawal_horizon
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-withdrawal_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.withdrawal_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
         dfs.update({strategy_str: portfolio_values})
 
@@ -1609,17 +1606,16 @@ def show_backtest_withdrawal_strategy_modal(
     for strategy_str in strategy_strs:
         strategy = WithdrawalStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_backtest_withdrawal_strategy(strategy)
-        withdrawal_horizon = strategy.withdrawal_horizon
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-withdrawal_horizon)
+            portfolio_values = portfolio_values.shift(-strategy.withdrawal_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
 
         if clicked_date not in portfolio_values.index:
             continue
 
-        row = portfolio_values.loc[clicked_date]
-
-        date_range = partial(pd.date_range, periods=withdrawal_horizon + 1, freq="BME")
+        date_range = partial(
+            pd.date_range, periods=strategy.withdrawal_horizon + 1, freq="BME"
+        )
 
         if index_by_start_date:
             dates = date_range(start=clicked_date)
@@ -1629,7 +1625,7 @@ def show_backtest_withdrawal_strategy_modal(
         traces.append(
             go.Scatter(
                 x=dates,
-                y=row.values,
+                y=portfolio_values.loc[clicked_date].values,
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
                 name=strategy_options[strategy_str].replace("\n", "<br>"),
@@ -1936,8 +1932,7 @@ def update_bootstrap_accumulation_graph(
     for strategy_str in strategy_strs:
         strategy = AccumulationBootstrapStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_bootstrap_accumulation_strategy(strategy)
-        investment_horizon = strategy.investment_horizon
-        months = np.arange(investment_horizon + 1)
+        months = np.arange(strategy.investment_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
@@ -2084,8 +2079,7 @@ def update_bootstrap_withdrawal_graph(
     for strategy_str in strategy_strs:
         strategy = WithdrawalBootstrapStrategy.model_validate_json(strategy_str)
         portfolio_values = simulate_bootstrap_withdrawal_strategy(strategy)
-        withdrawal_horizon = strategy.withdrawal_horizon
-        months = np.arange(withdrawal_horizon + 1)
+        months = np.arange(strategy.withdrawal_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
         else:
