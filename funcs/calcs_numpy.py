@@ -21,7 +21,7 @@ from numba import bool_, float64, int64, njit
 )
 def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     monthly_returns: np.ndarray,
-    dca_length: int,
+    dca_duration: int,
     dca_interval: int,
     investment_horizon: int,
     initial_portfolio_value: float,
@@ -47,14 +47,14 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         share_value = initial_portfolio_value
         funds_to_invest = 0
 
-        monthly_amounts = np.full(dca_length + 1, initial_monthly_amount)
+        monthly_amounts = np.full(dca_duration + 1, initial_monthly_amount)
         if adjust_monthly_investment_for_inflation:
-            monthly_amounts *= sample_cpi[: dca_length + 1] / sample_cpi[1]
+            monthly_amounts *= sample_cpi[: dca_duration + 1] / sample_cpi[1]
 
-        for j in range(1, dca_length + 1):
+        for j in range(1, dca_duration + 1):
             share_value *= sample_monthly_returns[j]
             funds_to_invest += monthly_amounts[j]
-            if (j % dca_interval == 0) or (j == dca_length):
+            if (j % dca_interval == 0) or (j == dca_duration):
                 share_value += (
                     funds_to_invest * (1 - variable_transaction_fees)
                     - fixed_transaction_fees
@@ -63,7 +63,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             else:
                 funds_to_invest *= 1 + sample_cash_returns[j]
             res[i, j] = share_value + funds_to_invest
-        for j in range(dca_length + 1, investment_horizon + 1):
+        for j in range(dca_duration + 1, investment_horizon + 1):
             share_value *= sample_monthly_returns[j]
             res[i, j] = share_value
         if adjust_portfolio_value_for_inflation:
@@ -178,7 +178,7 @@ def simulate_bootstrap_accumulation(
     cpi: np.ndarray,
     cash_returns: np.ndarray,
     bootstrap_indices: np.ndarray,
-    dca_length: int,
+    dca_duration: int,
     dca_interval: int,
     investment_horizon: int,
     initial_portfolio_value: float,
@@ -204,13 +204,13 @@ def simulate_bootstrap_accumulation(
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         funds_to_invest = 0.0
-        monthly_amounts = np.full(dca_length + 1, initial_monthly_amount)
+        monthly_amounts = np.full(dca_duration + 1, initial_monthly_amount)
         if adjust_monthly_investment_for_inflation:
-            monthly_amounts *= cum_cpi[: dca_length + 1] / cum_cpi[1]
-        for t in range(1, dca_length + 1):
+            monthly_amounts *= cum_cpi[: dca_duration + 1] / cum_cpi[1]
+        for t in range(1, dca_duration + 1):
             share_value *= boot_ret[t]
             funds_to_invest += monthly_amounts[t]
-            if (t % dca_interval == 0) or (t == dca_length):
+            if (t % dca_interval == 0) or (t == dca_duration):
                 share_value += (
                     funds_to_invest * (1.0 - variable_transaction_fees)
                     - fixed_transaction_fees
@@ -219,7 +219,7 @@ def simulate_bootstrap_accumulation(
             else:
                 funds_to_invest *= 1.0 + boot_cash[t]
             res[s, t] = share_value + funds_to_invest
-        for t in range(dca_length + 1, investment_horizon + 1):
+        for t in range(dca_duration + 1, investment_horizon + 1):
             share_value *= boot_ret[t]
             res[s, t] = share_value
         if adjust_portfolio_value_for_inflation:

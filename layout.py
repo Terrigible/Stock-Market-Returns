@@ -729,11 +729,11 @@ app_layout = html.Div(
                                     step=1,
                                 ),
                                 dbc.Label(
-                                    "DCA Length (Months)",
-                                    html_for="backtest-accumulation-dca-length-input",
+                                    "DCA Duration (Months)",
+                                    html_for="backtest-accumulation-dca-duration-input",
                                 ),
                                 dbc.Input(
-                                    id="backtest-accumulation-dca-length-input",
+                                    id="backtest-accumulation-dca-duration-input",
                                     type="number",
                                     min=1,
                                     step=1,
@@ -1148,11 +1148,11 @@ app_layout = html.Div(
                                     step=1,
                                 ),
                                 dbc.Label(
-                                    "DCA Length (Months)",
-                                    html_for="bootstrap-accumulation-dca-length-input",
+                                    "DCA Duration (Months)",
+                                    html_for="bootstrap-accumulation-dca-duration-input",
                                 ),
                                 dbc.Input(
-                                    id="bootstrap-accumulation-dca-length-input",
+                                    id="bootstrap-accumulation-dca-duration-input",
                                     type="number",
                                     min=1,
                                     step=1,

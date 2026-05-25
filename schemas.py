@@ -440,7 +440,7 @@ class BaseAccumulationStrategy(BaseModel):
     monthly_investment: float = Field(default=0, ge=0)
     adjust_monthly_investment_for_inflation: bool = False
     strategy_horizon: int = Field(gt=0)
-    dca_length: int = Field(gt=0)
+    dca_duration: int = Field(gt=0)
     dca_interval: int = Field(default=1, ge=1)
     adjust_portfolio_value_for_inflation: bool = False
     variable_transaction_fees: Annotated[
@@ -452,9 +452,9 @@ class BaseAccumulationStrategy(BaseModel):
     ] = Field(default=0, ge=0)
 
     @model_validator(mode="after")
-    def check_dca_length_le_horizon(self):
-        if self.dca_length > self.strategy_horizon:
-            raise ValueError("DCA length must not exceed investment horizon")
+    def check_dca_duration_le_horizon(self):
+        if self.dca_duration > self.strategy_horizon:
+            raise ValueError("DCA duration must not exceed investment horizon")
         return self
 
     @model_validator(mode="after")
@@ -472,7 +472,7 @@ class BaseAccumulationStrategy(BaseModel):
             f"${self.investment_amount:,.0f} initial capital\n"
             f"${self.monthly_investment:,.0f} invested monthly"
             f"{', inflation adjusted' if self.adjust_monthly_investment_for_inflation else ''}\n"
-            f"for {self.dca_length} months every {self.dca_interval} months\n"
+            f"for {self.dca_duration} months every {self.dca_interval} months\n"
             f"held for {self.strategy_horizon} months\n"
             f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
