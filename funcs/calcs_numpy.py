@@ -23,7 +23,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     monthly_returns: np.ndarray,
     dca_duration: int,
     dca_interval: int,
-    investment_horizon: int,
+    strategy_horizon: int,
     initial_portfolio_value: float,
     initial_monthly_amount: float,
     adjust_monthly_investment_for_inflation: bool,
@@ -34,13 +34,13 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
     cpi: np.ndarray,
     cash_returns: np.ndarray,
 ):
-    res = np.full((monthly_returns.shape[0], investment_horizon + 1), np.nan)
-    res[investment_horizon:, 0] = initial_portfolio_value
+    res = np.full((monthly_returns.shape[0], strategy_horizon + 1), np.nan)
+    res[strategy_horizon:, 0] = initial_portfolio_value
     monthly_returns_with_fees = (1 + monthly_returns) * (
         1 - annualised_holding_fees
     ) ** (1 / 12)
-    for i in range(investment_horizon, len(monthly_returns)):
-        sample_slice = slice(i - investment_horizon, i + 1)
+    for i in range(strategy_horizon, len(monthly_returns)):
+        sample_slice = slice(i - strategy_horizon, i + 1)
         sample_monthly_returns = monthly_returns_with_fees[sample_slice]
         sample_cash_returns = cash_returns[sample_slice]
         sample_cpi = cpi[sample_slice]
@@ -64,7 +64,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
             else:
                 funds_to_invest *= 1 + sample_cash_returns[j]
             res[i, j] = share_value + funds_to_invest
-        for j in range(dca_duration + 1, investment_horizon + 1):
+        for j in range(dca_duration + 1, strategy_horizon + 1):
             share_value *= sample_monthly_returns[j]
             res[i, j] = share_value
         if adjust_portfolio_value_for_inflation:
@@ -91,7 +91,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
 def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns: np.ndarray,
     coast_duration: int,
-    withdrawal_horizon: int,
+    strategy_horizon: int,
     withdrawal_interval: int,
     initial_portfolio_value: float,
     initial_monthly_withdrawal: float,
@@ -106,10 +106,10 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns_with_fees = (1 + monthly_returns) * (
         1 - annualised_holding_fees
     ) ** (1 / 12)
-    res = np.full((monthly_returns.shape[0], withdrawal_horizon + 1), np.nan)
-    res[withdrawal_horizon:, 0] = initial_portfolio_value
-    for i in range(withdrawal_horizon, len(monthly_returns)):
-        sample_slice = slice(i - withdrawal_horizon, i + 1)
+    res = np.full((monthly_returns.shape[0], strategy_horizon + 1), np.nan)
+    res[strategy_horizon:, 0] = initial_portfolio_value
+    for i in range(strategy_horizon, len(monthly_returns)):
+        sample_slice = slice(i - strategy_horizon, i + 1)
         sample_monthly_returns = monthly_returns_with_fees[sample_slice]
         sample_cpi = cpi[sample_slice]
         sample_cpi_mom = sample_cpi / np.roll(sample_cpi, 1)
@@ -120,7 +120,7 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             if adjust_withdrawals_for_inflation:
                 withdrawal_amount *= sample_cpi_mom[j]
             res[i, j] = share_value
-        for index, j in enumerate(range(coast_duration + 1, withdrawal_horizon + 1)):
+        for index, j in enumerate(range(coast_duration + 1, strategy_horizon + 1)):
             share_value *= sample_monthly_returns[j]
             if adjust_withdrawals_for_inflation:
                 withdrawal_amount *= sample_cpi_mom[j]
@@ -188,7 +188,7 @@ def simulate_bootstrap_accumulation(
     bootstrap_indices: np.ndarray,
     dca_duration: int,
     dca_interval: int,
-    investment_horizon: int,
+    strategy_horizon: int,
     initial_portfolio_value: float,
     initial_monthly_amount: float,
     adjust_monthly_investment_for_inflation: bool,
@@ -198,7 +198,7 @@ def simulate_bootstrap_accumulation(
     adjust_portfolio_value_for_inflation: bool,
 ) -> np.ndarray:
     num_samples = bootstrap_indices.shape[0]
-    res = np.zeros((num_samples, investment_horizon + 1))
+    res = np.zeros((num_samples, strategy_horizon + 1))
     monthly_returns_with_fees = (1.0 + monthly_returns) * (
         1.0 - annualised_holding_fees
     ) ** (1.0 / 12.0)
@@ -227,7 +227,7 @@ def simulate_bootstrap_accumulation(
             else:
                 funds_to_invest *= 1.0 + boot_cash[t]
             res[s, t] = share_value + funds_to_invest
-        for t in range(dca_duration + 1, investment_horizon + 1):
+        for t in range(dca_duration + 1, strategy_horizon + 1):
             share_value *= boot_ret[t]
             res[s, t] = share_value
         if adjust_portfolio_value_for_inflation:
@@ -257,7 +257,7 @@ def simulate_bootstrap_withdrawal(
     cpi: np.ndarray,
     bootstrap_indices: np.ndarray,
     coast_duration: int,
-    withdrawal_horizon: int,
+    strategy_horizon: int,
     withdrawal_interval: int,
     initial_portfolio_value: float,
     initial_monthly_withdrawal: float,
@@ -268,7 +268,7 @@ def simulate_bootstrap_withdrawal(
     adjust_portfolio_value_for_inflation: bool,
 ) -> np.ndarray:
     num_samples = bootstrap_indices.shape[0]
-    res = np.zeros((num_samples, withdrawal_horizon + 1))
+    res = np.zeros((num_samples, strategy_horizon + 1))
     monthly_returns_with_fees = (1.0 + monthly_returns) * (
         1.0 - annualised_holding_fees
     ) ** (1.0 / 12.0)
@@ -287,7 +287,7 @@ def simulate_bootstrap_withdrawal(
             if adjust_withdrawals_for_inflation:
                 withdrawal_amount *= 1 + boot_cpi[t]
             res[s, t] = share_value
-        for index, t in enumerate(range(coast_duration + 1, withdrawal_horizon + 1)):
+        for index, t in enumerate(range(coast_duration + 1, strategy_horizon + 1)):
             share_value *= boot_ret[t]
             if adjust_withdrawals_for_inflation:
                 withdrawal_amount *= 1 + boot_cpi[t]
