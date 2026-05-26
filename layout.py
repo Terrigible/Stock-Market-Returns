@@ -918,6 +918,16 @@ app_layout = html.Div(
                                     min=0.01,
                                 ),
                                 dbc.Label(
+                                    "Coast Duration (Months)",
+                                    html_for="backtest-withdrawal-coast-duration-input",
+                                ),
+                                dbc.Input(
+                                    id="backtest-withdrawal-coast-duration-input",
+                                    type="number",
+                                    step=1,
+                                    min=0,
+                                ),
+                                dbc.Label(
                                     "Monthly Withdrawal Amount",
                                     html_for="backtest-withdrawal-monthly-amount-input",
                                 ),
@@ -933,11 +943,11 @@ app_layout = html.Div(
                                     style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
-                                    "Withdrawal Horizon (Months)",
-                                    html_for="backtest-withdrawal-horizon-input",
+                                    "Withdrawal Duration (Months)",
+                                    html_for="backtest-withdrawal-duration-input",
                                 ),
                                 dbc.Input(
-                                    id="backtest-withdrawal-horizon-input",
+                                    id="backtest-withdrawal-duration-input",
                                     type="number",
                                     min=1,
                                     step=1,
@@ -1320,6 +1330,16 @@ app_layout = html.Div(
                                     min=0.01,
                                 ),
                                 dbc.Label(
+                                    "Coast Duration (Months)",
+                                    html_for="bootstrap-withdrawal-coast-duration-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-withdrawal-coast-duration-input",
+                                    type="number",
+                                    step=1,
+                                    min=0,
+                                ),
+                                dbc.Label(
                                     "Monthly Withdrawal Amount",
                                     html_for="bootstrap-withdrawal-monthly-amount-input",
                                 ),
@@ -1335,11 +1355,11 @@ app_layout = html.Div(
                                     style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
-                                    "Withdrawal Horizon (Months)",
-                                    html_for="bootstrap-withdrawal-horizon-input",
+                                    "Withdrawal Duration (Months)",
+                                    html_for="bootstrap-withdrawal-duration-input",
                                 ),
                                 dbc.Input(
-                                    id="bootstrap-withdrawal-horizon-input",
+                                    id="bootstrap-withdrawal-duration-input",
                                     type="number",
                                     min=1,
                                     step=1,

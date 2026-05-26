@@ -501,10 +501,11 @@ class BaseWithdrawalStrategy(BaseModel):
     strategy_portfolio: Portfolio
     currency: Currency
     initial_capital: float = Field(gt=0)
+    coast_duration: int = Field(ge=0)
     monthly_withdrawal: float = Field(gt=0)
     adjust_withdrawals_for_inflation: bool = False
     adjust_portfolio_value_for_inflation: bool = False
-    strategy_horizon: int = Field(gt=0)
+    withdrawal_duration: int = Field(ge=0)
     withdrawal_interval: int = Field(default=1, ge=1)
     variable_transaction_fees: Annotated[
         float, AfterValidator(convert_percent_to_decimal)
@@ -520,14 +521,20 @@ class BaseWithdrawalStrategy(BaseModel):
             raise ValueError("Initial capital must exceed initial withdrawal amount")
         return self
 
+    @computed_field
+    @property
+    def strategy_horizon(self) -> int:
+        return self.coast_duration + self.withdrawal_duration
+
     @property
     def label(self) -> str:
         return (
             f"{self.strategy_portfolio.label} {self.currency}\n"
             f"${self.initial_capital:,.0f} initial capital\n"
+            f"coast for {self.coast_duration} months\n"
             f"${self.monthly_withdrawal:,.0f} withdrawn monthly"
             f"{', inflation adjusted' if self.adjust_withdrawals_for_inflation else ''}\n"
-            f"every {self.withdrawal_interval} months for {self.strategy_horizon} months\n"
+            f"every {self.withdrawal_interval} months for {self.withdrawal_duration} months\n"
             f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
             f"Portfolio value {'' if self.adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"

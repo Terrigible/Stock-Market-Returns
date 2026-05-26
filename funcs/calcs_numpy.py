@@ -77,6 +77,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         float64[:],
         int64,
         int64,
+        int64,
         float64,
         float64,
         float64[:],
@@ -89,6 +90,7 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
 )
 def calculate_withdrawal_portfolio_value_with_fees_vector(
     monthly_returns: np.ndarray,
+    coast_duration: int,
     withdrawal_horizon: int,
     withdrawal_interval: int,
     initial_portfolio_value: float,
@@ -110,18 +112,23 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
         sample_slice = slice(i - withdrawal_horizon, i + 1)
         sample_monthly_returns = monthly_returns_with_fees[sample_slice]
         sample_cpi = cpi[sample_slice]
+        sample_cpi_mom = sample_cpi / np.roll(sample_cpi, 1)
         share_value = initial_portfolio_value
-        withdrawal_amounts = np.full(withdrawal_horizon + 1, initial_withdrawal_amount)
-        if adjust_withdrawals_for_inflation:
-            withdrawal_amounts *= sample_cpi / sample_cpi[1]
-        withdrawal_amounts = (
-            withdrawal_amounts * (1 + variable_transaction_fees)
-            + fixed_transaction_fees
-        )
-        for j in range(1, withdrawal_horizon + 1):
+        withdrawal_amount = initial_withdrawal_amount
+        for j in range(1, coast_duration + 1):
             share_value *= sample_monthly_returns[j]
-            if j % withdrawal_interval == 0:
-                share_value -= withdrawal_amounts[j]
+            if adjust_withdrawals_for_inflation:
+                withdrawal_amount *= sample_cpi_mom[j]
+            res[i, j] = share_value
+        for index, j in enumerate(range(coast_duration + 1, withdrawal_horizon + 1)):
+            share_value *= sample_monthly_returns[j]
+            if adjust_withdrawals_for_inflation:
+                withdrawal_amount *= sample_cpi_mom[j]
+            if index % withdrawal_interval == 0:
+                share_value -= (
+                    withdrawal_amount * (1 + variable_transaction_fees)
+                    + fixed_transaction_fees
+                )
                 if share_value <= 0:
                     res[i, j:] = 0
                     break
@@ -235,6 +242,7 @@ def simulate_bootstrap_accumulation(
         int64[:, :],
         int64,
         int64,
+        int64,
         float64,
         float64,
         float64,
@@ -248,6 +256,7 @@ def simulate_bootstrap_withdrawal(
     monthly_returns: np.ndarray,
     cpi: np.ndarray,
     bootstrap_indices: np.ndarray,
+    coast_duration: int,
     withdrawal_horizon: int,
     withdrawal_interval: int,
     initial_portfolio_value: float,
@@ -270,19 +279,23 @@ def simulate_bootstrap_withdrawal(
         boot_cpi = cpi[idx]
         boot_cpi[0] = 0
         cum_cpi = (boot_cpi + 1).cumprod()
-        withdrawal_amounts = np.full(withdrawal_horizon + 1, initial_withdrawal_amount)
-        if adjust_withdrawals_for_inflation:
-            withdrawal_amounts = cum_cpi / cum_cpi[1] * withdrawal_amounts
-        withdrawal_amounts = (
-            withdrawal_amounts * (1.0 + variable_transaction_fees)
-            + fixed_transaction_fees
-        )
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
-        for t in range(1, withdrawal_horizon + 1):
+        withdrawal_amount = initial_withdrawal_amount
+        for t in range(1, coast_duration + 1):
             share_value *= boot_ret[t]
-            if t % withdrawal_interval == 0:
-                share_value -= withdrawal_amounts[t]
+            if adjust_withdrawals_for_inflation:
+                withdrawal_amount *= 1 + boot_cpi[t]
+            res[s, t] = share_value
+        for index, t in enumerate(range(coast_duration + 1, withdrawal_horizon + 1)):
+            share_value *= boot_ret[t]
+            if adjust_withdrawals_for_inflation:
+                withdrawal_amount *= 1 + boot_cpi[t]
+            if index % withdrawal_interval == 0:
+                share_value -= (
+                    withdrawal_amount * (1 + variable_transaction_fees)
+                    + fixed_transaction_fees
+                )
                 if share_value <= 0.0:
                     res[s, t:] = 0.0
                     break
