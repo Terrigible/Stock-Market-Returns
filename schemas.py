@@ -7,6 +7,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -439,8 +440,8 @@ class BaseAccumulationStrategy(BaseModel):
     investment_amount: float = Field(default=0, ge=0)
     monthly_investment: float = Field(default=0, ge=0)
     adjust_monthly_investment_for_inflation: bool = False
-    strategy_horizon: int = Field(gt=0)
-    dca_duration: int = Field(gt=0)
+    coast_duration: int = Field(ge=0)
+    dca_duration: int = Field(ge=0)
     dca_interval: int = Field(default=1, ge=1)
     adjust_portfolio_value_for_inflation: bool = False
     variable_transaction_fees: Annotated[
@@ -451,11 +452,10 @@ class BaseAccumulationStrategy(BaseModel):
         float, AfterValidator(convert_percent_to_decimal)
     ] = Field(default=0, ge=0)
 
-    @model_validator(mode="after")
-    def check_dca_duration_le_horizon(self):
-        if self.dca_duration > self.strategy_horizon:
-            raise ValueError("DCA duration must not exceed investment horizon")
-        return self
+    @computed_field
+    @property
+    def strategy_horizon(self) -> int:
+        return self.dca_duration + self.coast_duration
 
     @model_validator(mode="after")
     def check_nonzero_investment(self):
@@ -473,7 +473,7 @@ class BaseAccumulationStrategy(BaseModel):
             f"${self.monthly_investment:,.0f} invested monthly"
             f"{', inflation adjusted' if self.adjust_monthly_investment_for_inflation else ''}\n"
             f"for {self.dca_duration} months every {self.dca_interval} months\n"
-            f"held for {self.strategy_horizon} months\n"
+            f"coast for {self.coast_duration} months\n"
             f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
             f"Portfolio value {'' if self.adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"

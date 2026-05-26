@@ -1071,7 +1071,7 @@ app.clientside_callback(
     State(
         "backtest-accumulation-monthly-investment-inflation-adjustment-switch", "value"
     ),
-    State("backtest-accumulation-investment-horizon-input", "value"),
+    State("backtest-accumulation-coast-duration-input", "value"),
     State("backtest-accumulation-dca-duration-input", "value"),
     State("backtest-accumulation-dca-interval-input", "value"),
     State("backtest-accumulation-variable-transaction-fees-input", "value"),
@@ -1089,7 +1089,7 @@ def update_backtest_accumulation_strategies(
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
-    investment_horizon: int | None,
+    coast_duration: int | None,
     dca_duration: int | None,
     dca_interval: int | None,
     variable_transaction_fees: int | float | None,
@@ -1106,7 +1106,7 @@ def update_backtest_accumulation_strategies(
             investment_amount=investment_amount or 0,
             monthly_investment=monthly_investment or 0,
             adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
-            strategy_horizon=investment_horizon or dca_duration or 0,
+            coast_duration=coast_duration or 0,
             dca_duration=dca_duration or 0,
             dca_interval=dca_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,
@@ -1773,7 +1773,7 @@ def simulate_bootstrap_strategy(
     State(
         "bootstrap-accumulation-monthly-investment-inflation-adjustment-switch", "value"
     ),
-    State("bootstrap-accumulation-investment-horizon-input", "value"),
+    State("bootstrap-accumulation-coast-duration-input", "value"),
     State("bootstrap-accumulation-dca-duration-input", "value"),
     State("bootstrap-accumulation-dca-interval-input", "value"),
     State("bootstrap-accumulation-variable-transaction-fees-input", "value"),
@@ -1795,7 +1795,7 @@ def update_bootstrap_accumulation_strategies(
     investment_amount: int | float | None,
     monthly_investment: int | float | None,
     adjust_monthly_investment_for_inflation: bool,
-    investment_horizon: int | None,
+    coast_duration: int | None,
     dca_duration: int | None,
     dca_interval: int | None,
     variable_transaction_fees: int | float | None,
@@ -1814,7 +1814,7 @@ def update_bootstrap_accumulation_strategies(
             investment_amount=investment_amount or 0,
             monthly_investment=monthly_investment or 0,
             adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
-            strategy_horizon=investment_horizon or dca_duration or 0,
+            coast_duration=coast_duration or 0,
             dca_duration=dca_duration or 0,
             dca_interval=dca_interval or 1,
             variable_transaction_fees=variable_transaction_fees or 0,

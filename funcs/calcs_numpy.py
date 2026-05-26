@@ -44,16 +44,17 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
         sample_monthly_returns = monthly_returns_with_fees[sample_slice]
         sample_cash_returns = cash_returns[sample_slice]
         sample_cpi = cpi[sample_slice]
+        sample_cpi_mom = sample_cpi / np.roll(sample_cpi, 1)
         share_value = initial_portfolio_value
         funds_to_invest = 0
 
-        monthly_amounts = np.full(dca_duration + 1, initial_monthly_amount)
-        if adjust_monthly_investment_for_inflation:
-            monthly_amounts *= sample_cpi[: dca_duration + 1] / sample_cpi[1]
+        monthly_amount = initial_monthly_amount
 
         for j in range(1, dca_duration + 1):
             share_value *= sample_monthly_returns[j]
-            funds_to_invest += monthly_amounts[j]
+            if (j > 1) and adjust_monthly_investment_for_inflation:
+                monthly_amount *= sample_cpi_mom[j]
+            funds_to_invest += monthly_amount
             if (j % dca_interval == 0) or (j == dca_duration):
                 share_value += (
                     funds_to_invest * (1 - variable_transaction_fees)
@@ -204,12 +205,12 @@ def simulate_bootstrap_accumulation(
         res[s, 0] = initial_portfolio_value
         share_value = initial_portfolio_value
         funds_to_invest = 0.0
-        monthly_amounts = np.full(dca_duration + 1, initial_monthly_amount)
-        if adjust_monthly_investment_for_inflation:
-            monthly_amounts *= cum_cpi[: dca_duration + 1] / cum_cpi[1]
+        monthly_amount = initial_monthly_amount
         for t in range(1, dca_duration + 1):
             share_value *= boot_ret[t]
-            funds_to_invest += monthly_amounts[t]
+            if (t > 1) and adjust_monthly_investment_for_inflation:
+                monthly_amount *= 1 + boot_cpi[t]
+            funds_to_invest += monthly_amount
             if (t % dca_interval == 0) or (t == dca_duration):
                 share_value += (
                     funds_to_invest * (1.0 - variable_transaction_fees)

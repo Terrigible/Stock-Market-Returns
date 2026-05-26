@@ -719,23 +719,13 @@ app_layout = html.Div(
                                     style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
-                                    "Investment Horizon (Months)",
-                                    html_for="backtest-accumulation-investment-horizon-input",
-                                ),
-                                dbc.Input(
-                                    id="backtest-accumulation-investment-horizon-input",
-                                    type="number",
-                                    min=1,
-                                    step=1,
-                                ),
-                                dbc.Label(
                                     "DCA Duration (Months)",
                                     html_for="backtest-accumulation-dca-duration-input",
                                 ),
                                 dbc.Input(
                                     id="backtest-accumulation-dca-duration-input",
                                     type="number",
-                                    min=1,
+                                    min=0,
                                     step=1,
                                 ),
                                 dbc.Label(
@@ -746,6 +736,16 @@ app_layout = html.Div(
                                     id="backtest-accumulation-dca-interval-input",
                                     type="number",
                                     min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "Coast Duration (Months)",
+                                    html_for="backtest-accumulation-coast-duration-input",
+                                ),
+                                dbc.Input(
+                                    id="backtest-accumulation-coast-duration-input",
+                                    type="number",
+                                    min=0,
                                     step=1,
                                 ),
                                 dbc.Label(
@@ -1138,23 +1138,13 @@ app_layout = html.Div(
                                     style={"marginTop": "0"},
                                 ),
                                 dbc.Label(
-                                    "Investment Horizon (Months)",
-                                    html_for="bootstrap-accumulation-investment-horizon-input",
-                                ),
-                                dbc.Input(
-                                    id="bootstrap-accumulation-investment-horizon-input",
-                                    type="number",
-                                    min=1,
-                                    step=1,
-                                ),
-                                dbc.Label(
                                     "DCA Duration (Months)",
                                     html_for="bootstrap-accumulation-dca-duration-input",
                                 ),
                                 dbc.Input(
                                     id="bootstrap-accumulation-dca-duration-input",
                                     type="number",
-                                    min=1,
+                                    min=0,
                                     step=1,
                                 ),
                                 dbc.Label(
@@ -1165,6 +1155,16 @@ app_layout = html.Div(
                                     id="bootstrap-accumulation-dca-interval-input",
                                     type="number",
                                     min=1,
+                                    step=1,
+                                ),
+                                dbc.Label(
+                                    "Coast Duration (Months)",
+                                    html_for="bootstrap-accumulation-coast-duration-input",
+                                ),
+                                dbc.Input(
+                                    id="bootstrap-accumulation-coast-duration-input",
+                                    type="number",
+                                    min=0,
                                     step=1,
                                 ),
                                 dbc.Label(
