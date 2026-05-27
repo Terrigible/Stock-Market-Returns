@@ -1,4 +1,4 @@
-from functools import cache, partial
+from functools import cache
 from itertools import cycle
 from typing import TypedDict
 
@@ -1350,25 +1350,21 @@ def show_backtest_strategy_modal(
             strategy_str
         )
         portfolio_values = simulate_backtest_strategy(strategy)
-        if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
         portfolio_values = portfolio_values.dropna(how="all")
-        if clicked_date not in portfolio_values.index:
+        end_date = clicked_date
+        if index_by_start_date:
+            end_date = clicked_date + pd.offsets.BMonthEnd(strategy.strategy_horizon)
+        if end_date not in portfolio_values.index:
             continue
 
-        date_range = partial(
-            pd.date_range, periods=strategy.strategy_horizon + 1, freq="BME"
+        dates = pd.date_range(
+            end=end_date, periods=strategy.strategy_horizon + 1, freq="BME"
         )
-
-        if index_by_start_date:
-            dates = date_range(start=clicked_date)
-        else:
-            dates = date_range(end=clicked_date)
 
         traces.append(
             go.Scatter(
                 x=dates,
-                y=portfolio_values.loc[clicked_date].values,
+                y=portfolio_values.loc[end_date].values,
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
                 name=strategy_options[strategy_str].replace("\n", "<br>"),
