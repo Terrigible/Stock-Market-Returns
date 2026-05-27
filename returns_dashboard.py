@@ -847,6 +847,7 @@ def add_allocation(
     security_str: str,
     weight: float | int | None,
 ):
+    set_props("security-weight", {"required": False})
     portfolio = Portfolio(
         allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
             portfolio_allocation_strs or []
@@ -856,6 +857,7 @@ def add_allocation(
         return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
 
     if weight is None:
+        set_props("security-weight", {"required": True})
         return no_update
     new_allocation = Allocation(
         security=TypeAdapter(Security).validate_json(security_str),
