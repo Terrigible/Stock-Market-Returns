@@ -457,14 +457,6 @@ class BaseAccumulationStrategy(BaseModel):
     def strategy_horizon(self) -> int:
         return self.dca_duration + self.coast_duration
 
-    @model_validator(mode="after")
-    def check_nonzero_investment(self):
-        if self.investment_amount == 0 and self.monthly_investment == 0:
-            raise ValueError(
-                "At least one of investment amount or monthly investment must be greater than 0"
-            )
-        return self
-
     @property
     def label(self) -> str:
         return (
@@ -514,12 +506,6 @@ class BaseWithdrawalStrategy(BaseModel):
     annualised_holding_fees: Annotated[
         float, AfterValidator(convert_percent_to_decimal)
     ] = Field(default=0, ge=0)
-
-    @model_validator(mode="after")
-    def check_withdrawal_sustainable(self):
-        if self.initial_capital <= self.monthly_withdrawal * self.withdrawal_interval:
-            raise ValueError("Initial capital must exceed initial withdrawal amount")
-        return self
 
     @computed_field
     @property
