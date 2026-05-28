@@ -203,6 +203,19 @@ def load_us_treasury_rates():
 async def load_us_treasury_returns_async():
     treasury_rates = await load_us_treasury_rates_async()
     treasury_returns = pl.DataFrame().with_columns(treasury_rates["date"])
+    duration_str_to_duration = {
+        "1MO": 1,
+        "3MO": 3,
+        "6MO": 6,
+        "1": 12,
+        "2": 24,
+        "3": 36,
+        "5": 60,
+        "7": 84,
+        "10": 120,
+        "20": 240,
+        "30": 360,
+    }
     # Formula taken from https://portfoliooptimizer.io/blog/the-mathematics-of-bonds-simulating-the-returns-of-constant-maturity-government-bond-etfs/
     for duration in treasury_rates.drop("date").columns:
         rates = treasury_rates.select(duration).with_columns(
@@ -221,7 +234,7 @@ async def load_us_treasury_returns_async():
                         pl.col(duration)
                         .truediv(2)
                         .add(1)
-                        .pow(-2 * (eval(duration.replace("MO", "/12")) - 1 / 365.25))
+                        .pow(-2 * (duration_str_to_duration[duration] - 1 / 365.25))
                     )
                 )
             )
@@ -229,7 +242,7 @@ async def load_us_treasury_returns_async():
                 pl.col(duration)
                 .truediv(2)
                 .add(1)
-                .pow(-2 * (eval(duration.replace("MO", "/12")) - 1 / 365.25))
+                .pow(-2 * (duration_str_to_duration[duration] - 1 / 365.25))
             )
             .fill_nan(1)
             .cum_prod()
