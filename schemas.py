@@ -384,7 +384,7 @@ Security = Annotated[
 
 class Allocation(BaseModel):
     security: Security
-    weight: float = Field(gt=0, le=100)
+    weight: float = Field(ge=0.01, le=100)
 
     @property
     def label(self) -> str:
@@ -477,8 +477,8 @@ class AccumulationBacktestStrategy(BaseAccumulationStrategy):
 
 
 class AccumulationBootstrapStrategy(BaseAccumulationStrategy):
-    num_bootstrap_samples: int = Field(default=1000, gt=0)
-    avg_block_length: float = Field(default=120, gt=0)
+    num_bootstrap_samples: int = Field(default=1000, ge=100)
+    avg_block_length: float = Field(default=120, ge=2)
 
     @property
     def label(self) -> str:
@@ -492,9 +492,9 @@ class BaseWithdrawalStrategy(BaseModel):
     strategy_phase: Literal["Withdrawal"] = "Withdrawal"
     strategy_portfolio: Portfolio
     currency: Currency
-    initial_capital: float = Field(gt=0)
+    initial_capital: float = Field(ge=0)
     coast_duration: int = Field(ge=0)
-    monthly_withdrawal: float = Field(gt=0)
+    monthly_withdrawal: float = Field(ge=0)
     adjust_withdrawals_for_inflation: bool = False
     adjust_portfolio_value_for_inflation: bool = False
     withdrawal_duration: int = Field(ge=0)
@@ -532,8 +532,8 @@ class WithdrawalBacktestStrategy(BaseWithdrawalStrategy):
 
 
 class WithdrawalBootstrapStrategy(BaseWithdrawalStrategy):
-    num_bootstrap_samples: int = Field(default=1000, gt=0)
-    avg_block_length: float = Field(default=120, gt=0)
+    num_bootstrap_samples: int = Field(default=1000, ge=100)
+    avg_block_length: float = Field(default=120, ge=2)
 
     @property
     def label(self) -> str:

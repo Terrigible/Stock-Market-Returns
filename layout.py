@@ -915,7 +915,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="backtest-withdrawal-initial-capital-input",
                                     type="number",
-                                    min=0.01,
+                                    min=0,
                                 ),
                                 dbc.Label(
                                     "Coast Duration (Months)",
@@ -934,7 +934,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="backtest-withdrawal-monthly-amount-input",
                                     type="number",
-                                    min=0.01,
+                                    min=0,
                                 ),
                                 dbc.Switch(
                                     "backtest-withdrawal-monthly-inflation-adjustment-switch",
@@ -949,7 +949,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="backtest-withdrawal-duration-input",
                                     type="number",
-                                    min=1,
+                                    min=0,
                                     step=1,
                                 ),
                                 dbc.Label(
@@ -1218,7 +1218,7 @@ app_layout = html.Div(
                                     type="number",
                                     min=100,
                                     value=1000,
-                                    step=100,
+                                    step=1,
                                 ),
                                 dbc.Label(
                                     "Avg. Block Length (Months)",
@@ -1227,9 +1227,8 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="bootstrap-accumulation-avg-block-length-input",
                                     type="number",
-                                    min=1,
+                                    min=2,
                                     value=120,
-                                    step=1,
                                 ),
                                 html.P(),
                                 dbc.Button(
@@ -1327,7 +1326,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="bootstrap-withdrawal-initial-capital-input",
                                     type="number",
-                                    min=0.01,
+                                    min=0,
                                 ),
                                 dbc.Label(
                                     "Coast Duration (Months)",
@@ -1346,7 +1345,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="bootstrap-withdrawal-monthly-amount-input",
                                     type="number",
-                                    min=0.01,
+                                    min=0,
                                 ),
                                 dbc.Switch(
                                     "bootstrap-withdrawal-monthly-inflation-adjustment-switch",
@@ -1361,7 +1360,7 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="bootstrap-withdrawal-duration-input",
                                     type="number",
-                                    min=1,
+                                    min=0,
                                     step=1,
                                 ),
                                 dbc.Label(
@@ -1416,7 +1415,7 @@ app_layout = html.Div(
                                     type="number",
                                     min=100,
                                     value=1000,
-                                    step=100,
+                                    step=1,
                                 ),
                                 dbc.Label(
                                     "Avg. Block Length (Months)",
@@ -1425,9 +1424,8 @@ app_layout = html.Div(
                                 dbc.Input(
                                     id="bootstrap-withdrawal-avg-block-length-input",
                                     type="number",
-                                    min=1,
+                                    min=2,
                                     value=120,
-                                    step=1,
                                 ),
                                 html.P(),
                                 dbc.Button(
