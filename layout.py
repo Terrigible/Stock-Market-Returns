@@ -702,6 +702,8 @@ app_layout = html.Div(
                                     id="backtest-accumulation-investment-amount-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Monthly Investment Amount",
@@ -711,6 +713,8 @@ app_layout = html.Div(
                                     id="backtest-accumulation-monthly-investment-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "backtest-accumulation-monthly-investment-inflation-adjustment-switch",
@@ -727,6 +731,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                     step=1,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "DCA Interval (Months)",
@@ -737,6 +743,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=1,
                                     step=1,
+                                    value=1,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Coast Duration (Months)",
@@ -747,6 +755,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                     step=1,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Variable Transaction Fees (%)",
@@ -756,6 +766,8 @@ app_layout = html.Div(
                                     id="backtest-accumulation-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Fixed Transaction Fees ($)",
@@ -765,6 +777,8 @@ app_layout = html.Div(
                                     id="backtest-accumulation-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Annualised Holding Fees (% p.a.)",
@@ -774,6 +788,8 @@ app_layout = html.Div(
                                     id="backtest-accumulation-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "backtest-accumulation-portfolio-value-inflation-adjustment-switch",
@@ -916,6 +932,8 @@ app_layout = html.Div(
                                     id="backtest-withdrawal-initial-capital-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Coast Duration (Months)",
@@ -926,6 +944,8 @@ app_layout = html.Div(
                                     type="number",
                                     step=1,
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Monthly Withdrawal Amount",
@@ -935,6 +955,8 @@ app_layout = html.Div(
                                     id="backtest-withdrawal-monthly-amount-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "backtest-withdrawal-monthly-inflation-adjustment-switch",
@@ -951,6 +973,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                     step=1,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Withdrawal Interval (Months)",
@@ -961,6 +985,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=1,
                                     step=1,
+                                    value=1,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Variable Transaction Fees (%)",
@@ -970,6 +996,8 @@ app_layout = html.Div(
                                     id="backtest-withdrawal-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Fixed Transaction Fees ($)",
@@ -979,6 +1007,8 @@ app_layout = html.Div(
                                     id="backtest-withdrawal-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Annualised Holding Fees (% p.a.)",
@@ -988,6 +1018,8 @@ app_layout = html.Div(
                                     id="backtest-withdrawal-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "backtest-withdrawal-portfolio-value-inflation-adjustment-switch",
@@ -1131,6 +1163,8 @@ app_layout = html.Div(
                                     id="bootstrap-accumulation-investment-amount-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Monthly Investment Amount",
@@ -1140,6 +1174,8 @@ app_layout = html.Div(
                                     id="bootstrap-accumulation-monthly-investment-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "bootstrap-accumulation-monthly-investment-inflation-adjustment-switch",
@@ -1156,6 +1192,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                     step=1,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "DCA Interval (Months)",
@@ -1166,6 +1204,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=1,
                                     step=1,
+                                    value=1,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Coast Duration (Months)",
@@ -1176,6 +1216,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                     step=1,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Variable Transaction Fees (%)",
@@ -1185,6 +1227,8 @@ app_layout = html.Div(
                                     id="bootstrap-accumulation-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Fixed Transaction Fees ($)",
@@ -1194,6 +1238,8 @@ app_layout = html.Div(
                                     id="bootstrap-accumulation-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Annualised Holding Fees (% p.a.)",
@@ -1203,6 +1249,8 @@ app_layout = html.Div(
                                     id="bootstrap-accumulation-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "bootstrap-accumulation-portfolio-value-inflation-adjustment-switch",
@@ -1219,6 +1267,7 @@ app_layout = html.Div(
                                     min=100,
                                     value=1000,
                                     step=1,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Avg. Block Length (Months)",
@@ -1229,6 +1278,7 @@ app_layout = html.Div(
                                     type="number",
                                     min=2,
                                     value=120,
+                                    required=True,
                                 ),
                                 html.P(),
                                 dbc.Button(
@@ -1327,6 +1377,8 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-initial-capital-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Coast Duration (Months)",
@@ -1337,6 +1389,8 @@ app_layout = html.Div(
                                     type="number",
                                     step=1,
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Monthly Withdrawal Amount",
@@ -1346,6 +1400,8 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-monthly-amount-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "bootstrap-withdrawal-monthly-inflation-adjustment-switch",
@@ -1362,6 +1418,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=0,
                                     step=1,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Withdrawal Interval (Months)",
@@ -1372,6 +1430,8 @@ app_layout = html.Div(
                                     type="number",
                                     min=1,
                                     step=1,
+                                    value=1,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Variable Transaction Fees (%)",
@@ -1381,6 +1441,8 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-variable-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Fixed Transaction Fees ($)",
@@ -1390,6 +1452,8 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-fixed-transaction-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Annualised Holding Fees (% p.a.)",
@@ -1399,6 +1463,8 @@ app_layout = html.Div(
                                     id="bootstrap-withdrawal-annualised-holding-fees-input",
                                     type="number",
                                     min=0,
+                                    value=0,
+                                    required=True,
                                 ),
                                 dbc.Switch(
                                     "bootstrap-withdrawal-portfolio-value-inflation-adjustment-switch",
@@ -1416,6 +1482,7 @@ app_layout = html.Div(
                                     min=100,
                                     value=1000,
                                     step=1,
+                                    required=True,
                                 ),
                                 dbc.Label(
                                     "Avg. Block Length (Months)",
@@ -1426,6 +1493,7 @@ app_layout = html.Div(
                                     type="number",
                                     min=2,
                                     value=120,
+                                    required=True,
                                 ),
                                 html.P(),
                                 dbc.Button(
