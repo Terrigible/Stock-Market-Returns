@@ -1043,6 +1043,70 @@ app.clientside_callback(
 
 
 app.clientside_callback(
+    ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
+    Output("backtest-accumulation-add-strategy-button", "disabled"),
+    Input("backtest-accumulation-strategy-portfolio", "value"),
+    Input("backtest-accumulation-investment-amount-input", "value"),
+    Input("backtest-accumulation-monthly-investment-input", "value"),
+    Input("backtest-accumulation-dca-duration-input", "value"),
+    Input("backtest-accumulation-dca-interval-input", "value"),
+    Input("backtest-accumulation-coast-duration-input", "value"),
+    Input("backtest-accumulation-variable-transaction-fees-input", "value"),
+    Input("backtest-accumulation-fixed-transaction-fees-input", "value"),
+    Input("backtest-accumulation-annualised-holding-fees-input", "value"),
+)
+
+
+app.clientside_callback(
+    ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
+    Output("backtest-withdrawal-add-strategy-button", "disabled"),
+    Input("backtest-withdrawal-strategy-portfolio", "value"),
+    Input("backtest-withdrawal-initial-capital-input", "value"),
+    Input("backtest-withdrawal-coast-duration-input", "value"),
+    Input("backtest-withdrawal-monthly-amount-input", "value"),
+    Input("backtest-withdrawal-duration-input", "value"),
+    Input("backtest-withdrawal-interval-input", "value"),
+    Input("backtest-withdrawal-variable-transaction-fees-input", "value"),
+    Input("backtest-withdrawal-fixed-transaction-fees-input", "value"),
+    Input("backtest-withdrawal-annualised-holding-fees-input", "value"),
+)
+
+
+app.clientside_callback(
+    ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
+    Output("bootstrap-accumulation-add-strategy-button", "disabled"),
+    Input("bootstrap-accumulation-strategy-portfolio", "value"),
+    Input("bootstrap-accumulation-investment-amount-input", "value"),
+    Input("bootstrap-accumulation-monthly-investment-input", "value"),
+    Input("bootstrap-accumulation-dca-duration-input", "value"),
+    Input("bootstrap-accumulation-dca-interval-input", "value"),
+    Input("bootstrap-accumulation-coast-duration-input", "value"),
+    Input("bootstrap-accumulation-variable-transaction-fees-input", "value"),
+    Input("bootstrap-accumulation-fixed-transaction-fees-input", "value"),
+    Input("bootstrap-accumulation-annualised-holding-fees-input", "value"),
+    Input("bootstrap-accumulation-num-samples-input", "value"),
+    Input("bootstrap-accumulation-avg-block-length-input", "value"),
+)
+
+
+app.clientside_callback(
+    ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
+    Output("bootstrap-withdrawal-add-strategy-button", "disabled"),
+    Input("bootstrap-withdrawal-strategy-portfolio", "value"),
+    Input("bootstrap-withdrawal-initial-capital-input", "value"),
+    Input("bootstrap-withdrawal-coast-duration-input", "value"),
+    Input("bootstrap-withdrawal-monthly-amount-input", "value"),
+    Input("bootstrap-withdrawal-duration-input", "value"),
+    Input("bootstrap-withdrawal-interval-input", "value"),
+    Input("bootstrap-withdrawal-variable-transaction-fees-input", "value"),
+    Input("bootstrap-withdrawal-fixed-transaction-fees-input", "value"),
+    Input("bootstrap-withdrawal-annualised-holding-fees-input", "value"),
+    Input("bootstrap-withdrawal-num-samples-input", "value"),
+    Input("bootstrap-withdrawal-avg-block-length-input", "value"),
+)
+
+
+app.clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
     ),
@@ -1086,52 +1150,33 @@ def update_backtest_accumulation_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
-    strategy_portfolio: str | None,
+    strategy_portfolio: str,
     currency: Currency,
-    investment_amount: int | float | None,
-    monthly_investment: int | float | None,
+    investment_amount: int | float,
+    monthly_investment: int | float,
     adjust_monthly_investment_for_inflation: bool,
-    coast_duration: int | None,
-    dca_duration: int | None,
-    dca_interval: int | None,
-    variable_transaction_fees: int | float | None,
-    fixed_transaction_fees: int | float | None,
-    annualised_holding_fees: int | float | None,
+    coast_duration: int,
+    dca_duration: int,
+    dca_interval: int,
+    variable_transaction_fees: int | float,
+    fixed_transaction_fees: int | float,
+    annualised_holding_fees: int | float,
     adjust_portfolio_value_for_inflation: bool,
 ):
-    if strategy_portfolio is None:
-        return no_update
-    try:
-        strategy = AccumulationBacktestStrategy(
-            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
-            currency=currency,
-            investment_amount=investment_amount or 0,
-            monthly_investment=monthly_investment or 0,
-            adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
-            coast_duration=coast_duration or 0,
-            dca_duration=dca_duration or 0,
-            dca_interval=dca_interval or 1,
-            variable_transaction_fees=variable_transaction_fees or 0,
-            fixed_transaction_fees=fixed_transaction_fees or 0,
-            annualised_holding_fees=annualised_holding_fees or 0,
-            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
-        )
-    except ValidationError:
-        # TODO
-        # set_props(
-        #     "toast-store",
-        #     {
-        #         "data": "\n".join(
-        #             err["msg"]
-        #             for err in e.errors(
-        #                 include_url=False,
-        #                 include_context=False,
-        #                 include_input=False,
-        #             )
-        #         )
-        #     },
-        # )
-        return no_update
+    strategy = AccumulationBacktestStrategy(
+        strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+        currency=currency,
+        investment_amount=investment_amount,
+        monthly_investment=monthly_investment,
+        adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
+        coast_duration=coast_duration,
+        dca_duration=dca_duration,
+        dca_interval=dca_interval,
+        variable_transaction_fees=variable_transaction_fees,
+        fixed_transaction_fees=fixed_transaction_fees,
+        annualised_holding_fees=annualised_holding_fees,
+        adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
+    )
 
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
@@ -1463,52 +1508,33 @@ def update_backtest_withdrawal_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
-    strategy_portfolio: str | None,
+    strategy_portfolio: str,
     currency: Currency,
-    initial_capital: int | float | None,
-    coast_duration: int | None,
-    monthly_withdrawal: int | float | None,
+    initial_capital: int | float,
+    coast_duration: int,
+    monthly_withdrawal: int | float,
     adjust_withdrawals_for_inflation: bool,
-    withdrawal_duration: int | None,
-    withdrawal_interval: int | None,
-    variable_transaction_fees: int | float | None,
-    fixed_transaction_fees: int | float | None,
-    annualised_holding_fees: int | float | None,
+    withdrawal_duration: int,
+    withdrawal_interval: int,
+    variable_transaction_fees: int | float,
+    fixed_transaction_fees: int | float,
+    annualised_holding_fees: int | float,
     adjust_portfolio_value_for_inflation: bool,
 ):
-    if strategy_portfolio is None:
-        return no_update
-    try:
-        strategy = WithdrawalBacktestStrategy(
-            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
-            currency=currency,
-            initial_capital=initial_capital or 0,
-            coast_duration=coast_duration or 0,
-            monthly_withdrawal=monthly_withdrawal or 0,
-            adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
-            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
-            withdrawal_duration=withdrawal_duration or 0,
-            withdrawal_interval=withdrawal_interval or 1,
-            variable_transaction_fees=variable_transaction_fees or 0,
-            fixed_transaction_fees=fixed_transaction_fees or 0,
-            annualised_holding_fees=annualised_holding_fees or 0,
-        )
-    except ValidationError:
-        # TODO
-        # set_props(
-        #     "toast-store",
-        #     {
-        #         "data": "\n".join(
-        #             err["msg"]
-        #             for err in e.errors(
-        #                 include_url=False,
-        #                 include_context=False,
-        #                 include_input=False,
-        #             )
-        #         )
-        #     },
-        # )
-        return no_update
+    strategy = WithdrawalBacktestStrategy(
+        strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+        currency=currency,
+        initial_capital=initial_capital,
+        coast_duration=coast_duration,
+        monthly_withdrawal=monthly_withdrawal,
+        adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
+        adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
+        withdrawal_duration=withdrawal_duration,
+        withdrawal_interval=withdrawal_interval,
+        variable_transaction_fees=variable_transaction_fees,
+        fixed_transaction_fees=fixed_transaction_fees,
+        annualised_holding_fees=annualised_holding_fees,
+    )
 
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
@@ -1793,56 +1819,37 @@ def update_bootstrap_accumulation_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
-    strategy_portfolio: str | None,
+    strategy_portfolio: str,
     currency: Currency,
-    investment_amount: int | float | None,
-    monthly_investment: int | float | None,
+    investment_amount: int | float,
+    monthly_investment: int | float,
     adjust_monthly_investment_for_inflation: bool,
-    coast_duration: int | None,
-    dca_duration: int | None,
-    dca_interval: int | None,
-    variable_transaction_fees: int | float | None,
-    fixed_transaction_fees: int | float | None,
-    annualised_holding_fees: int | float | None,
+    coast_duration: int,
+    dca_duration: int,
+    dca_interval: int,
+    variable_transaction_fees: int | float,
+    fixed_transaction_fees: int | float,
+    annualised_holding_fees: int | float,
     adjust_portfolio_value_for_inflation: bool,
-    num_samples: int | None,
-    avg_block_len: int | float | None,
+    num_samples: int,
+    avg_block_len: int | float,
 ):
-    if strategy_portfolio is None:
-        return no_update
-    try:
-        strategy = AccumulationBootstrapStrategy(
-            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
-            currency=currency,
-            investment_amount=investment_amount or 0,
-            monthly_investment=monthly_investment or 0,
-            adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
-            coast_duration=coast_duration or 0,
-            dca_duration=dca_duration or 0,
-            dca_interval=dca_interval or 1,
-            variable_transaction_fees=variable_transaction_fees or 0,
-            fixed_transaction_fees=fixed_transaction_fees or 0,
-            annualised_holding_fees=annualised_holding_fees or 0,
-            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
-            num_bootstrap_samples=num_samples or 1000,
-            avg_block_length=avg_block_len or 120,
-        )
-    except ValidationError:
-        # TODO
-        # set_props(
-        #     "toast-store",
-        #     {
-        #         "data": "\n".join(
-        #             err["msg"]
-        #             for err in e.errors(
-        #                 include_url=False,
-        #                 include_context=False,
-        #                 include_input=False,
-        #             )
-        #         )
-        #     },
-        # )
-        return no_update
+    strategy = AccumulationBootstrapStrategy(
+        strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+        currency=currency,
+        investment_amount=investment_amount,
+        monthly_investment=monthly_investment,
+        adjust_monthly_investment_for_inflation=adjust_monthly_investment_for_inflation,
+        coast_duration=coast_duration,
+        dca_duration=dca_duration,
+        dca_interval=dca_interval,
+        variable_transaction_fees=variable_transaction_fees,
+        fixed_transaction_fees=fixed_transaction_fees,
+        annualised_holding_fees=annualised_holding_fees,
+        adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
+        num_bootstrap_samples=num_samples,
+        avg_block_length=avg_block_len,
+    )
 
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
@@ -1956,56 +1963,37 @@ def update_bootstrap_withdrawal_strategies(
     _,
     strategies: list[str] | None,
     strategy_options: dict[str, str],
-    strategy_portfolio: str | None,
+    strategy_portfolio: str,
     currency: Currency,
-    initial_capital: int | float | None,
-    coast_duration: int | None,
-    monthly_withdrawal: int | float | None,
+    initial_capital: int | float,
+    coast_duration: int,
+    monthly_withdrawal: int | float,
     adjust_withdrawals_for_inflation: bool,
-    withdrawal_duration: int | None,
-    withdrawal_interval: int | None,
-    variable_transaction_fees: int | float | None,
-    fixed_transaction_fees: int | float | None,
-    annualised_holding_fees: int | float | None,
-    num_samples: int | None,
-    avg_block_len: int | float | None,
+    withdrawal_duration: int,
+    withdrawal_interval: int,
+    variable_transaction_fees: int | float,
+    fixed_transaction_fees: int | float,
+    annualised_holding_fees: int | float,
+    num_samples: int,
+    avg_block_len: int | float,
     adjust_portfolio_value_for_inflation: bool,
 ):
-    if strategy_portfolio is None:
-        return no_update
-    try:
-        strategy = WithdrawalBootstrapStrategy(
-            strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
-            currency=currency,
-            initial_capital=initial_capital or 0,
-            coast_duration=coast_duration or 0,
-            monthly_withdrawal=monthly_withdrawal or 0,
-            adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
-            adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
-            withdrawal_duration=withdrawal_duration or 0,
-            withdrawal_interval=withdrawal_interval or 1,
-            variable_transaction_fees=variable_transaction_fees or 0,
-            fixed_transaction_fees=fixed_transaction_fees or 0,
-            annualised_holding_fees=annualised_holding_fees or 0,
-            num_bootstrap_samples=num_samples or 1000,
-            avg_block_length=avg_block_len or 120,
-        )
-    except ValidationError:
-        # TODO
-        # set_props(
-        #     "toast-store",
-        #     {
-        #         "data": "\n".join(
-        #             err["msg"]
-        #             for err in e.errors(
-        #                 include_url=False,
-        #                 include_context=False,
-        #                 include_input=False,
-        #             )
-        #         )
-        #     },
-        # )
-        return no_update
+    strategy = WithdrawalBootstrapStrategy(
+        strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
+        currency=currency,
+        initial_capital=initial_capital,
+        coast_duration=coast_duration,
+        monthly_withdrawal=monthly_withdrawal,
+        adjust_withdrawals_for_inflation=adjust_withdrawals_for_inflation,
+        adjust_portfolio_value_for_inflation=adjust_portfolio_value_for_inflation,
+        withdrawal_duration=withdrawal_duration,
+        withdrawal_interval=withdrawal_interval,
+        variable_transaction_fees=variable_transaction_fees,
+        fixed_transaction_fees=fixed_transaction_fees,
+        annualised_holding_fees=annualised_holding_fees,
+        num_bootstrap_samples=num_samples,
+        avg_block_length=avg_block_len,
+    )
 
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label

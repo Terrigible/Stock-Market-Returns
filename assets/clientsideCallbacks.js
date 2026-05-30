@@ -228,6 +228,26 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
                 return "Sum of Weights: " + total + "%";
             },
     },
+    disabled: {
+        isStrategyInputInvalid:
+            /**
+             * Checks whether an "Add Strategy" button should be disabled.
+             *
+             * @param {string|null} portfolio The selected strategy portfolio value.
+             * @param {...(number|null)} numberInputs Variable number of numeric input values.
+             * @returns {boolean} True if the button should be disabled.
+             */
+            function (portfolio) {
+                if (!portfolio) return true;
+                for (var i = 1; i < arguments.length; i++) {
+                    var val = arguments[i];
+                    if (val === null || val === undefined || Number.isNaN(val)) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+    },
     toast: {
         updateToast:
             /**
