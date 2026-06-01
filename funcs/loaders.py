@@ -104,7 +104,7 @@ def load_fed_funds_rate():
     if (
         fed_funds_rate.index[-1] + BMonthEnd() + BDay() + Day(1)
         < pd.to_datetime("today")
-    ) and os.environ.get("FRED_API_KEY", None):
+    ) and "FRED_API_KEY" in os.environ:
         fed_funds_rate = download_fed_funds_rate()
 
     return fed_funds_rate.resample("D").ffill().ffill()
@@ -153,7 +153,7 @@ async def load_us_treasury_rates_async():
     if (
         treasury_rates.index[-1] + BMonthEnd() + BDay() + Day(1)
         < pd.to_datetime("today")
-    ) and os.environ.get("FRED_API_KEY", None):
+    ) and "FRED_API_KEY" in os.environ:
         treasury_rates = await download_us_treasury_rates_async()
 
     treasury_rates["20"] = treasury_rates["20"].fillna(
@@ -276,7 +276,7 @@ def load_mas_sgd_fx():
     sgd_fx = pd.read_csv("data/sgd_fx.csv", parse_dates=["date"], index_col="date")
     if (
         sgd_fx.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
-    ) and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None):
+    ) and "MAS_EXCHANGE_RATE_API_KEY" in os.environ:
         sgd_fx = download_mas_sgd_fx()
 
     return sgd_fx
@@ -344,7 +344,7 @@ async def load_fred_usd_fx_async():
         + pd.tseries.offsets.BMonthEnd()
         + pd.tseries.offsets.Week(weekday=1)
         <= pd.to_datetime("today")
-    ) and os.environ.get("FRED_API_KEY", None):
+    ) and "FRED_API_KEY" in os.environ:
         usd_fx = await download_fred_usd_fx_async()
 
     return usd_fx
@@ -392,8 +392,8 @@ def load_usdsgd():
     ]
     if (
         usdsgd.index[-1] + BMonthEnd() + Day() < pd.to_datetime("today")
-        and os.environ.get("FRED_API_KEY", None)
-        and os.environ.get("MAS_EXCHANGE_RATE_API_KEY", None)
+        and "FRED_API_KEY" in os.environ
+        and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
     ):
         df = pd.merge(
             pd.merge(
@@ -520,7 +520,7 @@ def load_sgd_interest_rates():
         + pd.tseries.offsets.BMonthEnd()
         + pd.tseries.offsets.BDay()
         <= pd.to_datetime("today")
-    ) and os.environ.get("MAS_INTEREST_RATE_API_KEY", None):
+    ) and "MAS_INTEREST_RATE_API_KEY" in os.environ:
         mas_sgd_interest_rates = download_sgd_interest_rates()
 
     interbank_rates = (
@@ -638,7 +638,7 @@ def load_us_cpi():
     ]
     if (
         us_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(15) < pd.to_datetime("today")
-    ) and os.environ.get("FRED_API_KEY", None):
+    ) and "FRED_API_KEY" in os.environ:
         us_cpi = get_fred_series("CPIAUCNS").rename("us_cpi").resample("BME").last()
         us_cpi.to_csv("data/us_cpi.csv")
     return us_cpi.interpolate()
