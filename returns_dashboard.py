@@ -9,7 +9,15 @@ import plotly.graph_objects as go
 import polars as pl
 import python_calamine  # noqa: F401 # Reduces latency for first pd.read_excel call
 import scipy.interpolate  # noqa: F401 # Reduces latency for first pd.Resampler.interpolate call
-from dash import ClientsideFunction, Dash, ctx, no_update, set_props
+from dash import (
+    ClientsideFunction,
+    Dash,
+    callback,
+    clientside_callback,
+    ctx,
+    no_update,
+    set_props,
+)
 from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from pydantic import Json, TypeAdapter, ValidationError
@@ -262,7 +270,7 @@ server = app.server
 app.layout = app_layout
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateSecuritySelectionVisibility"
     ),
@@ -275,7 +283,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateIndexSelectionVisibility"
     ),
@@ -288,7 +296,7 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+@callback(
     Output("msci-index-selection", "options"),
     Output("msci-index-selection", "value"),
     Input("msci-index-type-selection", "value"),
@@ -298,7 +306,7 @@ def update_msci_index_options(index_type: MSCIIndexType):
     return options.to_dict(), list(options)[0]
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility",
         function_name="updateOthersTaxTreatmentSelectionVisibility",
@@ -308,7 +316,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateFredDurationSelectionVisibility"
     ),
@@ -317,7 +325,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateMasDurationSelectionVisibility"
     ),
@@ -326,7 +334,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="toast", function_name="updateToast"),
     Output("toast", "children"),
     Output("toast", "is_open"),
@@ -334,7 +342,7 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+@callback(
     Output("selected-securities", "value"),
     Output("selected-securities", "options"),
     Input("add-index-button", "n_clicks"),
@@ -411,7 +419,7 @@ def add_index(
     return selected_securities, selected_securities_options
 
 
-@app.callback(
+@callback(
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
     Output("yf-valid-securities-store", "data"),
@@ -498,7 +506,7 @@ def add_yf_security(
     )
 
 
-@app.callback(
+@callback(
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
     Output("ft-valid-securities-store", "data", allow_duplicate=True),
@@ -580,7 +588,7 @@ def add_ft_security(
     )
 
 
-@app.callback(
+@callback(
     Output("fund-selection", "options"),
     Output("fund-selection", "value"),
     Input("fund-company-selection", "value"),
@@ -592,7 +600,7 @@ def update_fund_selection_options(fund_company: FundCompany | None):
     return fund_class.to_dict(), list(fund_class)[0]
 
 
-@app.callback(
+@callback(
     Output("selected-securities", "value", allow_duplicate=True),
     Output("selected-securities", "options", allow_duplicate=True),
     Input("add-fund-button", "n_clicks"),
@@ -624,7 +632,7 @@ def add_fund(
     return selected_securities, selected_securities_options
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateSelectionVisibility"
     ),
@@ -636,7 +644,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility",
         function_name="updateRollingReturnsDistributionChartTypeVisibility",
@@ -646,7 +654,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="options",
         function_name="updateBaselineSecuritySelectionOptions",
@@ -661,7 +669,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="state", function_name="updateLastLayoutStore"),
     Output("graph-last-layout-state-store", "data"),
     Input("graph", "figure"),
@@ -759,7 +767,7 @@ def update_holding_graph(
     return dict(data=data, layout=layout)
 
 
-@app.callback(
+@callback(
     Output("graph", "figure"),
     Input("selected-securities", "value"),
     Input("selected-securities", "options"),
@@ -820,7 +828,7 @@ def update_security_graph(
     )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="options",
         function_name="updateSecuritySelectionOptions",
@@ -831,7 +839,7 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+@callback(
     Output("portfolio-allocations", "value"),
     Output("portfolio-allocations", "options"),
     Input("add-security-button", "n_clicks"),
@@ -869,7 +877,7 @@ def add_allocation(
     return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="update_values",
         function_name="portfolioWeightsSum",
@@ -880,7 +888,7 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+@callback(
     Output("portfolios", "value"),
     Output("portfolios", "options"),
     Output("portfolio-allocations", "value", allow_duplicate=True),
@@ -916,7 +924,7 @@ def add_portfolio(
     return (portfolio_strs, portfolio_options, [], {})
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateSelectionVisibility"
     ),
@@ -928,7 +936,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility",
         function_name="updateRollingReturnsDistributionChartTypeVisibility",
@@ -940,7 +948,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="options",
         function_name="updateBaselineSecuritySelectionOptions",
@@ -955,7 +963,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="state", function_name="updateLastLayoutStore"),
     Output("portfolio-graph-last-layout-state-store", "data"),
     Input("portfolio-graph", "figure"),
@@ -964,7 +972,7 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+@callback(
     Output("portfolio-graph", "figure"),
     Input("portfolios", "value"),
     State("portfolios", "options"),
@@ -1024,7 +1032,7 @@ def update_portfolio_graph(
     )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="options",
         function_name="updateStrategyPortfolioOptions",
@@ -1042,7 +1050,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
     Output("backtest-accumulation-add-strategy-button", "disabled"),
     Input("backtest-accumulation-strategy-portfolio", "value"),
@@ -1057,7 +1065,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
     Output("backtest-withdrawal-add-strategy-button", "disabled"),
     Input("backtest-withdrawal-strategy-portfolio", "value"),
@@ -1072,7 +1080,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
     Output("bootstrap-accumulation-add-strategy-button", "disabled"),
     Input("bootstrap-accumulation-strategy-portfolio", "value"),
@@ -1089,7 +1097,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(namespace="disabled", function_name="isStrategyInputInvalid"),
     Output("bootstrap-withdrawal-add-strategy-button", "disabled"),
     Input("bootstrap-withdrawal-strategy-portfolio", "value"),
@@ -1106,7 +1114,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
     ),
@@ -1115,7 +1123,7 @@ app.clientside_callback(
 )
 
 
-app.clientside_callback(
+clientside_callback(
     ClientsideFunction(
         namespace="visibility", function_name="updateStrategyDrawdownTypeVisibility"
     ),
@@ -1124,7 +1132,7 @@ app.clientside_callback(
 )
 
 
-@app.callback(
+@callback(
     Output("backtest-accumulation-strategies", "value"),
     Output("backtest-accumulation-strategies", "options"),
     Input("backtest-accumulation-add-strategy-button", "n_clicks"),
@@ -1351,7 +1359,7 @@ def update_backtest_strategy_graph(
     }
 
 
-@app.callback(
+@callback(
     Output("backtest-accumulation-strategy-graph", "figure"),
     Input("backtest-accumulation-strategies", "value"),
     State("backtest-accumulation-strategies", "options"),
@@ -1442,7 +1450,7 @@ class ClickData(TypedDict):
     points: list[Point]
 
 
-@app.callback(
+@callback(
     Output("backtest-accumulation-strategy-clicked-date-store", "data"),
     Output("backtest-accumulation-strategy-show-details-button", "children"),
     Output("backtest-accumulation-strategy-show-details-button", "disabled"),
@@ -1459,7 +1467,7 @@ def handle_backtest_accumulation_strategy_graph_interaction(click_data: ClickDat
     return clicked_date.isoformat(), f"View Portfolio Growth for {date_str}", False
 
 
-@app.callback(
+@callback(
     Output("backtest-accumulation-strategy-modal", "is_open"),
     Output("backtest-accumulation-strategy-modal-graph", "figure"),
     Input("backtest-accumulation-strategy-show-details-button", "n_clicks"),
@@ -1484,7 +1492,7 @@ def show_backtest_accumulation_strategy_modal(
     )
 
 
-@app.callback(
+@callback(
     Output("backtest-withdrawal-strategies", "value"),
     Output("backtest-withdrawal-strategies", "options"),
     Input("backtest-withdrawal-add-strategy-button", "n_clicks"),
@@ -1548,7 +1556,7 @@ def update_backtest_withdrawal_strategies(
     return strategies, strategy_options
 
 
-@app.callback(
+@callback(
     Output("backtest-withdrawal-strategy-graph", "figure"),
     Input("backtest-withdrawal-strategies", "value"),
     State("backtest-withdrawal-strategies", "options"),
@@ -1573,7 +1581,7 @@ def update_backtest_withdrawal_strategy_graph(
     )
 
 
-@app.callback(
+@callback(
     Output("backtest-withdrawal-strategy-clicked-date-store", "data"),
     Output("backtest-withdrawal-strategy-show-details-button", "children"),
     Output("backtest-withdrawal-strategy-show-details-button", "disabled"),
@@ -1590,7 +1598,7 @@ def handle_backtest_withdrawal_strategy_graph_interaction(click_data: ClickData,
     return clicked_date.isoformat(), f"View Portfolio Value for {date_str}", False
 
 
-@app.callback(
+@callback(
     Output("backtest-withdrawal-strategy-modal", "is_open"),
     Output("backtest-withdrawal-strategy-modal-graph", "figure"),
     Input("backtest-withdrawal-strategy-show-details-button", "n_clicks"),
@@ -1789,7 +1797,7 @@ def simulate_bootstrap_strategy(
     raise ValueError("Invalid strategy type")
 
 
-@app.callback(
+@callback(
     Output("bootstrap-accumulation-strategies", "value"),
     Output("bootstrap-accumulation-strategies", "options"),
     Input("bootstrap-accumulation-add-strategy-button", "n_clicks"),
@@ -1918,7 +1926,7 @@ def update_bootstrap_strategy_graph(
     }
 
 
-@app.callback(
+@callback(
     Output("bootstrap-accumulation-graph", "figure"),
     Input("bootstrap-accumulation-strategies", "value"),
     State("bootstrap-accumulation-strategies", "options"),
@@ -1937,7 +1945,7 @@ def update_bootstrap_accumulation_graph(
     )
 
 
-@app.callback(
+@callback(
     Output("bootstrap-withdrawal-strategies", "value"),
     Output("bootstrap-withdrawal-strategies", "options"),
     Input("bootstrap-withdrawal-add-strategy-button", "n_clicks"),
@@ -2007,7 +2015,7 @@ def update_bootstrap_withdrawal_strategies(
     return strategies, strategy_options
 
 
-@app.callback(
+@callback(
     Output("bootstrap-withdrawal-graph", "figure"),
     Input("bootstrap-withdrawal-strategies", "value"),
     State("bootstrap-withdrawal-strategies", "options"),
