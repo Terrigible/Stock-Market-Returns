@@ -786,6 +786,7 @@ def update_holding_graph(
     Input("graph", "relayoutData"),
     State("graph-last-layout-state-store", "data"),
     Input("interval-selection", "value"),
+    prevent_initial_call=True,
 )
 def update_security_graph(
     selected_securities_strs: list[str],
