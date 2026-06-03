@@ -784,7 +784,7 @@ def load_sgs_returns():
 
 def download_sg_cpi():
     sg_cpi_response = httpx.get(
-        "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M212882",
+        "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751",
         params={"seriesNoORrowNo": 1},
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
         timeout=20,
