@@ -798,7 +798,7 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pd.Se
         )
         series = df["close"].rename("price")
 
-        return series
+        return series.copy()
 
 
 @lru_cache
@@ -811,13 +811,13 @@ def get_sgx_dividends(ticker: str):
     df.loc[:, "dividends"] = df["dividends"].str.replace("SGD", "").astype(float)
     df.loc[:, "date"] = pd.to_datetime(df["date"])
     df = df.groupby(df["date"])["dividends"].sum().astype(float)
-    return df
+    return df.copy()
 
 
 def load_ft_data(symbol: str, issue_type: str, inception_date: str, dividends: bool):
-    series = download_ft_data(symbol, issue_type, inception_date).copy()
+    series = download_ft_data(symbol, issue_type, inception_date)
     if dividends:
-        dividends_series = get_sgx_dividends(symbol.removesuffix(":SES")).copy()
+        dividends_series = get_sgx_dividends(symbol.removesuffix(":SES"))
         dividends_series = dividends_series.reindex(series.index, fill_value=0)
         manually_adjusted = (
             series.add(dividends_series).div(series.shift(1)).fillna(1).cumprod()
@@ -850,11 +850,11 @@ def validate_yf_ticker(
 @lru_cache
 def download_yf_data(ticker_str: str):
     ticker = yf.Ticker(ticker_str)
-    return ticker.history(period="max", auto_adjust=False).tz_localize(None)
+    return ticker.history(period="max", auto_adjust=False).tz_localize(None).copy()
 
 
 def load_yf_data(ticker_str: str, tax_treatment: TaxTreatment):
-    df = download_yf_data(ticker_str).copy()
+    df = download_yf_data(ticker_str)
     if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
         manually_adjusted = (
             df["Close"]
