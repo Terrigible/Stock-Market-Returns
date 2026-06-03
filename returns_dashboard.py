@@ -12,13 +12,15 @@ import scipy.interpolate  # noqa: F401 # Reduces latency for first pd.Resampler.
 from dash import (
     ClientsideFunction,
     Dash,
+    Input,
+    Output,
+    State,
     callback,
     clientside_callback,
     ctx,
     no_update,
     set_props,
 )
-from dash.dependencies import Input, Output, State
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from pydantic import Json, TypeAdapter, ValidationError
 
