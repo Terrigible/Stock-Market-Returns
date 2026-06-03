@@ -324,11 +324,6 @@ app_layout = html.Div(
                                     ],
                                     style={"display": "flex"},
                                 ),
-                                dcc.Store(
-                                    id="securities-colourmap-store",
-                                    storage_type="memory",
-                                    data={},
-                                ),
                                 dbc.Label("Interval", html_for="interval-selection"),
                                 dbc.Select(
                                     Interval.to_dict(),
