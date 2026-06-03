@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = "==3.13.13"
 dependencies = [
     "dash-bootstrap-components>=2.0.4",
-    "dash[compress]>=4.1.0",
+    "dash[compress]<4.2.0",
     "httpx>=0.28.1",
     "pandas>=3.0.3",
     "plotly>=6.7.0",
@@ -30,7 +30,7 @@ dev = [
     "nbformat>=5.10.4",
     "pandas-stubs>=3.0.3.260530",
     "prek>=0.4.3",
-    "pyright>=1.1.409",
+    "pyright>=1.1.410",
     "ruff>=0.15.15",
     "seaborn>=0.13.2",
     "selenium>=4.44.0",
