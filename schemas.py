@@ -152,7 +152,7 @@ class FredFfrSecurity(BaseSecurity):
         return series
 
 
-FredSecurity = Annotated[
+type FredSecurity = Annotated[
     FredTreasurySecurity | FredFfrSecurity,
     Field(discriminator="fred_index"),
 ]
@@ -194,7 +194,7 @@ class MasSoraSecurity(BaseSecurity):
         return series
 
 
-MasSecurity = Annotated[
+type MasSecurity = Annotated[
     MasSgsSecurity | MasSoraSecurity,
     Field(discriminator="mas_index"),
 ]
@@ -252,7 +252,7 @@ class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
         return series
 
 
-OthersIndexSecurity = Annotated[
+type OthersIndexSecurity = Annotated[
     SpxSecurity | ShillerSpxSecurity | SreitSecurity,
     Field(discriminator="others_index"),
 ]
@@ -364,19 +364,19 @@ class DimensionalSecurity(BaseSecurity):
         return series
 
 
-FundSecurity = Annotated[
+type FundSecurity = Annotated[
     GreatlinkSecurity | GMOSecurity | FundsmithSecurity | DimensionalSecurity,
     Field(discriminator="fund_company"),
 ]
 
 
-IndexSecurity = Annotated[
+type IndexSecurity = Annotated[
     MsciSecurity | FredSecurity | MasSecurity | OthersIndexSecurity,
     Field(discriminator="source"),
 ]
 
 
-Security = Annotated[
+type Security = Annotated[
     IndexSecurity | YfSecurity | FtSecurity | FundSecurity,
     Field(discriminator="source"),
 ]
@@ -424,7 +424,7 @@ class NoneHolding(BaseModel):
         return "None"
 
 
-Holding = Annotated[
+type Holding = Annotated[
     Security | Portfolio | NoneHolding, Field(discriminator="holding_type")
 ]
 
@@ -543,12 +543,12 @@ class WithdrawalBootstrapStrategy(BaseWithdrawalStrategy):
         )
 
 
-BacktestStrategy = Annotated[
+type BacktestStrategy = Annotated[
     AccumulationBacktestStrategy | WithdrawalBacktestStrategy,
     Field(discriminator="strategy_phase"),
 ]
 
-BootstrapStrategy = Annotated[
+type BootstrapStrategy = Annotated[
     AccumulationBootstrapStrategy | WithdrawalBootstrapStrategy,
     Field(discriminator="strategy_phase"),
 ]

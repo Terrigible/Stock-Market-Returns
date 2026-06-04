@@ -527,7 +527,7 @@ class CalendarReturnsGraphParams(BaseGraphParam[Literal[YVar.CALENDAR_RETURNS]])
         )
 
 
-GraphParams = Annotated[
+type GraphParams = Annotated[
     PriceGraphParams
     | DrawdownGraphParams
     | RollingReturnsGraphParams
