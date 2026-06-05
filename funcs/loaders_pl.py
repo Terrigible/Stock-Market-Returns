@@ -155,8 +155,9 @@ def load_fed_funds_rate():
 
 def load_fed_funds_returns():
     fed_funds_rate = load_fed_funds_rate()
-    return fed_funds_rate.with_columns(
-        pl.col("ffr").truediv(36000).add(1).shift().fill_null(1).cum_prod()
+    return fed_funds_rate.select(
+        "date",
+        price=pl.col("ffr").truediv(36000).add(1).shift().fill_null(1).cum_prod(),
     )
 
 
@@ -693,8 +694,9 @@ def load_sgd_interest_rates():
 
 def load_sgd_interest_rates_returns():
     sgd_interest_rates = load_sgd_interest_rates()
-    return sgd_interest_rates.with_columns(
-        pl.col("rate").truediv(36500).add(1).shift().fill_null(1).cum_prod()
+    return sgd_interest_rates.select(
+        "date",
+        price=pl.col("rate").truediv(36500).add(1).shift().fill_null(1).cum_prod(),
     )
 
 
