@@ -452,7 +452,7 @@ def load_fred_usd_fx():
 
 def load_fred_usdsgd():
     usdsgd = get_fred_series("DEXSIUS").select(
-        pl.col("date"), pl.col("value").alias("usd_sgd")
+        pl.col("date"), pl.col("DEXSIUS").alias("usd_sgd")
     )
     return usdsgd
 
@@ -480,7 +480,7 @@ def load_worldbank_usdsgd():
                     pl.col("date").dt.offset_by("6mo"),
                 )
                 .filter(pl.col("date").lt(fred_usdsgd.get_column("date").first())),
-                fred_usdsgd[0],
+                fred_usdsgd.head(1),
             ]
         )
         .to_pandas()
@@ -676,7 +676,7 @@ def load_sgd_interest_rates():
 def load_sgd_interest_rates_returns():
     sgd_interest_rates = load_sgd_interest_rates()
     return sgd_interest_rates.with_columns(
-        pl.col("sora").truediv(36500).add(1).shift().fill_null(1).cum_prod()
+        pl.col("rate").truediv(36500).add(1).shift().fill_null(1).cum_prod()
     )
 
 
