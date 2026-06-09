@@ -93,24 +93,35 @@ from schemas import (
 from update_graph import GraphParams, PrevLayout, RelayoutData
 
 
-def convert_price_to_usd(
+def convert_price(
     series: pd.Series,
-    currency: str,
+    source_currency: str,
+    destination_currency: Currency,
 ):
-    if currency == "USD":
+    if source_currency == destination_currency:
         return series
     usd_sgd = load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
-    if currency == "SGD":
+    if source_currency == "USD" and destination_currency == Currency.SGD:
+        return series.mul(usd_sgd)
+    if source_currency == "SGD" and destination_currency == Currency.USD:
         return series.div(usd_sgd)
     usd_fx = load_fred_usd_fx().resample("D").ffill().ffill().reindex(series.index)
-    if currency == "GBp":
+    if source_currency == "GBp":
         series = series.div(100)
-        currency = "GBP"
-    if currency in usd_fx.columns:
-        return series.mul(usd_fx[currency])
+        source_currency = "GBP"
+    if source_currency in usd_fx.columns:
+        usd_series = series.mul(usd_fx[source_currency])
+        if destination_currency == Currency.USD:
+            return usd_series
+        if destination_currency == Currency.SGD:
+            return usd_series.mul(usd_sgd)
     sgd_fx = load_mas_sgd_fx().resample("D").ffill().ffill().reindex(series.index)
-    if currency in sgd_fx.columns:
-        return series.mul(sgd_fx[currency]).div(usd_sgd)
+    if source_currency in sgd_fx.columns:
+        sgd_series = series.mul(sgd_fx[source_currency])
+        if destination_currency == Currency.SGD:
+            return sgd_series
+        if destination_currency == Currency.USD:
+            return sgd_series.div(usd_sgd)
     return series
 
 
@@ -124,11 +135,7 @@ def load_security(
     security: Security = TypeAdapter(Security).validate_json(security_str)
     series = security.load_data(interval)
 
-    series = convert_price_to_usd(series, security.currency)
-    if currency == Currency.SGD:
-        series = series.mul(
-            load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
-        )
+    series = convert_price(series, security.currency, currency)
     if adjust_for_inflation:
         series = series.div(
             load_cpi(currency)
