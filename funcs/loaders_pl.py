@@ -20,7 +20,7 @@ from models import TaxTreatment
 def fast_bday_upsample(df: pl.DataFrame) -> pl.DataFrame:
     return (
         df.set_sorted("date")
-        .upsample("date", every="1d")
+        .upsample("date", every="1d", maintain_order=True)
         .filter(pl.col("date").dt.weekday() < 6)
         .interpolate()
     )
@@ -150,7 +150,9 @@ def load_fed_funds_rate():
     ):
         fed_funds_rate = download_fed_funds_rate()
 
-    return fed_funds_rate.upsample("date", every="1d").fill_null(strategy="forward")
+    return fed_funds_rate.upsample("date", every="1d", maintain_order=True).fill_null(
+        strategy="forward"
+    )
 
 
 def load_fed_funds_returns():
@@ -210,7 +212,9 @@ async def load_us_treasury_rates_async():
     )
 
     treasury_rates = (
-        treasury_rates.set_sorted("date").upsample("date", every="1d").interpolate()
+        treasury_rates.set_sorted("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .interpolate()
     )
     return treasury_rates
 
@@ -659,7 +663,7 @@ def load_sgd_interest_rates():
         pl.read_csv("data/cpf_oa_rate.csv", try_parse_dates=True)
         .with_columns(pl.col("date").cast(pl.Date))
         .sort("date")
-        .upsample("date", every="1d")
+        .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
         .select("date", pl.col("rate"))
     )
@@ -682,7 +686,9 @@ def load_sgd_interest_rates():
     ):
         mas_sgd_interest_rates = download_sgd_interest_rates()
 
-    interbank_rates = mas_sgd_interest_rates.upsample("date", every="1d").select(
+    interbank_rates = mas_sgd_interest_rates.upsample(
+        "date", every="1d", maintain_order=True
+    ).select(
         "date",
         rate=pl.col("sora")
         .fill_null(pl.col("interbank_overnight"))
@@ -750,7 +756,7 @@ def load_sgs_rates():
                 )
             )
         )
-        .upsample("date", every="1d")
+        .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
     )
     return sgs
