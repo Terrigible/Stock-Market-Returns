@@ -802,7 +802,7 @@ def download_sg_cpi():
             .dt.month_end()
             .dt.add_business_days(0, roll="backward")
             .alias("date"),
-            pl.col("value").cast(pl.Float64).alias("sg_cpi"),
+            pl.col("value").cast(pl.Float64).alias("cpi"),
         )
     )
     sg_cpi.write_csv("data/sg_cpi.csv")
@@ -839,7 +839,7 @@ def load_us_cpi():
     ):
         us_cpi = get_fred_series("CPIAUCNS").select(
             pl.col("date").dt.month_end().dt.add_business_days(0, roll="backward"),
-            pl.col("CPIAUCNS").alias("us_cpi"),
+            pl.col("CPIAUCNS").alias("cpi"),
         )
         us_cpi.write_csv("data/us_cpi.csv")
     return us_cpi.interpolate()

@@ -612,17 +612,17 @@ def download_sg_cpi():
         timeout=20,
     )
     sg_cpi = pd.DataFrame(sg_cpi_response.json()["Data"]["row"][0]["columns"])
-    sg_cpi = sg_cpi.set_axis(["date", "sg_cpi"], axis=1)
+    sg_cpi = sg_cpi.set_axis(["date", "cpi"], axis=1)
     sg_cpi["date"] = pd.to_datetime(sg_cpi["date"], format="%Y %b")
-    sg_cpi["sg_cpi"] = sg_cpi["sg_cpi"].astype(float)
-    sg_cpi = sg_cpi.set_index("date").resample("BME").last()["sg_cpi"]
+    sg_cpi["cpi"] = sg_cpi["cpi"].astype(float)
+    sg_cpi = sg_cpi.set_index("date").resample("BME").last()["cpi"]
     sg_cpi.to_csv("data/sg_cpi.csv")
     return sg_cpi
 
 
 def load_sg_cpi():
     sg_cpi = pd.read_csv("data/sg_cpi.csv", parse_dates=["date"], index_col="date")[
-        "sg_cpi"
+        "cpi"
     ]
     if sg_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(23) < pd.to_datetime("today"):
         try:
@@ -634,12 +634,12 @@ def load_sg_cpi():
 
 def load_us_cpi():
     us_cpi = pd.read_csv("data/us_cpi.csv", parse_dates=["date"], index_col="date")[
-        "us_cpi"
+        "cpi"
     ]
     if (
         us_cpi.index[-1] + BMonthEnd() + MonthEnd(0) + Day(15) < pd.to_datetime("today")
     ) and "FRED_API_KEY" in os.environ:
-        us_cpi = get_fred_series("CPIAUCNS").rename("us_cpi").resample("BME").last()
+        us_cpi = get_fred_series("CPIAUCNS").rename("cpi").resample("BME").last()
         us_cpi.to_csv("data/us_cpi.csv")
     return us_cpi.interpolate()
 
