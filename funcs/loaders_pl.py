@@ -13,6 +13,7 @@ import pandas as pd
 import polars as pl
 import yfinance as yf
 from bs4 import BeautifulSoup
+from scipy.interpolate import pchip_interpolate
 
 from models import TaxTreatment
 
@@ -28,6 +29,19 @@ def fast_bday_upsample(df: pl.DataFrame) -> pl.DataFrame:
 
 def fast_bday_downsample(df: pl.DataFrame) -> pl.DataFrame:
     return df.filter(pl.col("date").dt.weekday() < 6)
+
+
+def pchip_daily_upsample(df: pl.DataFrame, value_col: str):
+    df = df.upsample("date", every="1d", maintain_order=True)
+    return df.with_columns(
+        **{
+            value_col: pchip_interpolate(
+                df.drop_nulls().get_column("date").to_physical(),
+                df.drop_nulls().get_column(value_col),
+                df.get_column("date").to_physical(),
+            )
+        }
+    )
 
 
 def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
@@ -495,25 +509,16 @@ def read_worldbank_usdsgd() -> pl.DataFrame:
 
 def load_worldbank_usdsgd():
     fred_usdsgd = load_fred_usdsgd()
-    return pl.from_pandas(
-        pl.concat(
-            [
-                read_worldbank_usdsgd()
-                .with_columns(
-                    pl.col("date").dt.offset_by("6mo"),
-                )
-                .filter(pl.col("date").lt(fred_usdsgd.get_column("date").first())),
-                fred_usdsgd.head(1),
-            ]
-        )
-        .to_pandas()
-        .set_index("date")
-        .resample("D")
-        .interpolate("pchip")
-        .iloc[:-1]
-        .reset_index(),
-        schema_overrides={"date": pl.Date},
-    )
+    return pl.concat(
+        [
+            read_worldbank_usdsgd()
+            .with_columns(
+                pl.col("date").dt.offset_by("6mo"),
+            )
+            .filter(pl.col("date").lt(fred_usdsgd.get_column("date").first())),
+            fred_usdsgd.head(1),
+        ]
+    ).pipe(pchip_daily_upsample, "usd_sgd")
 
 
 def load_usdsgd():
