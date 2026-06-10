@@ -70,6 +70,20 @@ def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
     )
 
 
+def resample_bme(df: pl.DataFrame) -> pl.DataFrame:
+    return (
+        df.group_by(add_bmonth_end(pl.col("date"), 0).alias("bme"), maintain_order=True)
+        .last()
+        .select(
+            pl.when(pl.int_range(pl.len()) == pl.len() - 1)
+            .then(pl.col("date"))
+            .otherwise(pl.col("bme"))
+            .alias("date"),
+            pl.col("price"),
+        )
+    )
+
+
 def read_msci_data(filename_pattern: str):
     return pl.read_csv(
         filename_pattern,
@@ -1138,6 +1152,7 @@ def load_yf_data(ticker_str: str, tax_treatment: TaxTreatment) -> pl.DataFrame:
 __all__ = [
     "fast_bday_upsample",
     "fast_bday_downsample",
+    "resample_bme",
     "read_msci_data",
     "load_fed_funds_rate",
     "load_fed_funds_returns",

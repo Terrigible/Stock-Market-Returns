@@ -1,7 +1,6 @@
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
 
-import pandas as pd
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -25,6 +24,7 @@ from funcs.loaders import (
     read_greatlink_data,
     read_msci_data,
     read_shiller_sp500_data,
+    resample_bme,
 )
 from models import (
     Currency,
@@ -45,18 +45,6 @@ from models import (
     TaxTreatment,
     USTreasuryDuration,
 )
-
-
-def resample_bme(series: pd.Series):
-    df = (
-        series.rename("price")
-        .to_frame()
-        .assign(date=series.index)
-        .resample("BME")
-        .last()
-    )
-    new_index = df.index[:-1].union([df["date"].iloc[-1]])
-    return df["price"].set_axis(new_index)
 
 
 class BaseSecurity(BaseModel):
