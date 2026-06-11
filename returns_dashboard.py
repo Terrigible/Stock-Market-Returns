@@ -1,4 +1,4 @@
-from functools import cache
+from functools import cache, reduce
 from itertools import cycle
 from typing import TypedDict
 
@@ -179,14 +179,7 @@ def load_security(
         df = df.join(cpi, on="date", how="left").select(
             "date", price=pl.col("price") / pl.col("cpi")
         )
-    return (
-        df.sort("date")
-        .to_pandas()
-        .set_index("date")
-        .loc[:, "price"]
-        .rename_axis("date")
-        .rename("price")
-    )
+    return df.sort("date")
 
 
 def load_portfolio(
@@ -194,36 +187,43 @@ def load_portfolio(
     currency: Currency,
     adjust_for_inflation: bool,
 ):
-    securities = [allocation.security for allocation in portfolio.allocations]
-    weights = [allocation.weight for allocation in portfolio.allocations]
-    portfolio_df = pd.concat(
-        [
-            load_security(
-                security.model_dump_json(),
-                Interval.MONTHLY,
-                currency,
-                adjust_for_inflation,
-            )
-            for security in securities
-        ],
-        axis=1,
+    dfs = [
+        load_security(
+            allocation.security.model_dump_json(),
+            Interval.MONTHLY,
+            currency,
+            adjust_for_inflation,
+        ).rename({"price": allocation.security.model_dump_json()})
+        for allocation in portfolio.allocations
+    ]
+    portfolio_df = reduce(
+        lambda left, right: left.join(right, on="date", how="full", coalesce=True), dfs
     )
     portfolio_series = (
-        portfolio_df.pct_change()
-        .mul(weights)
-        .div(100)
-        .sum(axis=1, skipna=False)
-        .add(1)
-        .cumprod()
-        .rename("price")
+        portfolio_df.with_columns(
+            pl.col(allocation.security.model_dump_json())
+            .pct_change()
+            .mul(allocation.weight)
+            .truediv(100)
+            for allocation in portfolio.allocations
+        )
+        .select(
+            "date",
+            price=pl.sum_horizontal(pl.all().exclude("date"), ignore_nulls=False)
+            .add(1)
+            .cum_prod(),
+        )
+        .select(
+            "date",
+            price=pl.when(
+                pl.int_range(pl.len())
+                == pl.arg_where(pl.col("price").is_not_null()).first().sub(1)
+            )
+            .then(1)
+            .otherwise(pl.col("price")),
+        )
+        .drop_nulls()
     )
-    portfolio_series.iloc[
-        portfolio_series.index.get_indexer(
-            pd.Index([portfolio_series.first_valid_index()])
-        )[0]
-        - 1
-    ] = 1
-    portfolio_series = portfolio_series.dropna()
     return portfolio_series
 
 
@@ -234,15 +234,23 @@ def load_series(
     adjust_for_inflation: bool,
 ):
     if isinstance(holding, BaseSecurity):
-        return load_security(
+        df = load_security(
             holding.model_dump_json(),
             interval,
             currency,
             adjust_for_inflation,
         )
-    if isinstance(holding, Portfolio):
-        return load_portfolio(holding, currency, adjust_for_inflation)
-    raise ValueError(f"Invalid holding type: {holding.holding_type}")
+    elif isinstance(holding, Portfolio):
+        df = load_portfolio(holding, currency, adjust_for_inflation)
+    else:
+        raise ValueError(f"Invalid holding type: {holding.holding_type}")
+    return (
+        df.to_pandas()
+        .set_index("date")
+        .loc[:, "price"]
+        .rename_axis("date")
+        .rename("price")
+    )
 
 
 def transform_data(
