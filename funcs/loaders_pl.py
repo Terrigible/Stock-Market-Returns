@@ -20,7 +20,7 @@ from models import TaxTreatment
 
 def fast_bday_upsample(df: pl.DataFrame) -> pl.DataFrame:
     return (
-        df.set_sorted("date")
+        df.sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .filter(pl.col("date").dt.weekday() < 6)
         .interpolate()
@@ -32,7 +32,7 @@ def fast_bday_downsample(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def pchip_daily_upsample(df: pl.DataFrame, value_col: str):
-    df = df.upsample("date", every="1d", maintain_order=True)
+    df = df.sort("date").upsample("date", every="1d", maintain_order=True)
     return df.with_columns(
         **{
             value_col: pchip_interpolate(
@@ -178,8 +178,10 @@ def load_fed_funds_rate():
     ):
         fed_funds_rate = download_fed_funds_rate()
 
-    return fed_funds_rate.upsample("date", every="1d", maintain_order=True).fill_null(
-        strategy="forward"
+    return (
+        fed_funds_rate.sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
     )
 
 
@@ -240,7 +242,7 @@ async def load_us_treasury_rates_async():
     )
 
     treasury_rates = (
-        treasury_rates.set_sorted("date")
+        treasury_rates.sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .interpolate()
     )
@@ -399,6 +401,7 @@ def download_mas_sgd_fx():
             .exclude("end_of_day", "preliminary")
             .name.map(lambda s: s.removesuffix("_100").removesuffix("_sgd").upper()),
         )
+        .sort("date")
     )
     sgd_fx.write_csv("data/sgd_fx.csv")
     return sgd_fx
@@ -475,6 +478,7 @@ async def download_fred_usd_fx_async():
         )
         .with_columns(pl.col("^1_.*$").pow(-1).name.map(lambda s: s.lstrip("1_")))
         .select(pl.all().exclude("^1_.*$"))
+        .sort("date")
     )
     usd_fx.write_csv("data/usd_fx.csv")
     return usd_fx
@@ -705,14 +709,16 @@ def load_sgd_interest_rates():
     ):
         mas_sgd_interest_rates = download_sgd_interest_rates()
 
-    interbank_rates = mas_sgd_interest_rates.upsample(
-        "date", every="1d", maintain_order=True
-    ).select(
-        "date",
-        rate=pl.col("sora")
-        .fill_null(pl.col("interbank_overnight"))
-        .fill_null(strategy="forward")
-        .cast(pl.Float64),
+    interbank_rates = (
+        mas_sgd_interest_rates.sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .select(
+            "date",
+            rate=pl.col("sora")
+            .fill_null(pl.col("interbank_overnight"))
+            .fill_null(strategy="forward")
+            .cast(pl.Float64),
+        )
     )
     return pl.concat([cpf_oa_rate, interbank_rates], how="vertical")
 
@@ -775,6 +781,7 @@ def load_sgs_rates():
                 )
             )
         )
+        .sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
     )

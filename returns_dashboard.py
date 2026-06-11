@@ -36,12 +36,14 @@ from funcs.loaders import (
     get_ft_symbol_info,
     load_cpi,
     load_fed_funds_returns,
-    load_fred_usd_fx,
-    load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
-    load_usdsgd,
     validate_yf_ticker,
 )
+from funcs.loaders_pl import load_cpi as load_cpi_pl
+from funcs.loaders_pl import load_fred_usd_fx as load_fred_usd_fx_pl
+from funcs.loaders_pl import load_mas_sgd_fx as load_mas_sgd_fx_pl
+from funcs.loaders_pl import load_usdsgd as load_usdsgd_pl
+from funcs.loaders_pl import pchip_daily_upsample
 from layout import app_layout
 from models import (
     BacktestYVar,
@@ -94,35 +96,70 @@ from update_graph import GraphParams, PrevLayout, RelayoutData
 
 
 def convert_price(
-    series: pd.Series,
+    df: pl.DataFrame,
     source_currency: str,
     destination_currency: Currency,
-):
+) -> pl.DataFrame:
     if source_currency == destination_currency:
-        return series
-    usd_sgd = load_usdsgd().resample("D").ffill().ffill().reindex(series.index)
+        return df
+
+    usd_sgd = (
+        load_usdsgd_pl()
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
+
     if source_currency == "USD" and destination_currency == Currency.SGD:
-        return series.mul(usd_sgd)
+        return df.join(usd_sgd, on="date", how="left").select(
+            "date", price=pl.col("price") * pl.col("usdsgd")
+        )
     if source_currency == "SGD" and destination_currency == Currency.USD:
-        return series.div(usd_sgd)
-    usd_fx = load_fred_usd_fx().resample("D").ffill().ffill().reindex(series.index)
+        return df.join(usd_sgd, on="date", how="left").select(
+            "date", price=pl.col("price") / pl.col("usdsgd")
+        )
+
+    usd_fx = (
+        load_fred_usd_fx_pl()
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
+
     if source_currency == "GBp":
-        series = series.div(100)
+        df = df.with_columns(pl.col("price") / 100)
         source_currency = "GBP"
+
     if source_currency in usd_fx.columns:
-        usd_series = series.mul(usd_fx[source_currency])
+        usd_series = df.join(
+            usd_fx.select("date", source_currency), on="date", how="left"
+        ).select("date", price=pl.col("price") * pl.col(source_currency))
         if destination_currency == Currency.USD:
             return usd_series
         if destination_currency == Currency.SGD:
-            return usd_series.mul(usd_sgd)
-    sgd_fx = load_mas_sgd_fx().resample("D").ffill().ffill().reindex(series.index)
+            return usd_series.join(usd_sgd, on="date", how="left").select(
+                "date", price=pl.col("price") * pl.col("usdsgd")
+            )
+
+    sgd_fx = (
+        load_mas_sgd_fx_pl()
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
+
     if source_currency in sgd_fx.columns:
-        sgd_series = series.mul(sgd_fx[source_currency])
+        sgd_series = df.join(
+            sgd_fx.select("date", source_currency), on="date", how="left"
+        ).select("date", price=pl.col("price") * pl.col(source_currency))
         if destination_currency == Currency.SGD:
             return sgd_series
         if destination_currency == Currency.USD:
-            return sgd_series.div(usd_sgd)
-    return series
+            return sgd_series.join(usd_sgd, on="date", how="left").select(
+                "date", price=pl.col("price") / pl.col("usdsgd")
+            )
+
+    return df
 
 
 @cache
@@ -133,18 +170,23 @@ def load_security(
     adjust_for_inflation: bool,
 ):
     security: Security = TypeAdapter(Security).validate_json(security_str)
-    series = security.load_data(interval)
+    df = security.load_data(interval)
 
-    series = convert_price(series, security.currency, currency)
+    df = convert_price(df, security.currency, currency)
     if adjust_for_inflation:
-        series = series.div(
-            load_cpi(currency)
-            .resample("D")
-            .interpolate("pchip")
-            .ffill()
-            .reindex(series.index)
+        cpi = load_cpi_pl(currency)
+        cpi = cpi.pipe(pchip_daily_upsample, "cpi").fill_null(strategy="forward")
+        df = df.join(cpi, on="date", how="left").select(
+            "date", price=pl.col("price") / pl.col("cpi")
         )
-    return series.rename_axis("date").rename("price")
+    return (
+        df.sort("date")
+        .to_pandas()
+        .set_index("date")
+        .loc[:, "price"]
+        .rename_axis("date")
+        .rename("price")
+    )
 
 
 def load_portfolio(
@@ -250,7 +292,6 @@ def transform_data(
         df_pl = pl.from_pandas(series.reset_index())
         df_pl = (
             df_pl.sort("date")
-            .set_sorted("date")
             .group_by_dynamic("date", every=return_interval)
             .agg(
                 pl.col("date").last().alias("date_end"),
