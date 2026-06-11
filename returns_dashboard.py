@@ -32,18 +32,18 @@ from funcs.calcs_numpy import (
     simulate_bootstrap_accumulation,
     simulate_bootstrap_withdrawal,
 )
-from funcs.loaders import (
+from funcs.loaders_pl import (
     get_ft_symbol_info,
     load_cpi,
     load_fed_funds_returns,
+    load_fred_usd_fx,
+    load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
+    load_usdsgd,
+    pchip_daily_upsample,
+    resample_bme,
     validate_yf_ticker,
 )
-from funcs.loaders_pl import load_cpi as load_cpi_pl
-from funcs.loaders_pl import load_fred_usd_fx as load_fred_usd_fx_pl
-from funcs.loaders_pl import load_mas_sgd_fx as load_mas_sgd_fx_pl
-from funcs.loaders_pl import load_usdsgd as load_usdsgd_pl
-from funcs.loaders_pl import pchip_daily_upsample
 from layout import app_layout
 from models import (
     BacktestYVar,
@@ -104,7 +104,7 @@ def convert_price(
         return df
 
     usd_sgd = (
-        load_usdsgd_pl()
+        load_usdsgd()
         .sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
@@ -120,7 +120,7 @@ def convert_price(
         )
 
     usd_fx = (
-        load_fred_usd_fx_pl()
+        load_fred_usd_fx()
         .sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
@@ -142,7 +142,7 @@ def convert_price(
             )
 
     sgd_fx = (
-        load_mas_sgd_fx_pl()
+        load_mas_sgd_fx()
         .sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
@@ -174,7 +174,7 @@ def load_security(
 
     df = convert_price(df, security.currency, currency)
     if adjust_for_inflation:
-        cpi = load_cpi_pl(currency)
+        cpi = load_cpi(currency)
         cpi = cpi.pipe(pchip_daily_upsample, "cpi").fill_null(strategy="forward")
         df = df.join(cpi, on="date", how="left").select(
             "date", price=pl.col("price") / pl.col("cpi")
@@ -244,13 +244,7 @@ def load_series(
         df = load_portfolio(holding, currency, adjust_for_inflation)
     else:
         raise ValueError(f"Invalid holding type: {holding.holding_type}")
-    return (
-        df.to_pandas()
-        .set_index("date")
-        .loc[:, "price"]
-        .rename_axis("date")
-        .rename("price")
-    )
+    return df
 
 
 app = Dash(
@@ -703,16 +697,22 @@ def update_holding_graph(
     selected_holdings = TypeAdapter(list[Json[Holding]]).validate_python(
         selected_holdings_strs
     )
-    df = pd.DataFrame(
-        {
-            selected_security.model_dump_json(): load_series(
+    df = pd.concat(
+        [
+            load_series(
                 selected_security,
                 interval,
                 currency,
                 adjust_for_inflation,
             )
+            .to_pandas()
+            .set_index("date")
+            .loc[:, "price"]
+            .rename(selected_security.model_dump_json())
             for selected_security in selected_holdings
-        }
+        ],
+        axis=1,
+        sort=True,
     )
 
     uirevision = (
@@ -1196,22 +1196,26 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrate
         False,
     )
     cash_returns = (
-        (
-            load_fed_funds_returns()
-            if strategy.currency == Currency.USD
-            else load_sgd_interest_rates_returns()
+        load_fed_funds_returns()
+        if strategy.currency == Currency.USD
+        else load_sgd_interest_rates_returns()
+    ).pipe(resample_bme)
+    cpi = load_cpi(strategy.currency)
+
+    df = (
+        strategy_series.rename({"price": "strategy"})
+        .join(
+            cash_returns.rename({"price": "cash"}),
+            on="date",
+            coalesce=True,
+            maintain_order="left",
         )
-        .resample("BME")
-        .last()
-        .pct_change()
-        .reindex(strategy_series.index)
-        .to_numpy()
+        .join(cpi, on="date", coalesce=True, maintain_order="left")
     )
-    cpi = load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
 
     portfolio_values = pd.DataFrame(
         calculate_dca_portfolio_value_with_fees_and_interest_vector(
-            strategy_series.pct_change().to_numpy(),
+            df.get_column("strategy").pct_change().to_numpy(),
             strategy.dca_duration,
             strategy.dca_interval,
             strategy.strategy_horizon,
@@ -1222,10 +1226,10 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrate
             strategy.fixed_transaction_fees,
             strategy.annualised_holding_fees,
             strategy.adjust_portfolio_value_for_inflation,
-            cpi,
-            cash_returns,
+            df.get_column("cpi").to_numpy(),
+            df.get_column("cash").to_numpy(),
         ),
-        index=strategy_series.index,
+        index=df.get_column("date").to_pandas(),
         columns=range(strategy.strategy_horizon + 1),
     )
     return portfolio_values
@@ -1239,24 +1243,28 @@ def simulate_backtest_withdrawal_strategy(strategy: WithdrawalBacktestStrategy):
         strategy.currency,
         False,
     )
-    cpi = load_cpi(strategy.currency).reindex(strategy_series.index).to_numpy()
+    cpi = load_cpi(strategy.currency)
+
+    df = strategy_series.rename({"price": "strategy"}).join(
+        cpi, on="date", coalesce=True, maintain_order="left"
+    )
 
     portfolio_values = pd.DataFrame(
         calculate_withdrawal_portfolio_value_with_fees_vector(
-            strategy_series.pct_change().to_numpy(),
+            df.get_column("strategy").pct_change().to_numpy(),
             strategy.coast_duration,
             strategy.strategy_horizon,
             strategy.withdrawal_interval,
             strategy.initial_capital,
             strategy.monthly_withdrawal,
-            cpi,
+            df.get_column("cpi").to_numpy(),
             strategy.variable_transaction_fees,
             strategy.fixed_transaction_fees,
             strategy.annualised_holding_fees,
             strategy.adjust_withdrawals_for_inflation,
             strategy.adjust_portfolio_value_for_inflation,
         ),
-        index=strategy_series.index,
+        index=df.get_column("date").to_pandas(),
         columns=range(strategy.strategy_horizon + 1),
     )
     return portfolio_values
@@ -1690,24 +1698,30 @@ def simulate_bootstrap_accumulation_strategy(strategy: AccumulationBootstrapStra
         Interval.MONTHLY,
         strategy.currency,
         False,
-    ).pct_change()
-    cpi = load_cpi(strategy.currency).pct_change()
-    cash_returns = (
-        (
-            load_fed_funds_returns()
-            if strategy.currency == Currency.USD
-            else load_sgd_interest_rates_returns()
-        )
-        .resample("BME")
-        .last()
-        .pct_change()
     )
-    common_idx = strategy_series.index.intersection(cpi.index).intersection(
-        cash_returns.index
-    )[1:]
-    strategy_series = strategy_series.loc[common_idx].to_numpy()
-    cpi = cpi.loc[common_idx].to_numpy()
-    cash_returns = cash_returns.loc[common_idx].to_numpy()
+    cash_returns = (
+        load_fed_funds_returns()
+        if strategy.currency == Currency.USD
+        else load_sgd_interest_rates_returns()
+    ).pipe(resample_bme)
+    cpi = load_cpi(strategy.currency)
+
+    df = (
+        strategy_series.rename({"price": "strategy"})
+        .join(
+            cash_returns.rename({"price": "cash"}),
+            on="date",
+            coalesce=True,
+            maintain_order="left",
+        )
+        .join(cpi, on="date", coalesce=True, maintain_order="left")
+        .with_columns(pl.all().exclude("date").pct_change())
+        .drop_nulls()
+    )
+
+    strategy_series = df.get_column("strategy").to_numpy()
+    cpi = df.get_column("cpi").to_numpy()
+    cash_returns = df.get_column("cash").to_numpy()
 
     n_data = len(strategy_series)
     sample_length = strategy.strategy_horizon + 1
@@ -1743,13 +1757,14 @@ def simulate_bootstrap_withdrawal_strategy(
         strategy.currency,
         False,
     )
-    cpi_series = load_cpi(strategy.currency)
-    common_idx = strategy_series.index.intersection(cpi_series.index)
-    strategy_series = strategy_series.loc[common_idx]
-    cpi = cpi_series.loc[common_idx].pct_change().to_numpy()
+    cpi = load_cpi(strategy.currency)
 
-    monthly_returns = strategy_series.pct_change().to_numpy()[1:]
-    cpi = cpi[1:]
+    df = strategy_series.rename({"price": "strategy"}).join(
+        cpi, on="date", coalesce=True, maintain_order="left"
+    )
+
+    monthly_returns = df.get_column("strategy").pct_change().to_numpy()[1:]
+    cpi = df.get_column("cpi").pct_change().to_numpy()[1:]
 
     n_data = len(monthly_returns)
     sample_length = strategy.strategy_horizon + 1
