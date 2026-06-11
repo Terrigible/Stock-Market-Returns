@@ -253,69 +253,6 @@ def load_series(
     )
 
 
-def transform_data(
-    series: pd.Series,
-    interval: Interval,
-    y_var: YVar,
-    return_duration: ReturnDuration,
-    return_interval: ReturnInterval,
-    return_annualisation: ReturnAnnualisation,
-) -> pd.Series:
-    if y_var == YVar.PRICE:
-        return series
-    if y_var == YVar.DRAWDOWN:
-        return series.div(series.cummax()).sub(1)
-    return_durations = {
-        "1mo": 1,
-        "3mo": 3,
-        "6mo": 6,
-        "1y": 12,
-        "2y": 24,
-        "3y": 36,
-        "5y": 60,
-        "10y": 120,
-        "15y": 180,
-        "20y": 240,
-        "25y": 300,
-        "30y": 360,
-    }
-    if y_var == YVar.ROLLING_RETURNS:
-        if interval == Interval.MONTHLY:
-            series = series.pct_change(return_durations[return_duration])
-        elif interval == Interval.DAILY:
-            series = series.div(
-                series.reindex(
-                    series.index
-                    - pd.offsets.DateOffset(months=return_durations[return_duration])
-                    + pd.offsets.Day(1)
-                    - pd.offsets.BDay(1)
-                ).set_axis(series.index, axis=0)
-            ).sub(1)
-        else:
-            raise ValueError("Invalid interval")
-        if return_annualisation == ReturnAnnualisation.ANNUALISED:
-            series = series.add(1).pow(12 / return_durations[return_duration]).sub(1)
-        return series.dropna()
-    if y_var == YVar.CALENDAR_RETURNS:
-        df_pl = pl.from_pandas(series.reset_index())
-        df_pl = (
-            df_pl.sort("date")
-            .group_by_dynamic("date", every=return_interval)
-            .agg(
-                pl.col("date").last().alias("date_end"),
-                pl.col("price").last(),
-            )
-            .select(
-                pl.col("date_end").alias("date"),
-                pl.col("price").pct_change().alias("return"),
-            )
-            .drop_nulls()
-        )
-        df = df_pl.to_pandas().set_index("date").loc[:, "return"]
-        return df
-    raise ValueError("Invalid y_var")
-
-
 app = Dash(
     serve_locally=False,
     eager_loading=True,
@@ -768,18 +705,11 @@ def update_holding_graph(
     )
     df = pd.DataFrame(
         {
-            selected_security.model_dump_json(): transform_data(
-                load_series(
-                    selected_security,
-                    interval,
-                    currency,
-                    adjust_for_inflation,
-                ),
+            selected_security.model_dump_json(): load_series(
+                selected_security,
                 interval,
-                y_var,
-                return_duration,
-                return_interval,
-                return_annualisation,
+                currency,
+                adjust_for_inflation,
             )
             for selected_security in selected_holdings
         }
@@ -809,6 +739,7 @@ def update_holding_graph(
             "log_scale": log_scale,
             "percent_scale": percent_scale,
             "auto_scale": auto_scale,
+            "interval": interval,
             "return_duration": return_duration,
             "return_interval": return_interval,
             "return_annualisation": return_annualisation,

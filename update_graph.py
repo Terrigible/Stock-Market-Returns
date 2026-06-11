@@ -5,11 +5,13 @@ from typing import Annotated, Generic, Literal, NotRequired, TypedDict, TypeVar
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import polars as pl
 from dash import ctx
 from pydantic import BaseModel, ConfigDict, Field, Json, TypeAdapter, computed_field
 
 from models import (
     DistributionChartType,
+    Interval,
     ReturnAnnualisation,
     ReturnDuration,
     ReturnInterval,
@@ -215,6 +217,8 @@ def update_drawdown_graph(
     trace_options: dict[str, str],
     layout: go.Layout,
 ):
+    df = df.div(df.cummax()).sub(1)
+
     layout.update(
         title="Drawdown",
         yaxis_tickformat=".2%",
@@ -237,6 +241,7 @@ def update_rolling_returns_graph(
     df: pd.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
+    interval: Interval,
     return_duration: ReturnDuration,
     return_annualisation: ReturnAnnualisation,
     baseline_trace: str,
@@ -244,6 +249,39 @@ def update_rolling_returns_graph(
     rolling_returns_distribution_chart_type: DistributionChartType,
     layout: go.Layout,
 ):
+    return_durations = {
+        "1mo": 1,
+        "3mo": 3,
+        "6mo": 6,
+        "1y": 12,
+        "2y": 24,
+        "3y": 36,
+        "5y": 60,
+        "10y": 120,
+        "15y": 180,
+        "20y": 240,
+        "25y": 300,
+        "30y": 360,
+    }
+    if interval == Interval.MONTHLY:
+        df = df.apply(lambda s: s.pct_change(return_durations[return_duration]))
+    elif interval == Interval.DAILY:
+        df = df.apply(
+            lambda s: s.div(
+                s.reindex(
+                    s.index
+                    - pd.offsets.DateOffset(months=return_durations[return_duration])
+                    + pd.offsets.Day(1)
+                    - pd.offsets.BDay(1)
+                ).set_axis(s.index, axis=0)
+            ).sub(1)
+        )
+    else:
+        raise ValueError("Invalid interval")
+    if return_annualisation == ReturnAnnualisation.ANNUALISED:
+        df = df.add(1).pow(12 / return_durations[return_duration]).sub(1)
+    df = df.dropna()
+
     layout.update(yaxis_tickformat=".2%")
 
     title = f"{return_duration.label} {return_annualisation.label} Rolling Returns"
@@ -370,6 +408,28 @@ def update_calendar_returns_graph(
     baseline_trace: str,
     layout: go.Layout,
 ):
+    transformed = {}
+    for column in df.columns:
+        series = df[column]
+        df_pl = pl.from_pandas(series.rename("price").reset_index())
+        df_pl = (
+            df_pl.sort("date")
+            .group_by_dynamic("date", every=return_interval)
+            .agg(
+                pl.col("date").last().alias("date_end"),
+                pl.col("price").last(),
+            )
+            .select(
+                pl.col("date_end").alias("date"),
+                pl.col("price").pct_change().alias("return"),
+            )
+            .drop_nulls()
+        )
+        result = df_pl.to_pandas().set_index("date").loc[:, "return"]
+        result.name = column
+        transformed[column] = result
+    df = pd.DataFrame(transformed)
+
     layout.update(
         xaxis_ticklabelmode="period",
         yaxis_tickformat=".2%",
@@ -488,6 +548,7 @@ class DrawdownGraphParams(BaseGraphParam[Literal[YVar.DRAWDOWN]]):
 
 
 class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
+    interval: Interval
     return_duration: ReturnDuration
     return_annualisation: ReturnAnnualisation
     baseline_trace: str
@@ -501,6 +562,7 @@ class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
             self.df,
             self.trace_colourmap,
             self.trace_options,
+            self.interval,
             self.return_duration,
             self.return_annualisation,
             self.baseline_trace,
