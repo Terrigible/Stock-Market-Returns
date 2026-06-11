@@ -468,7 +468,7 @@ def update_calendar_returns_graph(
     )
     data = [
         go.Bar(
-            x=df.index + index_offset,
+            x=df.index,
             y=df[column],
             xperiod=xperiod,
             xperiodalignment="middle",
