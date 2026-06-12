@@ -408,27 +408,23 @@ def update_calendar_returns_graph(
     baseline_trace: str,
     layout: go.Layout,
 ):
-    transformed = {}
-    for column in df.columns:
-        series = df[column]
-        df_pl = pl.from_pandas(series.rename("price").reset_index())
-        df_pl = (
-            df_pl.sort("date")
-            .group_by_dynamic("date", every=return_interval)
-            .agg(
-                pl.col("date").last().alias("date_end"),
-                pl.col("price").last(),
-            )
-            .select(
-                pl.col("date_end").alias("date"),
-                pl.col("price").pct_change().alias("return"),
-            )
-            .drop_nulls()
+    df_pl = pl.from_pandas(df.reset_index())
+    df_pl = (
+        df_pl.sort("date")
+        .group_by_dynamic("date", every=return_interval)
+        .agg(
+            pl.col("date").last().alias("date_last"),
+            pl.all().exclude("date").last(),
         )
-        result = df_pl.to_pandas().set_index("date").loc[:, "return"]
-        result.name = column
-        transformed[column] = result
-    df = pd.DataFrame(transformed)
+        .drop("date")
+        .select(
+            pl.col("date_last").alias("date"),
+            pl.all().exclude("date_last").pct_change(),
+        )
+        .drop_nulls()
+        .sort("date")
+    )
+    df = df_pl.to_pandas().set_index("date")
 
     layout.update(
         xaxis_ticklabelmode="period",
