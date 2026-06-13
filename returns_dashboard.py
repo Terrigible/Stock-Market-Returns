@@ -697,22 +697,17 @@ def update_holding_graph(
     selected_holdings = TypeAdapter(list[Json[Holding]]).validate_python(
         selected_holdings_strs
     )
-    df = pd.concat(
-        [
-            load_series(
-                selected_security,
-                interval,
-                currency,
-                adjust_for_inflation,
-            )
-            .to_pandas()
-            .set_index("date")
-            .loc[:, "price"]
-            .rename(selected_security.model_dump_json())
-            for selected_security in selected_holdings
-        ],
-        axis=1,
-        sort=True,
+    dfs = [
+        load_series(
+            selected_security,
+            interval,
+            currency,
+            adjust_for_inflation,
+        ).rename({"price": selected_security.model_dump_json()})
+        for selected_security in selected_holdings
+    ]
+    df = reduce(
+        lambda left, right: left.join(right, on="date", how="full", coalesce=True), dfs
     )
 
     uirevision = (
