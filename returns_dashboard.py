@@ -1222,7 +1222,7 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrate
             strategy.annualised_holding_fees,
             strategy.adjust_portfolio_value_for_inflation,
             df.get_column("cpi").to_numpy(),
-            df.get_column("cash").to_numpy(),
+            df.get_column("cash").to_numpy(writable=True),
         ),
         index=df.get_column("date").to_pandas(),
         columns=range(strategy.strategy_horizon + 1),
