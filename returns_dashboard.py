@@ -1,14 +1,12 @@
+from datetime import datetime
 from functools import cache, reduce
 from itertools import cycle
 from typing import TypedDict
 
 import dash_bootstrap_components as dbc
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import polars as pl
-import python_calamine  # noqa: F401 # Reduces latency for first pd.read_excel call
-import scipy.interpolate  # noqa: F401 # Reduces latency for first pd.Resampler.interpolate call
 from dash import (
     ClientsideFunction,
     Dash,
@@ -33,6 +31,7 @@ from funcs.calcs_numpy import (
     simulate_bootstrap_withdrawal,
 )
 from funcs.loaders_pl import (
+    add_bmonth_end,
     get_ft_symbol_info,
     load_cpi,
     load_fed_funds_returns,
@@ -1208,24 +1207,27 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrate
         .join(cpi, on="date", coalesce=True, maintain_order="left")
     )
 
-    portfolio_values = pd.DataFrame(
-        calculate_dca_portfolio_value_with_fees_and_interest_vector(
-            df.get_column("strategy").pct_change().to_numpy(),
-            strategy.dca_duration,
-            strategy.dca_interval,
-            strategy.strategy_horizon,
-            strategy.investment_amount,
-            strategy.monthly_investment,
-            strategy.adjust_monthly_investment_for_inflation,
-            strategy.variable_transaction_fees,
-            strategy.fixed_transaction_fees,
-            strategy.annualised_holding_fees,
-            strategy.adjust_portfolio_value_for_inflation,
-            df.get_column("cpi").to_numpy(),
-            df.get_column("cash").to_numpy(writable=True),
-        ),
-        index=df.get_column("date").to_pandas(),
-        columns=range(strategy.strategy_horizon + 1),
+    portfolio_values = (
+        pl.from_numpy(
+            calculate_dca_portfolio_value_with_fees_and_interest_vector(
+                df.get_column("strategy").pct_change().to_numpy(),
+                strategy.dca_duration,
+                strategy.dca_interval,
+                strategy.strategy_horizon,
+                strategy.investment_amount,
+                strategy.monthly_investment,
+                strategy.adjust_monthly_investment_for_inflation,
+                strategy.variable_transaction_fees,
+                strategy.fixed_transaction_fees,
+                strategy.annualised_holding_fees,
+                strategy.adjust_portfolio_value_for_inflation,
+                df.get_column("cpi").to_numpy(),
+                df.get_column("cash").to_numpy(writable=True),
+            ),
+            schema=[str(i) for i in range(strategy.strategy_horizon + 1)],
+        )
+        .fill_nan(None)
+        .insert_column(0, df.get_column("date"))
     )
     return portfolio_values
 
@@ -1244,23 +1246,26 @@ def simulate_backtest_withdrawal_strategy(strategy: WithdrawalBacktestStrategy):
         cpi, on="date", coalesce=True, maintain_order="left"
     )
 
-    portfolio_values = pd.DataFrame(
-        calculate_withdrawal_portfolio_value_with_fees_vector(
-            df.get_column("strategy").pct_change().to_numpy(),
-            strategy.coast_duration,
-            strategy.strategy_horizon,
-            strategy.withdrawal_interval,
-            strategy.initial_capital,
-            strategy.monthly_withdrawal,
-            df.get_column("cpi").to_numpy(),
-            strategy.variable_transaction_fees,
-            strategy.fixed_transaction_fees,
-            strategy.annualised_holding_fees,
-            strategy.adjust_withdrawals_for_inflation,
-            strategy.adjust_portfolio_value_for_inflation,
-        ),
-        index=df.get_column("date").to_pandas(),
-        columns=range(strategy.strategy_horizon + 1),
+    portfolio_values = (
+        pl.from_numpy(
+            calculate_withdrawal_portfolio_value_with_fees_vector(
+                df.get_column("strategy").pct_change().to_numpy(),
+                strategy.coast_duration,
+                strategy.strategy_horizon,
+                strategy.withdrawal_interval,
+                strategy.initial_capital,
+                strategy.monthly_withdrawal,
+                df.get_column("cpi").to_numpy(),
+                strategy.variable_transaction_fees,
+                strategy.fixed_transaction_fees,
+                strategy.annualised_holding_fees,
+                strategy.adjust_withdrawals_for_inflation,
+                strategy.adjust_portfolio_value_for_inflation,
+            ),
+            schema=[str(i) for i in range(strategy.strategy_horizon + 1)],
+        )
+        .fill_nan(None)
+        .insert_column(0, df.get_column("date"))
     )
     return portfolio_values
 
@@ -1295,37 +1300,50 @@ def update_backtest_strategy_graph(
             cycle(DEFAULT_PLOTLY_COLORS),
         )
     )
-    dfs: dict[str, pd.DataFrame] = {}
+    dfs: dict[str, pl.DataFrame] = {}
     for strategy_str in strategy_strs:
         strategy: BacktestStrategy = TypeAdapter(BacktestStrategy).validate_json(
             strategy_str
         )
         portfolio_values = simulate_backtest_strategy(strategy)
         if index_by_start_date:
-            portfolio_values = portfolio_values.shift(-strategy.strategy_horizon)
-        portfolio_values = portfolio_values.dropna(how="all")
-        dfs.update({strategy_str: portfolio_values})
+            portfolio_values = portfolio_values.with_columns(
+                pl.all().exclude("date").shift(-strategy.strategy_horizon)
+            )
+        portfolio_values = portfolio_values.filter(
+            pl.any_horizontal(pl.all().exclude("date").is_not_null())
+        )
+        dfs[strategy_str] = portfolio_values
 
     if y_var == BacktestYVar.ENDING_VALUES:
-        values = pd.concat(
-            [df.iloc[:, -1].rename(name) for name, df in dfs.items()], axis=1
+        values = reduce(
+            lambda a, b: a.join(b, on="date", how="full", coalesce=True),
+            [df.select("date", pl.last().alias(name)) for name, df in dfs.items()],
         )
     elif y_var == BacktestYVar.MAX_DRAWDOWN:
         if drawdown_type == DrawdownType.PERCENT:
-            values = pd.concat(
+            values = reduce(
+                lambda a, b: a.join(b, on="date", how="full", coalesce=True),
                 [
-                    df.T.div(df.T.cummax()).sub(1).min().rename(name)
+                    df.drop("date")
+                    .transpose()
+                    .select((pl.all() / pl.all().cum_max() - 1).min())
+                    .transpose(column_names=[name])
+                    .insert_column(0, df.get_column("date"))
                     for name, df in dfs.items()
                 ],
-                axis=1,
             )
         else:
-            values = pd.concat(
+            values = reduce(
+                lambda a, b: a.join(b, on="date", how="full", coalesce=True),
                 [
-                    df.T.sub(df.T.cummax()).min().rename(name)
+                    df.drop("date")
+                    .transpose()
+                    .select((pl.all() - pl.all().cum_max()).min())
+                    .transpose(column_names=[name])
+                    .insert_column(0, df.get_column("date"))
                     for name, df in dfs.items()
                 ],
-                axis=1,
             )
     else:
         raise ValueError("Invalid y_var")
@@ -1333,13 +1351,13 @@ def update_backtest_strategy_graph(
     return {
         "data": [
             go.Scatter(
-                x=values.index,
-                y=values[strategy],
+                x=values.get_column("date"),
+                y=values.get_column(strategy),
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy]),
                 name=strategy_options[strategy].replace("\n", "<br>"),
             )
-            for strategy in values.columns
+            for strategy in values.drop("date").columns
         ],
         "layout": go.Layout(
             title="Strategy Performance",
@@ -1386,7 +1404,7 @@ def show_backtest_strategy_modal(
     if not clicked_date_str:
         return False, {}
 
-    clicked_date = pd.to_datetime(clicked_date_str)
+    clicked_date_expr = pl.lit(clicked_date_str).str.to_datetime().dt.date()
 
     strategies_colourmap = dict(
         zip(strategy_options.keys(), cycle(DEFAULT_PLOTLY_COLORS))
@@ -1398,21 +1416,32 @@ def show_backtest_strategy_modal(
             strategy_str
         )
         portfolio_values = simulate_backtest_strategy(strategy)
-        portfolio_values = portfolio_values.dropna(how="all")
-        end_date = clicked_date
-        if index_by_start_date:
-            end_date = clicked_date + pd.offsets.BMonthEnd(strategy.strategy_horizon)
-        if end_date not in portfolio_values.index:
+        portfolio_values = portfolio_values.filter(
+            pl.any_horizontal(pl.all().exclude("date").is_not_null())
+        )
+        end_date_expr = (
+            add_bmonth_end(clicked_date_expr, strategy.strategy_horizon)
+            if index_by_start_date
+            else clicked_date_expr
+        )
+        matching = portfolio_values.filter(pl.col("date") == end_date_expr)
+        if matching.is_empty():
             continue
 
-        dates = pd.date_range(
-            end=end_date, periods=strategy.strategy_horizon + 1, freq="BME"
+        dates = (
+            pl.DataFrame()
+            .with_columns(
+                add_bmonth_end(
+                    end_date_expr, pl.int_range(-strategy.strategy_horizon, 1)
+                ).alias("date")
+            )
+            .get_column("date")
         )
 
         traces.append(
             go.Scatter(
                 x=dates,
-                y=portfolio_values.loc[end_date].values,
+                y=matching.drop("date").transpose().get_column("column_0"),
                 mode="lines",
                 line=go.scatter.Line(color=strategies_colourmap[strategy_str]),
                 name=strategy_options[strategy_str].replace("\n", "<br>"),
@@ -1422,10 +1451,16 @@ def show_backtest_strategy_modal(
     if not traces:
         return False, {}
 
+    title = (
+        pl.DataFrame()
+        .with_columns(clicked_date_expr.dt.strftime("%b %Y").alias("date"))
+        .item()
+    )
+
     return True, {
         "data": traces,
         "layout": go.Layout(
-            title=f"Portfolio Value {'from' if index_by_start_date else 'ending'} {clicked_date.strftime('%b %Y')}",
+            title=f"Portfolio Value {'from' if index_by_start_date else 'ending'} {title}",
             hovermode="x",
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
@@ -1455,7 +1490,7 @@ def handle_backtest_accumulation_strategy_graph_interaction(click_data: ClickDat
     if ctx.triggered_id == "backtest-accumulation-strategies":
         return None, "Click a data point to view portfolio growth", True
 
-    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+    clicked_date = datetime.fromisoformat(click_data["points"][0]["x"])
     date_str = clicked_date.strftime("%b %Y")
     return clicked_date.isoformat(), f"View Portfolio Growth for {date_str}", False
 
@@ -1586,7 +1621,7 @@ def handle_backtest_withdrawal_strategy_graph_interaction(click_data: ClickData,
     if ctx.triggered_id == "backtest-withdrawal-strategies":
         return None, "Click a data point to view portfolio value", True
 
-    clicked_date = pd.to_datetime(click_data["points"][0]["x"])
+    clicked_date = datetime.fromisoformat(click_data["points"][0]["x"])
     date_str = clicked_date.strftime("%b %Y")
     return clicked_date.isoformat(), f"View Portfolio Value for {date_str}", False
 
