@@ -3,16 +3,48 @@ import datetime
 import json
 import os
 import re
+from functools import lru_cache
 from io import StringIO
 from json import JSONDecodeError
+from typing import TypedDict
 
 import httpx
 import pandas as pd
 import polars as pl
+import yfinance as yf
 from bs4 import BeautifulSoup
+from scipy.interpolate import pchip_interpolate
+
+from models import TaxTreatment
 
 
-def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
+def fast_bday_upsample(df: pl.DataFrame) -> pl.DataFrame:
+    return (
+        df.sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .filter(pl.col("date").dt.weekday() < 6)
+        .interpolate()
+    )
+
+
+def fast_bday_downsample(df: pl.DataFrame) -> pl.DataFrame:
+    return df.filter(pl.col("date").dt.weekday() < 6)
+
+
+def pchip_daily_upsample(df: pl.DataFrame, value_col: str):
+    df = df.sort("date").upsample("date", every="1d", maintain_order=True)
+    return df.with_columns(
+        **{
+            value_col: pchip_interpolate(
+                df.drop_nulls().get_column("date").to_physical(),
+                df.drop_nulls().get_column(value_col),
+                df.get_column("date").to_physical(),
+            )
+        }
+    )
+
+
+def add_bmonth_end(col: pl.Expr, n: int | pl.Expr = 1) -> pl.Expr:
     """
     Polars expression for pandas BMonthEnd(n).
 
@@ -20,7 +52,7 @@ def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
     ----------
     col : pl.Expr
         The expression representing the date column.
-    n : int
+    n : int | pl.Expr
         Number of BMonthEnd periods.
     """
     bme = (
@@ -31,10 +63,24 @@ def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
 
     return (
         pl.when((n > 0) & (col < bme))
-        .then(bme.dt.offset_by(f"{n - 1}mo"))
-        .otherwise(bme.dt.offset_by(f"{n}mo"))
+        .then(bme.dt.offset_by(pl.format("{}mo", n - 1)))
+        .otherwise(bme.dt.offset_by(pl.format("{}mo", n)))
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
+    )
+
+
+def resample_bme(df: pl.DataFrame) -> pl.DataFrame:
+    return (
+        df.group_by(add_bmonth_end(pl.col("date"), 0).alias("bme"), maintain_order=True)
+        .last()
+        .select(
+            pl.when(pl.int_range(pl.len()) == pl.len() - 1)
+            .then(pl.col("date"))
+            .otherwise(pl.col("bme"))
+            .alias("date"),
+            pl.col("price"),
+        )
     )
 
 
@@ -132,13 +178,18 @@ def load_fed_funds_rate():
     ):
         fed_funds_rate = download_fed_funds_rate()
 
-    return fed_funds_rate.upsample("date", every="1d").fill_null(strategy="forward")
+    return (
+        fed_funds_rate.sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
 
 
 def load_fed_funds_returns():
     fed_funds_rate = load_fed_funds_rate()
-    return fed_funds_rate.with_columns(
-        pl.col("ffr").truediv(36000).add(1).shift().fill_null(1).cum_prod()
+    return fed_funds_rate.select(
+        "date",
+        price=pl.col("ffr").truediv(36000).add(1).shift().fill_null(1).cum_prod(),
     )
 
 
@@ -191,7 +242,9 @@ async def load_us_treasury_rates_async():
     )
 
     treasury_rates = (
-        treasury_rates.set_sorted("date").upsample("date", every="1d").interpolate()
+        treasury_rates.sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .interpolate()
     )
     return treasury_rates
 
@@ -348,6 +401,7 @@ def download_mas_sgd_fx():
             .exclude("end_of_day", "preliminary")
             .name.map(lambda s: s.removesuffix("_100").removesuffix("_sgd").upper()),
         )
+        .sort("date")
     )
     sgd_fx.write_csv("data/sgd_fx.csv")
     return sgd_fx
@@ -424,6 +478,7 @@ async def download_fred_usd_fx_async():
         )
         .with_columns(pl.col("^1_.*$").pow(-1).name.map(lambda s: s.lstrip("1_")))
         .select(pl.all().exclude("^1_.*$"))
+        .sort("date")
     )
     usd_fx.write_csv("data/usd_fx.csv")
     return usd_fx
@@ -452,7 +507,7 @@ def load_fred_usd_fx():
 
 def load_fred_usdsgd():
     usdsgd = get_fred_series("DEXSIUS").select(
-        pl.col("date"), pl.col("value").alias("usd_sgd")
+        pl.col("date"), pl.col("DEXSIUS").alias("usd_sgd")
     )
     return usdsgd
 
@@ -472,25 +527,16 @@ def read_worldbank_usdsgd() -> pl.DataFrame:
 
 def load_worldbank_usdsgd():
     fred_usdsgd = load_fred_usdsgd()
-    return pl.from_pandas(
-        pl.concat(
-            [
-                read_worldbank_usdsgd()
-                .with_columns(
-                    pl.col("date").dt.offset_by("6mo"),
-                )
-                .filter(pl.col("date").lt(fred_usdsgd.get_column("date").first())),
-                fred_usdsgd[0],
-            ]
-        )
-        .to_pandas()
-        .set_index("date")
-        .resample("D")
-        .interpolate("pchip")
-        .iloc[:-1]
-        .reset_index(),
-        schema_overrides={"date": pl.Date},
-    )
+    return pl.concat(
+        [
+            read_worldbank_usdsgd()
+            .with_columns(
+                pl.col("date").dt.offset_by("6mo"),
+            )
+            .filter(pl.col("date").lt(fred_usdsgd.get_column("date").first())),
+            fred_usdsgd.head(1),
+        ]
+    ).pipe(pchip_daily_upsample, "usd_sgd")
 
 
 def load_usdsgd():
@@ -640,7 +686,7 @@ def load_sgd_interest_rates():
         pl.read_csv("data/cpf_oa_rate.csv", try_parse_dates=True)
         .with_columns(pl.col("date").cast(pl.Date))
         .sort("date")
-        .upsample("date", every="1d")
+        .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
         .select("date", pl.col("rate"))
     )
@@ -663,20 +709,25 @@ def load_sgd_interest_rates():
     ):
         mas_sgd_interest_rates = download_sgd_interest_rates()
 
-    interbank_rates = mas_sgd_interest_rates.upsample("date", every="1d").select(
-        "date",
-        rate=pl.col("sora")
-        .fill_null(pl.col("interbank_overnight"))
-        .fill_null(strategy="forward")
-        .cast(pl.Float64),
+    interbank_rates = (
+        mas_sgd_interest_rates.sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .select(
+            "date",
+            rate=pl.col("sora")
+            .fill_null(pl.col("interbank_overnight"))
+            .fill_null(strategy="forward")
+            .cast(pl.Float64),
+        )
     )
     return pl.concat([cpf_oa_rate, interbank_rates], how="vertical")
 
 
 def load_sgd_interest_rates_returns():
     sgd_interest_rates = load_sgd_interest_rates()
-    return sgd_interest_rates.with_columns(
-        pl.col("sora").truediv(36500).add(1).shift().fill_null(1).cum_prod()
+    return sgd_interest_rates.select(
+        "date",
+        price=pl.col("rate").truediv(36500).add(1).shift().fill_null(1).cum_prod(),
     )
 
 
@@ -730,7 +781,8 @@ def load_sgs_rates():
                 )
             )
         )
-        .upsample("date", every="1d")
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
     )
     return sgs
@@ -859,6 +911,22 @@ def read_greatlink_data(fund_name: str):
     )
 
 
+class Basic(TypedDict):
+    symbol: str
+    currency: str
+
+
+class Details(TypedDict):
+    issueType: str
+    inceptionDate: str
+
+
+class FtSymbolInfo(TypedDict):
+    basic: Basic
+    details: Details
+
+
+@lru_cache
 def get_ft_api_key():
     res = httpx.get("https://markets.ft.com/research/webservices/securities/v1/docs")
     source = re.search("source=([0-9a-f]*)", res.content.decode())
@@ -870,12 +938,9 @@ def get_ft_api_key():
     return api_key
 
 
-def download_ft_data(
-    symbol: str, api_key: str | None = None
-) -> tuple[pl.DataFrame, str, str, str]:
+def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
+    api_key = get_ft_api_key()
     with httpx.Client() as client:
-        if api_key is None:
-            api_key = get_ft_api_key()
         details_response = client.get(
             "https://markets.ft.com/research/webservices/securities/v1/details",
             params={
@@ -883,32 +948,55 @@ def download_ft_data(
                 "symbols": symbol,
             },
         )
-        if details_response.is_client_error:
-            if (
-                details_response.json()["error"]["errors"][0]["reason"]
-                == "MissingAPIKey"
-            ):
-                api_key = get_ft_api_key()
-                details_response = client.get(
-                    "https://markets.ft.com/research/webservices/securities/v1/details",
-                    params={
-                        "source": api_key,
-                        "symbols": symbol,
-                    },
-                )
-            else:
-                raise ValueError(
-                    details_response.json()["error"]["errors"][0]["message"]
-                )
-        else:
-            details_response.raise_for_status()
-        item = details_response.json()["data"]["items"][0]
-        ticker = item["basic"]["symbol"]
-        currency = item["basic"]["currency"]
-        if item["details"]["issueType"] == "OF":
+        if (
+            details_response.is_client_error
+            and details_response.json()["error"]["errors"][0]["reason"]
+            == "MissingAPIKey"
+        ):
+            get_ft_api_key.cache_clear()
+            api_key = get_ft_api_key()
+            details_response = client.get(
+                "https://markets.ft.com/research/webservices/securities/v1/details",
+                params={
+                    "source": api_key,
+                    "symbols": symbol,
+                },
+            )
+        if (
+            details_response.is_client_error
+            and details_response.json()["error"]["errors"][0]["reason"]
+            == "InvalidParameter"
+        ):
+            return None
+        details_response.raise_for_status()
+        response = client.get(
+            "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
+            params={
+                "source": api_key,
+                "symbols": symbol,
+                "dayCount": 7,
+            },
+        )
+        response.raise_for_status()
+        if (
+            response.json()["data"]["items"][0]["historicalSeries"].get(
+                "historicalQuoteData"
+            )
+            is None
+        ):
+            return None
+        info: FtSymbolInfo = details_response.json()["data"]["items"][0]
+        return info
+
+
+@lru_cache
+def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.DataFrame:
+    api_key = get_ft_api_key()
+    with httpx.Client() as client:
+        if issue_type == "OF":
             historical_tearsheet_response = client.get(
                 "https://markets.ft.com/data/funds/tearsheet/historical",
-                params={"s": ticker},
+                params={"s": symbol},
                 headers={},
             )
             historical_prices_mod = BeautifulSoup(
@@ -916,19 +1004,21 @@ def download_ft_data(
             ).select_one(".mod-tearsheet-historical-prices")
 
             if historical_prices_mod is None:
-                raise ValueError("Unable to retrieve inception date")
-            data_mod_config = historical_prices_mod["data-mod-config"]
-            if isinstance(data_mod_config, str) and "inception" in data_mod_config:
-                start_date = datetime.datetime.fromisoformat(
-                    json.loads(data_mod_config)["inception"]
+                start_date = datetime.datetime.strptime(
+                    inception_date, "%Y-%m-%dT00:00:00"
                 )
             else:
-                raise ValueError("Unable to retrieve inception date")
+                data_mod_config = historical_prices_mod["data-mod-config"]
+                if isinstance(data_mod_config, str) and "inception" in data_mod_config:
+                    start_date = datetime.datetime.fromisoformat(
+                        json.loads(data_mod_config)["inception"]
+                    )
+                else:
+                    start_date = datetime.datetime.strptime(
+                        inception_date, "%Y-%m-%dT00:00:00"
+                    )
         else:
-            start_date = datetime.datetime.strptime(
-                item["details"]["inceptionDate"],
-                "%Y-%m-%dT00:00:00",
-            )
+            start_date = datetime.datetime.strptime(inception_date, "%Y-%m-%dT00:00:00")
         response = client.get(
             "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
             params={
@@ -937,6 +1027,21 @@ def download_ft_data(
                 "dayCount": (datetime.date.today() - start_date.date()).days,
             },
         )
+        if (
+            response.is_client_error
+            and response.json()["error"]["errors"][0]["reason"] == "MissingAPIKey"
+        ):
+            get_ft_api_key.cache_clear()
+            api_key = get_ft_api_key()
+            response = client.get(
+                "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
+                params={
+                    "source": api_key,
+                    "symbols": symbol,
+                    "dayCount": (datetime.date.today() - start_date.date()).days,
+                },
+            )
+        response.raise_for_status()
         if (
             response.json()["data"]["items"][0]["historicalSeries"].get(
                 "historicalQuoteData"
@@ -957,10 +1062,11 @@ def download_ft_data(
             .select(pl.col("date"), pl.col("close").alias("price"))
         )
 
-        return df, ticker, currency, api_key
+        return df
 
 
-def get_sgx_dividends(ticker: str):
+@lru_cache
+def get_sgx_dividends(ticker: str) -> pl.DataFrame:
     res = httpx.get(f"https://www.dividends.sg/view/{ticker}")
     df_pd = pd.read_html(StringIO(res.content.decode()))[0][["Ex Date", "Amount"]]
     df = (
@@ -978,7 +1084,82 @@ def get_sgx_dividends(ticker: str):
     return df
 
 
+def load_ft_data(
+    symbol: str, issue_type: str, inception_date: str, dividends: bool
+) -> pl.DataFrame:
+    df = download_ft_data(symbol, issue_type, inception_date)
+    if not dividends:
+        return df
+
+    dividends_df = get_sgx_dividends(symbol.removesuffix(":SES"))
+    return (
+        df.join(dividends_df, on="date", how="left", maintain_order="left")
+        .with_columns(pl.col("dividends").fill_null(0))
+        .with_columns(
+            manually_adjusted=pl.col("price")
+            .add(pl.col("dividends"))
+            .truediv(pl.col("price").shift())
+            .fill_null(1)
+            .cum_prod()
+        )
+        .select(
+            "date",
+            price=pl.col("manually_adjusted")
+            .truediv(pl.last("manually_adjusted"))
+            .mul(pl.last("price")),
+        )
+    )
+
+
+def validate_yf_ticker(
+    input_ticker: str,
+) -> tuple[
+    str | None,
+    str | None,
+]:
+    ticker = yf.Ticker(input_ticker)
+    if len(ticker.info) < 10:
+        return (None, None)
+
+    validated_ticker = ticker.ticker
+    if not validated_ticker:
+        return (None, None)
+    if "currency" not in ticker.history_metadata:
+        currency = None
+    else:
+        currency: str | None = ticker.history_metadata.get("currency")
+
+    return (validated_ticker, currency)
+
+
+@lru_cache
+def download_yf_data(ticker_str: str) -> pl.DataFrame:
+    ticker = yf.Ticker(ticker_str)
+    df = ticker.history(period="max", auto_adjust=False).tz_localize(None).copy()
+    return pl.from_pandas(
+        df.reset_index(), include_index=True, schema_overrides={"Date": pl.Date}
+    )
+
+
+def load_yf_data(ticker_str: str, tax_treatment: TaxTreatment) -> pl.DataFrame:
+    df = download_yf_data(ticker_str)
+    if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
+        price = (
+            (pl.col("Close") + pl.col("Dividends") * 0.7)
+            .truediv(pl.col("Close").shift(1))
+            .fill_null(1)
+            .cum_prod()
+        )
+        price = price.truediv(price.last()).mul(pl.col("Adj Close").last())
+    else:
+        price = pl.col("Adj Close")
+    return df.select(date=pl.col("Date"), price=price)
+
+
 __all__ = [
+    "fast_bday_upsample",
+    "fast_bday_downsample",
+    "resample_bme",
     "read_msci_data",
     "load_fed_funds_rate",
     "load_fed_funds_returns",
@@ -1001,8 +1182,11 @@ __all__ = [
     "load_us_cpi",
     "load_cpi",
     "read_greatlink_data",
+    "get_ft_symbol_info",
     "read_ft_data",
     "get_ft_api_key",
     "download_ft_data",
     "get_sgx_dividends",
+    "validate_yf_ticker",
+    "load_yf_data",
 ]

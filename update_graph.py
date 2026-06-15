@@ -3,13 +3,15 @@ from functools import cached_property
 from typing import Annotated, Generic, Literal, NotRequired, TypedDict, TypeVar
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
+import polars as pl
 from dash import ctx
 from pydantic import BaseModel, ConfigDict, Field, Json, TypeAdapter, computed_field
 
+from funcs.loaders_pl import add_bmonth_end
 from models import (
     DistributionChartType,
+    Interval,
     ReturnAnnualisation,
     ReturnDuration,
     ReturnInterval,
@@ -46,41 +48,70 @@ RelayoutData = TypedDict(
 )
 
 
+def filter_start_date(start_date: str | None):
+    return (
+        (pl.col("date") >= pl.lit(start_date).str.to_datetime())
+        if start_date is not None
+        else pl.lit(True)
+    )
+
+
+def filter_end_date(end_date: str | None):
+    return (
+        (pl.col("date") <= pl.lit(end_date).str.to_datetime())
+        if end_date is not None
+        else pl.lit(True)
+    )
+
+
 def _get_scaling_factor(
-    prev_zoom_df: pd.DataFrame,
+    prev_zoom_df: pl.DataFrame,
     start_date: str | None,
     end_date: str | None,
     yaxis_min: float,
     yaxis_max: float,
 ) -> float:
+    start_date_filter = filter_start_date(start_date)
+    end_date_filter = filter_end_date(end_date)
+
     masked_df = (
-        prev_zoom_df.loc[start_date:end_date]
-        .where(lambda y: (y >= yaxis_min) & (y <= yaxis_max))
-        .apply(
-            lambda col: (col.max() - col.min()) * len(col.dropna()),
-            result_type="reduce",
+        prev_zoom_df.filter(start_date_filter & end_date_filter)
+        .drop("date")
+        .with_columns(
+            pl.when(pl.all().ge(yaxis_min) & pl.all().le(yaxis_max))
+            .then(pl.all())
+            .otherwise(pl.lit(None))
         )
     )
-    if masked_df.isna().all():
-        masked_df = prev_zoom_df.loc[start_date:end_date].apply(
-            lambda col: (col.max() - col.min()) * len(col.dropna()),
-            result_type="reduce",
+    basis_scores = (masked_df.max() - masked_df.min()) * masked_df.count()
+
+    if basis_scores.select(pl.all_horizontal(pl.all().is_null())).item():
+        masked_df = prev_zoom_df.filter(start_date_filter & end_date_filter).drop(
+            "date"
         )
-    if masked_df.isna().all():
-        masked_df = prev_zoom_df.apply(
-            lambda col: (col.max() - col.min()) * len(col.dropna()),
-            result_type="reduce",
-        )
-    if masked_df.isna().all():
-        zoom_basis = prev_zoom_df.columns[0]
+        basis_scores = (masked_df.max() - masked_df.min()) * masked_df.count()
+    if basis_scores.select(pl.all_horizontal(pl.all().is_null())).item():
+        masked_df = prev_zoom_df.drop("date")
+        basis_scores = (masked_df.max() - masked_df.min()) * masked_df.count()
+    if basis_scores.select(pl.all_horizontal(pl.all().is_null())).item():
+        zoom_basis = prev_zoom_df.drop("date").columns[0]
     else:
-        zoom_basis = masked_df.idxmax()
-    scaling_factor = prev_zoom_df.loc[start_date:, zoom_basis].dropna().iloc[0]
+        zoom_basis = (
+            basis_scores.transpose(include_header=True)
+            .filter(pl.col("column_0").eq(pl.col("column_0").max()))["column"]
+            .head(1)
+            .item()
+        )
+    scaling_factor = (
+        prev_zoom_df.filter(start_date_filter)
+        .select(pl.col(zoom_basis).first(ignore_nulls=True))
+        .item()
+    )
     return scaling_factor
 
 
 def update_price_graph(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
     log_scale: bool,
@@ -113,17 +144,32 @@ def update_price_graph(
 
         layout.update(xaxis_range=[start_date, end_date])
 
-    prev_zoom_df = df.copy(deep=True)
+    prev_zoom_df = df
 
     if percent_scale:
         layout.update(title="% Change")
         layout.update(yaxis_tickformat="+.2~%")
 
-        df = df.div(df.loc[start_date:].bfill().iloc[0]).sub(1)
+        df = df.with_columns(
+            pl.col(col)
+            .truediv(
+                pl.col(col)
+                .filter(filter_start_date(start_date))
+                .first(ignore_nulls=True)
+            )
+            .sub(1)
+            for col in df.drop("date").columns
+        )
 
         if log_scale:
-            df = df.add(1)
-            max_val = df.loc[start_date:end_date].max().max()
+            df = df.with_columns(pl.all().exclude("date").add(1))
+            max_val = (
+                df.filter(filter_start_date(start_date) & filter_end_date(end_date))
+                .drop("date")
+                .max()
+                .max_horizontal()
+                .item()
+            )
             if max_val < 3:
                 ytickvals = [n / 10 for n in range(0, 20)] + [2, 2.2, 2.5, 3]
             else:
@@ -137,16 +183,16 @@ def update_price_graph(
 
     data = [
         go.Scatter(
-            x=df.index,
+            x=df["date"],
             y=df[column],
             name=trace_options[column],
             line=go.scatter.Line(color=trace_colourmap[column]),
-            customdata=df[column].sub(1).round(4)
+            customdata=(df[column] - 1).round(4)
             if log_scale and percent_scale
             else None,
             hovertemplate="%{customdata:+.2%}" if log_scale and percent_scale else None,
         )
-        for column in df.columns
+        for column in df.drop("date").columns
     ]
 
     if (
@@ -161,8 +207,12 @@ def update_price_graph(
             "portfolio-graph",
         ]
     ):
-        min_val = df.loc[start_date:end_date].min().min()
-        max_val = df.loc[start_date:end_date].max().max()
+        filtered = df.filter(
+            filter_start_date(start_date) & filter_end_date(end_date)
+        ).drop("date")
+
+        min_val = filtered.min().min_horizontal().item()
+        max_val = filtered.max().max_horizontal().item()
         if log_scale:
             min_val = np.log10(min_val)
             max_val = np.log10(max_val)
@@ -181,14 +231,24 @@ def update_price_graph(
         layout.update(yaxis_range=[yaxis_min, yaxis_max])
         return data, layout
 
-    prev_start_date = pd.to_datetime(prev_layout["xaxis"]["range"][0])
+    prev_start_date = pl.lit(prev_layout["xaxis"]["range"][0]).str.to_datetime()
 
-    prev_zoom_df = prev_zoom_df.div(
-        prev_zoom_df.loc[prev_start_date:].bfill().iloc[0]
-    ).sub(1)
+    prev_zoom_df = prev_zoom_df.with_columns(
+        pl.all()
+        .exclude("date")
+        .truediv(
+            pl.all()
+            .exclude("date")
+            .filter(pl.col("date") >= prev_start_date)
+            .first(ignore_nulls=True)
+        )
+        .sub(1)
+    )
 
     if log_scale:
-        prev_zoom_df = prev_zoom_df.add(1).apply(np.log10)
+        prev_zoom_df = prev_zoom_df.with_columns(
+            pl.all().exclude("date").add(1).log10()
+        )
 
     scaling_factor = _get_scaling_factor(
         prev_zoom_df, start_date, end_date, yaxis_min, yaxis_max
@@ -210,11 +270,15 @@ def update_price_graph(
 
 
 def update_drawdown_graph(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
     layout: go.Layout,
 ):
+    df = df.with_columns(
+        pl.all().exclude("date").truediv(pl.all().exclude("date").cum_max()).sub(1)
+    )
+
     layout.update(
         title="Drawdown",
         yaxis_tickformat=".2%",
@@ -222,21 +286,22 @@ def update_drawdown_graph(
 
     data = [
         go.Scatter(
-            x=df.index,
+            x=df["date"],
             y=df[column],
             name=trace_options[column],
             line=go.scatter.Line(color=trace_colourmap[column]),
         )
-        for column in df.columns
+        for column in df.drop("date").columns
     ]
 
     return data, layout
 
 
 def update_rolling_returns_graph(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
+    interval: Interval,
     return_duration: ReturnDuration,
     return_annualisation: ReturnAnnualisation,
     baseline_trace: str,
@@ -244,13 +309,63 @@ def update_rolling_returns_graph(
     rolling_returns_distribution_chart_type: DistributionChartType,
     layout: go.Layout,
 ):
+    return_durations = {
+        "1mo": 1,
+        "3mo": 3,
+        "6mo": 6,
+        "1y": 12,
+        "2y": 24,
+        "3y": 36,
+        "5y": 60,
+        "10y": 120,
+        "15y": 180,
+        "20y": 240,
+        "25y": 300,
+        "30y": 360,
+    }
+    if interval == Interval.MONTHLY:
+        df = df.with_columns(
+            pl.all().exclude("date").pct_change(return_durations[return_duration])
+        )
+    elif interval == Interval.DAILY:
+        series_names = df.drop("date").columns
+        df = (
+            df.with_columns(
+                lookup_date=pl.col("date")
+                .dt.offset_by(f"-{return_durations[return_duration]}mo")
+                .dt.add_business_days(0, roll="backward")
+            )
+            .join(
+                df,
+                left_on="lookup_date",
+                right_on="date",
+                how="left",
+                maintain_order="left",
+            )
+            .select(
+                "date",
+                *(pl.col(col) / pl.col(f"{col}_right") - 1 for col in series_names),
+            )
+        )
+    else:
+        raise ValueError("Invalid interval")
+    if return_annualisation == ReturnAnnualisation.ANNUALISED:
+        df = df.with_columns(
+            pl.all()
+            .exclude("date")
+            .add(1)
+            .pow(12 / return_durations[return_duration])
+            .sub(1)
+        )
+    df = df.filter(pl.any_horizontal(pl.all().exclude("date").is_not_null()))
+
     layout.update(yaxis_tickformat=".2%")
 
     title = f"{return_duration.label} {return_annualisation.label} Rolling Returns"
 
     if baseline_trace != "None":
-        df = df.sub(df[baseline_trace], axis=0, level=0).dropna(
-            subset=df.columns.difference([baseline_trace]), how="all"
+        df = df.with_columns(pl.all().exclude("date").sub(baseline_trace)).filter(
+            pl.any_horizontal(pl.all().exclude("date", baseline_trace).is_not_null())
         )
         title += f" vs {trace_options[baseline_trace]}"
 
@@ -261,7 +376,7 @@ def update_rolling_returns_graph(
     if rolling_returns_presentation == RollingReturnsPresentation.TIMESERIES:
         data = [
             go.Scatter(
-                x=df.index,
+                x=df["date"],
                 y=df[column],
                 name=trace_options[column],
                 line=go.scatter.Line(
@@ -269,7 +384,7 @@ def update_rolling_returns_graph(
                     dash=("dash" if column == baseline_trace else None),
                 ),
             )
-            for column in df.columns
+            for column in df.drop("date").columns
         ]
 
     elif rolling_returns_presentation == RollingReturnsPresentation.DISTRIBUTION:
@@ -307,7 +422,7 @@ def update_rolling_returns_graph(
                     opacity=0.7,
                     showlegend=True,
                 )
-                for column in df.columns
+                for column in df.drop("date").columns
                 if column != baseline_trace
             ]
 
@@ -339,7 +454,7 @@ def update_rolling_returns_graph(
                     boxpoints="outliers",
                     showlegend=True,
                 )
-                for column in df.columns
+                for column in df.drop("date").columns
                 if column != baseline_trace
             ]
 
@@ -363,13 +478,45 @@ def update_rolling_returns_graph(
 
 
 def update_calendar_returns_graph(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     trace_colourmap: dict[str, str],
     trace_options: dict[str, str],
     return_interval: ReturnInterval,
     baseline_trace: str,
     layout: go.Layout,
 ):
+    data_df = (
+        df.sort("date")
+        .group_by_dynamic("date", every=return_interval, label="right")
+        .agg(
+            pl.all().exclude("date").last(ignore_nulls=True),
+        )
+        .with_columns(
+            pl.col("date").pipe(add_bmonth_end, -1),
+            pl.all().exclude("date").pct_change(),
+        )
+        .filter(pl.any_horizontal(pl.all().exclude("date").is_not_null()))
+    )
+    hovertext_df = (
+        df.sort("date")
+        .group_by_dynamic("date", every=return_interval, label="right")
+        .agg(
+            pl.col("date").filter(pl.col(c).is_not_null()).last().alias(c)
+            for c in df.columns
+            if c != "date"
+        )
+        .with_columns(pl.col("date").pipe(add_bmonth_end, -1))
+        .with_columns(
+            pl.when(pl.all().exclude("date").ne(pl.col("date")))
+            .then(
+                (
+                    pl.lit("As of ") + pl.all().exclude("date").dt.strftime("%d %b %Y")
+                ).name.keep()
+            )
+            .otherwise(pl.lit(None))
+        )
+    )
+
     layout.update(
         xaxis_ticklabelmode="period",
         yaxis_tickformat=".2%",
@@ -379,44 +526,39 @@ def update_calendar_returns_graph(
     title = f"{return_interval.label} Returns"
 
     if baseline_trace != "None":
-        df = (
-            df.sub(df[baseline_trace], axis=0, level=0)
-            .dropna(subset=df.columns.difference([baseline_trace]), how="all")
-            .drop(columns=baseline_trace)
+        data_df = (
+            data_df.with_columns(pl.all().exclude("date").sub(baseline_trace))
+            .drop(baseline_trace)
+            .filter(pl.any_horizontal(pl.all().exclude("date").is_not_null()))
         )
+        hovertext_df = hovertext_df.join(data_df, on="date", how="semi")
         title += f" vs {trace_options[baseline_trace]}"
 
     layout.update(title=title)
 
     if return_interval == ReturnInterval.MONTHLY:
-        index_offset = pd.offsets.BMonthEnd(0)
         xperiod = "M1"
         layout.update(xaxis_tickformat="%b %Y")
     elif return_interval == ReturnInterval.QUARTERLY:
-        index_offset = pd.offsets.BQuarterEnd(0)
         xperiod = "M3"
         layout.update(xaxis_tickformat="Q%q %Y")
     elif return_interval == ReturnInterval.ANNUAL:
-        index_offset = pd.offsets.BYearEnd(0)
         xperiod = "M12"
         layout.update(xaxis_tickformat="%Y")
     else:
         raise ValueError("Invalid return_interval")
 
-    hovertext = df.index.to_series().apply(
-        lambda x: x.strftime("As of %d %b %Y") if x != x + index_offset else ""
-    )
     data = [
         go.Bar(
-            x=df.index + index_offset,
-            y=df[column],
+            x=data_df["date"],
+            y=data_df[column],
             xperiod=xperiod,
             xperiodalignment="middle",
             name=trace_options[column],
-            hovertext=hovertext,
+            hovertext=hovertext_df[column],
             marker=go.bar.Marker(color=trace_colourmap[column]),
         )
-        for column in df.columns
+        for column in data_df.drop("date").columns
         if column != baseline_trace
     ]
 
@@ -429,7 +571,7 @@ GraphTypeT = TypeVar("GraphTypeT", bound=YVar)
 class BaseGraphParam(BaseModel, Generic[GraphTypeT]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    df: pd.DataFrame
+    df: pl.DataFrame
     trace_colourmap: dict[str, str]
     uirevision: str
 
@@ -437,7 +579,9 @@ class BaseGraphParam(BaseModel, Generic[GraphTypeT]):
 
     @cached_property
     def trace_options(self) -> dict[str, str]:
-        holdings = TypeAdapter(list[Json[Holding]]).validate_python(self.df.columns)
+        holdings = TypeAdapter(list[Json[Holding]]).validate_python(
+            self.df.drop("date").columns
+        )
         return {
             holding.model_dump_json(): holding.label.replace("\n", "<br>")
             for holding in holdings
@@ -488,6 +632,7 @@ class DrawdownGraphParams(BaseGraphParam[Literal[YVar.DRAWDOWN]]):
 
 
 class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
+    interval: Interval
     return_duration: ReturnDuration
     return_annualisation: ReturnAnnualisation
     baseline_trace: str
@@ -501,6 +646,7 @@ class RollingReturnsGraphParams(BaseGraphParam[Literal[YVar.ROLLING_RETURNS]]):
             self.df,
             self.trace_colourmap,
             self.trace_options,
+            self.interval,
             self.return_duration,
             self.return_annualisation,
             self.baseline_trace,

@@ -30,6 +30,18 @@ def fast_bday_downsample(series: pd.Series):
     return series.reindex(new_index)
 
 
+def resample_bme(series: pd.Series):
+    df = (
+        series.rename("price")
+        .to_frame()
+        .assign(date=series.index)
+        .resample("BME")
+        .last()
+    )
+    new_index = df.index[:-1].union([df["date"].iloc[-1]])
+    return df["price"].set_axis(new_index)
+
+
 def read_msci_data(filename_pattern: str):
     return (
         pd.read_csv(glob(filename_pattern)[0], index_col="Date", parse_dates=["Date"])
@@ -872,6 +884,7 @@ def load_yf_data(ticker_str: str, tax_treatment: TaxTreatment):
 __all__ = [
     "fast_bday_upsample",
     "fast_bday_downsample",
+    "resample_bme",
     "read_msci_data",
     "load_fed_funds_rate",
     "load_fed_funds_returns",

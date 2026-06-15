@@ -1,7 +1,7 @@
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
 
-import pandas as pd
+import polars as pl
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from funcs.loaders import (
+from funcs.loaders_pl import (
     fast_bday_downsample,
     fast_bday_upsample,
     load_fed_funds_returns,
@@ -25,6 +25,7 @@ from funcs.loaders import (
     read_greatlink_data,
     read_msci_data,
     read_shiller_sp500_data,
+    resample_bme,
 )
 from models import (
     Currency,
@@ -45,18 +46,6 @@ from models import (
     TaxTreatment,
     USTreasuryDuration,
 )
-
-
-def resample_bme(series: pd.Series):
-    df = (
-        series.rename("price")
-        .to_frame()
-        .assign(date=series.index)
-        .resample("BME")
-        .last()
-    )
-    new_index = df.index[:-1].union([df["date"].iloc[-1]])
-    return df["price"].set_axis(new_index)
 
 
 class BaseSecurity(BaseModel):
@@ -125,14 +114,15 @@ class FredTreasurySecurity(BaseSecurity):
         return f"{self.us_treasury_duration.label} {self.fred_index.label}"
 
     def load_data(self, interval: Interval):
-        series = (
-            load_us_treasury_returns()[self.us_treasury_duration]
-            .dropna()
+        df = (
+            load_us_treasury_returns()
+            .select("date", pl.col(self.us_treasury_duration).alias("price"))
+            .drop_nulls()
             .pipe(fast_bday_downsample)
         )
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class FredFfrSecurity(BaseSecurity):
@@ -145,11 +135,10 @@ class FredFfrSecurity(BaseSecurity):
         return self.fred_index.label
 
     def load_data(self, interval: Interval):
-        fed_funds_returns = load_fed_funds_returns()
-        series = fed_funds_returns.pipe(fast_bday_downsample)
+        df = load_fed_funds_returns().pipe(fast_bday_downsample)
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 type FredSecurity = Annotated[
@@ -169,12 +158,15 @@ class MasSgsSecurity(BaseSecurity):
         return f"{self.sgs_duration.label} {self.mas_index.label}"
 
     def load_data(self, interval: Interval):
-        series = (
-            load_sgs_returns()[self.sgs_duration].dropna().pipe(fast_bday_downsample)
+        df = (
+            load_sgs_returns()
+            .select("date", pl.col(self.sgs_duration).alias("price"))
+            .drop_nulls()
+            .pipe(fast_bday_downsample)
         )
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class MasSoraSecurity(BaseSecurity):
@@ -187,11 +179,10 @@ class MasSoraSecurity(BaseSecurity):
         return self.mas_index.label
 
     def load_data(self, interval: Interval):
-        sgd_interest_rates_returns = load_sgd_interest_rates_returns()
-        series = sgd_interest_rates_returns.pipe(fast_bday_downsample)
+        df = load_sgd_interest_rates_returns().pipe(fast_bday_downsample)
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 type MasSecurity = Annotated[
@@ -217,24 +208,24 @@ class SpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SPX]]):
     currency: Literal["USD"] = "USD"
 
     def load_data(self, interval: Interval):
-        series = read_ft_data(f"S&P 500 USD {self.others_tax_treatment}")
+        df = read_ft_data(f"S&P 500 USD {self.others_tax_treatment}")
         if interval == Interval.DAILY:
-            series = series.pipe(fast_bday_upsample)
+            df = df.pipe(fast_bday_upsample)
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class ShillerSpxSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SHILLER_SPX]]):
     currency: Literal["USD"] = "USD"
 
     def load_data(self, interval: Interval):
-        series = read_shiller_sp500_data(self.others_tax_treatment)
+        df = read_shiller_sp500_data(self.others_tax_treatment)
         if interval == Interval.DAILY:
-            series = series.pipe(fast_bday_upsample)
+            df = df.pipe(fast_bday_upsample)
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
@@ -246,10 +237,10 @@ class SreitSecurity(BaseOthersIndexSecurity[Literal[OthersIndex.SREIT]]):
         return TaxTreatment.GROSS
 
     def load_data(self, interval: Interval):
-        series = read_ft_data("iEdge S-REIT Leaders USD Gross")
+        df = read_ft_data("iEdge S-REIT Leaders USD Gross")
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 type OthersIndexSecurity = Annotated[
@@ -269,10 +260,10 @@ class YfSecurity(BaseSecurity):
         return f"yfinance: {self.ticker} {self.tax_treatment.label}"
 
     def load_data(self, interval: Interval):
-        series = load_yf_data(self.ticker, self.tax_treatment)
+        df = load_yf_data(self.ticker, self.tax_treatment)
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class FtSecurity(BaseSecurity):
@@ -288,12 +279,12 @@ class FtSecurity(BaseSecurity):
         return f"FT: {self.ticker} {('(With Dividends)') * self.dividends}"
 
     def load_data(self, interval: Interval):
-        series = load_ft_data(
+        df = load_ft_data(
             self.ticker, self.issue_type, self.inception_date, self.dividends
         )
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class GreatlinkSecurity(BaseSecurity):
@@ -307,10 +298,10 @@ class GreatlinkSecurity(BaseSecurity):
         return f"{self.fund_company.label} {self.fund.label}"
 
     def load_data(self, interval: Interval):
-        series = read_greatlink_data(self.fund)
+        df = read_greatlink_data(self.fund)
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class GMOSecurity(BaseSecurity):
@@ -324,10 +315,10 @@ class GMOSecurity(BaseSecurity):
         return f"{self.fund_company.label} {self.fund.label}"
 
     def load_data(self, interval: Interval):
-        series = read_ft_data("GMO Quality Investment Fund")
+        df = read_ft_data("GMO Quality Investment Fund")
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class FundsmithSecurity(BaseSecurity):
@@ -341,10 +332,10 @@ class FundsmithSecurity(BaseSecurity):
         return f"{self.fund_company.label} {self.fund.label}"
 
     def load_data(self, interval: Interval):
-        series = read_ft_data(f"Fundsmith {self.fund.replace('Class ', '')} EUR Acc")
+        df = read_ft_data(f"Fundsmith {self.fund.replace('Class ', '')} EUR Acc")
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 class DimensionalSecurity(BaseSecurity):
@@ -358,10 +349,10 @@ class DimensionalSecurity(BaseSecurity):
         return f"{self.fund_company.label} {self.fund.label}"
 
     def load_data(self, interval: Interval):
-        series = read_ft_data(f"Dimensional {self.fund} GBP Accumulation")
+        df = read_ft_data(f"Dimensional {self.fund} GBP Accumulation")
         if interval == Interval.MONTHLY:
-            series = series.pipe(resample_bme)
-        return series
+            df = df.pipe(resample_bme)
+        return df
 
 
 type FundSecurity = Annotated[
