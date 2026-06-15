@@ -26,13 +26,13 @@ dependencies = [
 [dependency-groups]
 dev = [
     "geckodriver>=0.0.1",
-    "ipykernel>=7.2.0",
-    "matplotlib>=3.10.9",
+    "ipykernel>=7.3.0",
+    "matplotlib>=3.11.0",
     "nbformat>=5.10.4",
     "pandas-stubs>=3.0.3.260530",
     "prek>=0.4.4",
     "pyright>=1.1.410",
-    "ruff>=0.15.16",
+    "ruff>=0.15.17",
     "seaborn>=0.13.2",
     "selenium>=4.44.0",
     "snakeviz>=2.2.2",
