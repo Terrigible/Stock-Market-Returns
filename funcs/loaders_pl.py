@@ -44,7 +44,7 @@ def pchip_daily_upsample(df: pl.DataFrame, value_col: str):
     )
 
 
-def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
+def add_bmonth_end(col: pl.Expr, n: int | pl.Expr = 1) -> pl.Expr:
     """
     Polars expression for pandas BMonthEnd(n).
 
@@ -52,7 +52,7 @@ def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
     ----------
     col : pl.Expr
         The expression representing the date column.
-    n : int
+    n : int | pl.Expr
         Number of BMonthEnd periods.
     """
     bme = (
@@ -63,8 +63,8 @@ def add_bmonth_end(col: pl.Expr, n: int = 1) -> pl.Expr:
 
     return (
         pl.when((n > 0) & (col < bme))
-        .then(bme.dt.offset_by(f"{n - 1}mo"))
-        .otherwise(bme.dt.offset_by(f"{n}mo"))
+        .then(bme.dt.offset_by(pl.format("{}mo", n - 1)))
+        .otherwise(bme.dt.offset_by(pl.format("{}mo", n)))
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
     )
