@@ -135,7 +135,7 @@ def update_price_graph(
     if (
         prev_layout
         and "xaxis.autorange" not in relayout_data
-        and ctx.triggered_id not in ["y-var-selection"]
+        and ctx.triggered_id not in ["y-var-selection", "portfolio-y-var-selection"]
     ):
         start_date = relayout_data.get(
             "xaxis.range[0]", prev_layout["xaxis"]["range"][0]
