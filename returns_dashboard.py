@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from functools import cache, reduce
 from itertools import cycle
@@ -35,7 +36,7 @@ from funcs.loaders_pl import (
     get_ft_symbol_info,
     load_cpi,
     load_fed_funds_returns,
-    load_fred_usd_fx,
+    load_fred_usd_fx_async,
     load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
     load_usdsgd,
@@ -119,7 +120,7 @@ def convert_price(
         )
 
     usd_fx = (
-        load_fred_usd_fx()
+        asyncio.run(load_fred_usd_fx_async())
         .sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")

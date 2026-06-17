@@ -1,3 +1,4 @@
+import asyncio
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
 
@@ -19,7 +20,7 @@ from funcs.loaders_pl import (
     load_ft_data,
     load_sgd_interest_rates_returns,
     load_sgs_returns,
-    load_us_treasury_returns,
+    load_us_treasury_returns_async,
     load_yf_data,
     read_ft_data,
     read_greatlink_data,
@@ -115,7 +116,7 @@ class FredTreasurySecurity(BaseSecurity):
 
     def load_data(self, interval: Interval):
         df = (
-            load_us_treasury_returns()
+            asyncio.run(load_us_treasury_returns_async())
             .select("date", pl.col(self.us_treasury_duration).alias("price"))
             .drop_nulls()
             .pipe(fast_bday_downsample)
