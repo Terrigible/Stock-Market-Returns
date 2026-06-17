@@ -1,6 +1,5 @@
-import asyncio
 from datetime import datetime
-from functools import lru_cache, reduce
+from functools import reduce
 from itertools import cycle
 from typing import TypedDict
 
@@ -36,11 +35,7 @@ from funcs.loaders_pl import (
     get_ft_symbol_info,
     load_cpi,
     load_fed_funds_returns,
-    load_fred_usd_fx_async,
-    load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
-    load_usdsgd,
-    pchip_daily_upsample,
     resample_bme,
     validate_yf_ticker,
 )
@@ -80,7 +75,6 @@ from schemas import (
     AccumulationBootstrapStrategy,
     Allocation,
     BacktestStrategy,
-    BaseSecurity,
     BootstrapStrategy,
     FtSecurity,
     FundSecurity,
@@ -93,158 +87,6 @@ from schemas import (
     YfSecurity,
 )
 from update_graph import GraphParams, PrevLayout, RelayoutData
-
-
-def convert_price(
-    df: pl.DataFrame,
-    source_currency: str,
-    destination_currency: Currency,
-) -> pl.DataFrame:
-    if source_currency == destination_currency:
-        return df
-
-    usd_sgd = (
-        load_usdsgd()
-        .sort("date")
-        .upsample("date", every="1d", maintain_order=True)
-        .fill_null(strategy="forward")
-    )
-
-    if source_currency == "USD" and destination_currency == Currency.SGD:
-        return df.join(usd_sgd, on="date", how="left").select(
-            "date", price=pl.col("price") * pl.col("usdsgd")
-        )
-    if source_currency == "SGD" and destination_currency == Currency.USD:
-        return df.join(usd_sgd, on="date", how="left").select(
-            "date", price=pl.col("price") / pl.col("usdsgd")
-        )
-
-    usd_fx = (
-        asyncio.run(load_fred_usd_fx_async())
-        .sort("date")
-        .upsample("date", every="1d", maintain_order=True)
-        .fill_null(strategy="forward")
-    )
-
-    if source_currency == "GBp":
-        df = df.with_columns(pl.col("price") / 100)
-        source_currency = "GBP"
-
-    if source_currency in usd_fx.columns:
-        usd_series = df.join(
-            usd_fx.select("date", source_currency), on="date", how="left"
-        ).select("date", price=pl.col("price") * pl.col(source_currency))
-        if destination_currency == Currency.USD:
-            return usd_series
-        if destination_currency == Currency.SGD:
-            return usd_series.join(usd_sgd, on="date", how="left").select(
-                "date", price=pl.col("price") * pl.col("usdsgd")
-            )
-
-    sgd_fx = (
-        load_mas_sgd_fx()
-        .sort("date")
-        .upsample("date", every="1d", maintain_order=True)
-        .fill_null(strategy="forward")
-    )
-
-    if source_currency in sgd_fx.columns:
-        sgd_series = df.join(
-            sgd_fx.select("date", source_currency), on="date", how="left"
-        ).select("date", price=pl.col("price") * pl.col(source_currency))
-        if destination_currency == Currency.SGD:
-            return sgd_series
-        if destination_currency == Currency.USD:
-            return sgd_series.join(usd_sgd, on="date", how="left").select(
-                "date", price=pl.col("price") / pl.col("usdsgd")
-            )
-
-    return df
-
-
-@lru_cache
-def load_security(
-    security_str: str,
-    interval: Interval,
-    currency: Currency,
-    adjust_for_inflation: bool,
-):
-    security: Security = TypeAdapter(Security).validate_json(security_str)
-    df = security.load_data(interval)
-
-    df = convert_price(df, security.currency, currency)
-    if adjust_for_inflation:
-        cpi = load_cpi(currency)
-        cpi = cpi.pipe(pchip_daily_upsample, "cpi").fill_null(strategy="forward")
-        df = df.join(cpi, on="date", how="left").select(
-            "date", price=pl.col("price") / pl.col("cpi")
-        )
-    return df.sort("date")
-
-
-def load_portfolio(
-    portfolio: Portfolio,
-    currency: Currency,
-    adjust_for_inflation: bool,
-):
-    dfs = [
-        load_security(
-            allocation.security.model_dump_json(),
-            Interval.MONTHLY,
-            currency,
-            adjust_for_inflation,
-        ).rename({"price": allocation.security.model_dump_json()})
-        for allocation in portfolio.allocations
-    ]
-    portfolio_df = reduce(
-        lambda left, right: left.join(right, on="date", how="full", coalesce=True), dfs
-    )
-    portfolio_series = (
-        portfolio_df.with_columns(
-            pl.col(allocation.security.model_dump_json())
-            .pct_change()
-            .mul(allocation.weight)
-            .truediv(100)
-            for allocation in portfolio.allocations
-        )
-        .select(
-            "date",
-            price=pl.sum_horizontal(pl.all().exclude("date"), ignore_nulls=False)
-            .add(1)
-            .cum_prod(),
-        )
-        .select(
-            "date",
-            price=pl.when(
-                pl.int_range(pl.len())
-                == pl.arg_where(pl.col("price").is_not_null()).first().sub(1)
-            )
-            .then(1)
-            .otherwise(pl.col("price")),
-        )
-        .drop_nulls()
-    )
-    return portfolio_series
-
-
-def load_series(
-    holding: Holding,
-    interval: Interval,
-    currency: Currency,
-    adjust_for_inflation: bool,
-):
-    if isinstance(holding, BaseSecurity):
-        df = load_security(
-            holding.model_dump_json(),
-            interval,
-            currency,
-            adjust_for_inflation,
-        )
-    elif isinstance(holding, Portfolio):
-        df = load_portfolio(holding, currency, adjust_for_inflation)
-    else:
-        raise ValueError(f"Invalid holding type: {holding.holding_type}")
-    return df
 
 
 app = Dash(
@@ -698,8 +540,7 @@ def update_holding_graph(
         selected_holdings_strs
     )
     dfs = [
-        load_series(
-            selected_security,
+        selected_security.load_series(
             interval,
             currency,
             adjust_for_inflation,
@@ -1184,8 +1025,7 @@ def update_backtest_accumulation_strategies(
 
 
 def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrategy):
-    strategy_series = load_series(
-        strategy.strategy_portfolio,
+    strategy_series = strategy.strategy_portfolio.load_series(
         Interval.MONTHLY,
         strategy.currency,
         False,
@@ -1235,8 +1075,7 @@ def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrate
 
 def simulate_backtest_withdrawal_strategy(strategy: WithdrawalBacktestStrategy):
 
-    strategy_series = load_series(
-        strategy.strategy_portfolio,
+    strategy_series = strategy.strategy_portfolio.load_series(
         Interval.MONTHLY,
         strategy.currency,
         False,
@@ -1724,8 +1563,7 @@ def _build_quantile_fan_traces(
 
 
 def simulate_bootstrap_accumulation_strategy(strategy: AccumulationBootstrapStrategy):
-    strategy_series = load_series(
-        strategy.strategy_portfolio,
+    strategy_series = strategy.strategy_portfolio.load_series(
         Interval.MONTHLY,
         strategy.currency,
         False,
@@ -1782,8 +1620,7 @@ def simulate_bootstrap_withdrawal_strategy(
     strategy: WithdrawalBootstrapStrategy,
 ):
 
-    strategy_series = load_series(
-        strategy.strategy_portfolio,
+    strategy_series = strategy.strategy_portfolio.load_series(
         Interval.MONTHLY,
         strategy.currency,
         False,

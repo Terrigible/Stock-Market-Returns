@@ -1,4 +1,5 @@
 import asyncio
+from functools import lru_cache, reduce
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
 
@@ -8,20 +9,24 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    TypeAdapter,
     computed_field,
     field_validator,
     model_validator,
 )
 
 from funcs.loaders_pl import (
+    convert_price,
     fast_bday_downsample,
     fast_bday_upsample,
+    load_cpi,
     load_fed_funds_returns,
     load_ft_data,
     load_sgd_interest_rates_returns,
     load_sgs_returns,
     load_us_treasury_returns_async,
     load_yf_data,
+    pchip_daily_upsample,
     read_ft_data,
     read_greatlink_data,
     read_msci_data,
@@ -51,6 +56,13 @@ from models import (
 
 class BaseSecurity(BaseModel):
     holding_type: Literal["Security"] = "Security"
+
+    def load_series(
+        self, interval: Interval, currency: Currency, adjust_for_inflation: bool
+    ) -> pl.DataFrame:
+        return _cached_load_security(
+            self.model_dump_json(), interval, currency, adjust_for_inflation
+        )
 
 
 class MsciSecurity(BaseSecurity):
@@ -407,6 +419,46 @@ class Portfolio(BaseModel):
             for allocation in self.allocations
         }
 
+    def load_series(
+        self, interval: Interval, currency: Currency, adjust_for_inflation: bool
+    ) -> pl.DataFrame:
+        dfs = [
+            allocation.security.load_series(
+                Interval.MONTHLY, currency, adjust_for_inflation
+            ).rename({"price": allocation.security.model_dump_json()})
+            for allocation in self.allocations
+        ]
+        portfolio_df = reduce(
+            lambda left, right: left.join(right, on="date", how="full", coalesce=True),
+            dfs,
+        )
+        portfolio_series = (
+            portfolio_df.with_columns(
+                pl.col(allocation.security.model_dump_json())
+                .pct_change()
+                .mul(allocation.weight)
+                .truediv(100)
+                for allocation in self.allocations
+            )
+            .select(
+                "date",
+                price=pl.sum_horizontal(pl.all().exclude("date"), ignore_nulls=False)
+                .add(1)
+                .cum_prod(),
+            )
+            .select(
+                "date",
+                price=pl.when(
+                    pl.int_range(pl.len())
+                    == pl.arg_where(pl.col("price").is_not_null()).first().sub(1)
+                )
+                .then(1)
+                .otherwise(pl.col("price")),
+            )
+            .drop_nulls()
+        )
+        return portfolio_series
+
 
 class NoneHolding(BaseModel):
     holding_type: Literal["None"] = "None"
@@ -414,6 +466,11 @@ class NoneHolding(BaseModel):
     @property
     def label(self) -> str:
         return "None"
+
+    def load_series(
+        self, interval: Interval, currency: Currency, adjust_for_inflation: bool
+    ) -> pl.DataFrame:
+        raise ValueError("Cannot load series for NoneHolding")
 
 
 type Holding = Annotated[
@@ -544,3 +601,22 @@ type BootstrapStrategy = Annotated[
     AccumulationBootstrapStrategy | WithdrawalBootstrapStrategy,
     Field(discriminator="strategy_phase"),
 ]
+
+
+@lru_cache
+def _cached_load_security(
+    security_json: str,
+    interval: Interval,
+    currency: Currency,
+    adjust_for_inflation: bool,
+) -> pl.DataFrame:
+    security: Security = TypeAdapter(Security).validate_json(security_json)
+    df = security.load_data(interval)
+    df = convert_price(df, security.currency, currency)
+    if adjust_for_inflation:
+        cpi = load_cpi(currency)
+        cpi = cpi.pipe(pchip_daily_upsample, "cpi").fill_null(strategy="forward")
+        df = df.join(cpi, on="date", how="left").select(
+            "date", price=pl.col("price") / pl.col("cpi")
+        )
+    return df.sort("date")
