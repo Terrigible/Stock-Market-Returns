@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from functools import cache, reduce
+from functools import lru_cache, reduce
 from itertools import cycle
 from typing import TypedDict
 
@@ -162,7 +162,7 @@ def convert_price(
     return df
 
 
-@cache
+@lru_cache
 def load_security(
     security_str: str,
     interval: Interval,
