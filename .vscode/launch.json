@@ -10,10 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/returns_dashboard.py",
             "console": "integratedTerminal",
-            "env": {
-                "NUMBA_DISABLE_JIT": "1",
-                "DASH_DEBUG": "1"
-            }
+            "env": {}
         }
     ]
 }
