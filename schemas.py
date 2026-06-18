@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal, ROUND_HALF_UP
 from functools import lru_cache, reduce
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
@@ -11,6 +12,7 @@ from pydantic import (
     Field,
     TypeAdapter,
     computed_field,
+    field_serializer,
     field_validator,
     model_validator,
 )
@@ -388,7 +390,16 @@ type Security = Annotated[
 
 class Allocation(BaseModel):
     security: Security
-    weight: float = Field(ge=0.01, le=100)
+    weight: Decimal = Field(ge=Decimal("0.01"), le=Decimal("100"))
+
+    @field_validator("weight", mode="after")
+    @classmethod
+    def parse_weight(cls, v: Decimal) -> Decimal:
+        return v.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @field_serializer("weight")
+    def serialize_weight(self, v: Decimal) -> float:
+        return float(v)
 
     @property
     def label(self) -> str:

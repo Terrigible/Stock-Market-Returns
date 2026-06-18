@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from functools import reduce
 from itertools import cycle
 from typing import TypedDict
@@ -87,7 +88,6 @@ from schemas import (
     YfSecurity,
 )
 from update_graph import GraphParams, PrevLayout, RelayoutData
-
 
 app = Dash(
     serve_locally=False,
@@ -695,7 +695,7 @@ def add_allocation(
         return no_update
     new_allocation = Allocation(
         security=TypeAdapter(Security).validate_json(security_str),
-        weight=weight,
+        weight=Decimal(weight),
     )
     if new_allocation in portfolio.allocations:
         return no_update
@@ -738,7 +738,7 @@ def add_portfolio(
             portfolio_allocation_strs
         )
     )
-    if sum([allocation.weight for allocation in portfolio.allocations]) != 100:
+    if sum([allocation.weight for allocation in portfolio.allocations]) != Decimal(100):
         return no_update
     portfolio_str = portfolio.model_dump_json(exclude_none=True)
     if portfolio_strs is None:
