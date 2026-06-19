@@ -1,5 +1,5 @@
 import asyncio
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache, reduce
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
@@ -18,15 +18,17 @@ from pydantic import (
 )
 
 from funcs.loaders_pl import (
-    convert_price,
     fast_bday_downsample,
     fast_bday_upsample,
     load_cpi,
     load_fed_funds_returns,
+    load_fred_usd_fx_async,
     load_ft_data,
+    load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
     load_sgs_returns,
     load_us_treasury_returns_async,
+    load_usdsgd,
     load_yf_data,
     pchip_daily_upsample,
     read_ft_data,
@@ -54,6 +56,92 @@ from models import (
     TaxTreatment,
     USTreasuryDuration,
 )
+
+
+def convert_price(
+    df: pl.DataFrame,
+    source_currency: str,
+    destination_currency: Currency,
+) -> pl.DataFrame:
+    if source_currency == destination_currency:
+        return df
+
+    usd_sgd = (
+        load_usdsgd()
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
+
+    if source_currency == "USD" and destination_currency == Currency.SGD:
+        return df.join(usd_sgd, on="date", how="left").select(
+            "date", price=pl.col("price") * pl.col("usdsgd")
+        )
+    if source_currency == "SGD" and destination_currency == Currency.USD:
+        return df.join(usd_sgd, on="date", how="left").select(
+            "date", price=pl.col("price") / pl.col("usdsgd")
+        )
+
+    usd_fx = (
+        asyncio.run(load_fred_usd_fx_async())
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
+
+    if source_currency == "GBp":
+        df = df.with_columns(pl.col("price") / 100)
+        source_currency = "GBP"
+
+    if source_currency in usd_fx.columns:
+        usd_series = df.join(
+            usd_fx.select("date", source_currency), on="date", how="left"
+        ).select("date", price=pl.col("price") * pl.col(source_currency))
+        if destination_currency == Currency.USD:
+            return usd_series
+        if destination_currency == Currency.SGD:
+            return usd_series.join(usd_sgd, on="date", how="left").select(
+                "date", price=pl.col("price") * pl.col("usdsgd")
+            )
+
+    sgd_fx = (
+        load_mas_sgd_fx()
+        .sort("date")
+        .upsample("date", every="1d", maintain_order=True)
+        .fill_null(strategy="forward")
+    )
+
+    if source_currency in sgd_fx.columns:
+        sgd_series = df.join(
+            sgd_fx.select("date", source_currency), on="date", how="left"
+        ).select("date", price=pl.col("price") * pl.col(source_currency))
+        if destination_currency == Currency.SGD:
+            return sgd_series
+        if destination_currency == Currency.USD:
+            return sgd_series.join(usd_sgd, on="date", how="left").select(
+                "date", price=pl.col("price") / pl.col("usdsgd")
+            )
+
+    return df
+
+
+@lru_cache
+def _cached_load_security(
+    security_json: str,
+    interval: Interval,
+    currency: Currency,
+    adjust_for_inflation: bool,
+) -> pl.DataFrame:
+    security: Security = TypeAdapter(Security).validate_json(security_json)
+    df = security.load_data(interval)
+    df = convert_price(df, security.currency, currency)
+    if adjust_for_inflation:
+        cpi = load_cpi(currency)
+        cpi = cpi.pipe(pchip_daily_upsample, "cpi").fill_null(strategy="forward")
+        df = df.join(cpi, on="date", how="left").select(
+            "date", price=pl.col("price") / pl.col("cpi")
+        )
+    return df.sort("date")
 
 
 class BaseSecurity(BaseModel):
@@ -612,22 +700,3 @@ type BootstrapStrategy = Annotated[
     AccumulationBootstrapStrategy | WithdrawalBootstrapStrategy,
     Field(discriminator="strategy_phase"),
 ]
-
-
-@lru_cache
-def _cached_load_security(
-    security_json: str,
-    interval: Interval,
-    currency: Currency,
-    adjust_for_inflation: bool,
-) -> pl.DataFrame:
-    security: Security = TypeAdapter(Security).validate_json(security_json)
-    df = security.load_data(interval)
-    df = convert_price(df, security.currency, currency)
-    if adjust_for_inflation:
-        cpi = load_cpi(currency)
-        cpi = cpi.pipe(pchip_daily_upsample, "cpi").fill_null(strategy="forward")
-        df = df.join(cpi, on="date", how="left").select(
-            "date", price=pl.col("price") / pl.col("cpi")
-        )
-    return df.sort("date")

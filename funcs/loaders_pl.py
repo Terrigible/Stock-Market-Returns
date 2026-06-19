@@ -15,7 +15,7 @@ import yfinance as yf
 from bs4 import BeautifulSoup
 from scipy.interpolate import pchip_interpolate
 
-from models import Currency, TaxTreatment
+from models import TaxTreatment
 
 
 def fast_bday_upsample(df: pl.DataFrame) -> pl.DataFrame:
@@ -82,73 +82,6 @@ def resample_bme(df: pl.DataFrame) -> pl.DataFrame:
             pl.col("price"),
         )
     )
-
-
-def convert_price(
-    df: pl.DataFrame,
-    source_currency: str,
-    destination_currency: Currency,
-) -> pl.DataFrame:
-    if source_currency == destination_currency:
-        return df
-
-    usd_sgd = (
-        load_usdsgd()
-        .sort("date")
-        .upsample("date", every="1d", maintain_order=True)
-        .fill_null(strategy="forward")
-    )
-
-    if source_currency == "USD" and destination_currency == Currency.SGD:
-        return df.join(usd_sgd, on="date", how="left").select(
-            "date", price=pl.col("price") * pl.col("usdsgd")
-        )
-    if source_currency == "SGD" and destination_currency == Currency.USD:
-        return df.join(usd_sgd, on="date", how="left").select(
-            "date", price=pl.col("price") / pl.col("usdsgd")
-        )
-
-    usd_fx = (
-        asyncio.run(load_fred_usd_fx_async())
-        .sort("date")
-        .upsample("date", every="1d", maintain_order=True)
-        .fill_null(strategy="forward")
-    )
-
-    if source_currency == "GBp":
-        df = df.with_columns(pl.col("price") / 100)
-        source_currency = "GBP"
-
-    if source_currency in usd_fx.columns:
-        usd_series = df.join(
-            usd_fx.select("date", source_currency), on="date", how="left"
-        ).select("date", price=pl.col("price") * pl.col(source_currency))
-        if destination_currency == Currency.USD:
-            return usd_series
-        if destination_currency == Currency.SGD:
-            return usd_series.join(usd_sgd, on="date", how="left").select(
-                "date", price=pl.col("price") * pl.col("usdsgd")
-            )
-
-    sgd_fx = (
-        load_mas_sgd_fx()
-        .sort("date")
-        .upsample("date", every="1d", maintain_order=True)
-        .fill_null(strategy="forward")
-    )
-
-    if source_currency in sgd_fx.columns:
-        sgd_series = df.join(
-            sgd_fx.select("date", source_currency), on="date", how="left"
-        ).select("date", price=pl.col("price") * pl.col(source_currency))
-        if destination_currency == Currency.SGD:
-            return sgd_series
-        if destination_currency == Currency.USD:
-            return sgd_series.join(usd_sgd, on="date", how="left").select(
-                "date", price=pl.col("price") / pl.col("usdsgd")
-            )
-
-    return df
 
 
 def read_msci_data(filename_pattern: str):
@@ -314,7 +247,6 @@ async def load_us_treasury_rates_async():
         .interpolate()
     )
     return treasury_rates
-
 
 
 async def load_us_treasury_returns_async():
@@ -1216,7 +1148,6 @@ __all__ = [
     "fast_bday_upsample",
     "fast_bday_downsample",
     "resample_bme",
-    "convert_price",
     "read_msci_data",
     "load_fed_funds_rate",
     "load_fed_funds_returns",
