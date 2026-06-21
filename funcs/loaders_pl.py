@@ -1130,6 +1130,8 @@ def download_yf_data(ticker_str: str) -> pl.DataFrame:
 __all__ = [
     "fast_bday_upsample",
     "fast_bday_downsample",
+    "add_bmonth_end",
+    "pchip_daily_upsample",
     "resample_bme",
     "read_msci_data",
     "load_fed_funds_rate",
@@ -1154,6 +1156,7 @@ __all__ = [
     "read_ft_data",
     "get_ft_api_key",
     "download_ft_data",
+    "download_yf_data",
     "get_sgx_dividends",
     "validate_yf_ticker",
 ]
