@@ -4,7 +4,15 @@ from functools import lru_cache, reduce
 from glob import glob
 from typing import Annotated, Generic, Literal, TypeVar
 
+import numpy as np
 import polars as pl
+from funcs.calcs_numpy import (
+    calculate_dca_portfolio_value_with_fees_and_interest_vector,
+    calculate_withdrawal_portfolio_value_with_fees_vector,
+    generate_bootstrap_indices,
+    simulate_bootstrap_accumulation,
+    simulate_bootstrap_withdrawal,
+)
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -621,7 +629,53 @@ class BaseAccumulationStrategy(BaseModel):
 
 
 class AccumulationBacktestStrategy(BaseAccumulationStrategy):
-    pass
+    def simulate(self) -> pl.DataFrame:
+        strategy_series = self.strategy_portfolio.load_series(
+            Interval.MONTHLY,
+            self.currency,
+            False,
+        )
+        cash_returns = (
+            load_fed_funds_returns()
+            if self.currency == Currency.USD
+            else load_sgd_interest_rates_returns()
+        ).pipe(resample_bme)
+        cpi = load_cpi(self.currency)
+
+        df = (
+            strategy_series.rename({"price": "strategy"})
+            .join(
+                cash_returns.rename({"price": "cash"}),
+                on="date",
+                coalesce=True,
+                maintain_order="left",
+            )
+            .join(cpi, on="date", coalesce=True, maintain_order="left")
+        )
+
+        portfolio_values = (
+            pl.from_numpy(
+                calculate_dca_portfolio_value_with_fees_and_interest_vector(
+                    df.get_column("strategy").pct_change().to_numpy(),
+                    self.dca_duration,
+                    self.dca_interval,
+                    self.strategy_horizon,
+                    self.investment_amount,
+                    self.monthly_investment,
+                    self.adjust_monthly_investment_for_inflation,
+                    self.variable_transaction_fees,
+                    self.fixed_transaction_fees,
+                    self.annualised_holding_fees,
+                    self.adjust_portfolio_value_for_inflation,
+                    df.get_column("cpi").to_numpy(),
+                    df.get_column("cash").to_numpy(writable=True),
+                ),
+                schema=[str(i) for i in range(self.strategy_horizon + 1)],
+            )
+            .fill_nan(None)
+            .insert_column(0, df.get_column("date"))
+        )
+        return portfolio_values
 
 
 class AccumulationBootstrapStrategy(BaseAccumulationStrategy):
@@ -634,6 +688,59 @@ class AccumulationBootstrapStrategy(BaseAccumulationStrategy):
             f"{super().label}\n"
             f"{self.num_bootstrap_samples} samples, {self.avg_block_length:.0f}mo avg block"
         )
+
+    def simulate(self) -> np.ndarray:
+        strategy_series = self.strategy_portfolio.load_series(
+            Interval.MONTHLY,
+            self.currency,
+            False,
+        )
+        cash_returns = (
+            load_fed_funds_returns()
+            if self.currency == Currency.USD
+            else load_sgd_interest_rates_returns()
+        ).pipe(resample_bme)
+        cpi = load_cpi(self.currency)
+
+        df = (
+            strategy_series.rename({"price": "strategy"})
+            .join(
+                cash_returns.rename({"price": "cash"}),
+                on="date",
+                coalesce=True,
+                maintain_order="left",
+            )
+            .join(cpi, on="date", coalesce=True, maintain_order="left")
+            .with_columns(pl.all().exclude("date").pct_change())
+            .drop_nulls()
+        )
+
+        strategy_series = df.get_column("strategy").to_numpy()
+        cpi = df.get_column("cpi").to_numpy()
+        cash_returns = df.get_column("cash").to_numpy()
+
+        n_data = len(strategy_series)
+        sample_length = self.strategy_horizon + 1
+        indices = generate_bootstrap_indices(
+            self.num_bootstrap_samples, sample_length, n_data, self.avg_block_length
+        )
+        portfolio_values = simulate_bootstrap_accumulation(
+            strategy_series,
+            cpi,
+            cash_returns,
+            indices,
+            self.dca_duration,
+            self.dca_interval,
+            self.strategy_horizon,
+            self.investment_amount,
+            self.monthly_investment,
+            self.adjust_monthly_investment_for_inflation,
+            self.variable_transaction_fees,
+            self.fixed_transaction_fees,
+            self.annualised_holding_fees,
+            self.adjust_portfolio_value_for_inflation,
+        )
+        return portfolio_values
 
 
 class BaseWithdrawalStrategy(BaseModel):
@@ -676,7 +783,40 @@ class BaseWithdrawalStrategy(BaseModel):
 
 
 class WithdrawalBacktestStrategy(BaseWithdrawalStrategy):
-    pass
+    def simulate(self) -> pl.DataFrame:
+        strategy_series = self.strategy_portfolio.load_series(
+            Interval.MONTHLY,
+            self.currency,
+            False,
+        )
+        cpi = load_cpi(self.currency)
+
+        df = strategy_series.rename({"price": "strategy"}).join(
+            cpi, on="date", coalesce=True, maintain_order="left"
+        )
+
+        portfolio_values = (
+            pl.from_numpy(
+                calculate_withdrawal_portfolio_value_with_fees_vector(
+                    df.get_column("strategy").pct_change().to_numpy(),
+                    self.coast_duration,
+                    self.strategy_horizon,
+                    self.withdrawal_interval,
+                    self.initial_capital,
+                    self.monthly_withdrawal,
+                    df.get_column("cpi").to_numpy(),
+                    self.variable_transaction_fees,
+                    self.fixed_transaction_fees,
+                    self.annualised_holding_fees,
+                    self.adjust_withdrawals_for_inflation,
+                    self.adjust_portfolio_value_for_inflation,
+                ),
+                schema=[str(i) for i in range(self.strategy_horizon + 1)],
+            )
+            .fill_nan(None)
+            .insert_column(0, df.get_column("date"))
+        )
+        return portfolio_values
 
 
 class WithdrawalBootstrapStrategy(BaseWithdrawalStrategy):
@@ -689,6 +829,46 @@ class WithdrawalBootstrapStrategy(BaseWithdrawalStrategy):
             f"{super().label}\n"
             f"{self.num_bootstrap_samples} samples, {self.avg_block_length:.0f}mo avg block"
         )
+
+    def simulate(self) -> np.ndarray:
+        strategy_series = self.strategy_portfolio.load_series(
+            Interval.MONTHLY,
+            self.currency,
+            False,
+        )
+        cpi = load_cpi(self.currency)
+
+        df = strategy_series.rename({"price": "strategy"}).join(
+            cpi, on="date", coalesce=True, maintain_order="left"
+        )
+
+        monthly_returns = df.get_column("strategy").pct_change().to_numpy()[1:]
+        cpi = df.get_column("cpi").pct_change().to_numpy()[1:]
+
+        n_data = len(monthly_returns)
+        sample_length = self.strategy_horizon + 1
+        indices = generate_bootstrap_indices(
+            self.num_bootstrap_samples,
+            sample_length,
+            n_data,
+            self.avg_block_length,
+        )
+        portfolio_values = simulate_bootstrap_withdrawal(
+            monthly_returns,
+            cpi,
+            indices,
+            self.coast_duration,
+            self.strategy_horizon,
+            self.withdrawal_interval,
+            self.initial_capital,
+            self.monthly_withdrawal,
+            self.variable_transaction_fees,
+            self.fixed_transaction_fees,
+            self.annualised_holding_fees,
+            self.adjust_withdrawals_for_inflation,
+            self.adjust_portfolio_value_for_inflation,
+        )
+        return portfolio_values
 
 
 type BacktestStrategy = Annotated[

@@ -23,21 +23,10 @@ from dash import (
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from pydantic import Json, TypeAdapter, ValidationError
 
-from funcs.calcs_numpy import (
-    calculate_dca_portfolio_value_with_fees_and_interest_vector,
-    calculate_withdrawal_portfolio_value_with_fees_vector,
-    compute_bootstrap_max_drawdown,
-    generate_bootstrap_indices,
-    simulate_bootstrap_accumulation,
-    simulate_bootstrap_withdrawal,
-)
+from funcs.calcs_numpy import compute_bootstrap_max_drawdown
 from funcs.loaders_pl import (
     add_bmonth_end,
     get_ft_symbol_info,
-    load_cpi,
-    load_fed_funds_returns,
-    load_sgd_interest_rates_returns,
-    resample_bme,
     validate_yf_ticker,
 )
 from layout import app_layout
@@ -1024,102 +1013,6 @@ def update_backtest_accumulation_strategies(
     return strategies, strategy_options
 
 
-def simulate_backtest_accumulation_strategy(strategy: AccumulationBacktestStrategy):
-    strategy_series = strategy.strategy_portfolio.load_series(
-        Interval.MONTHLY,
-        strategy.currency,
-        False,
-    )
-    cash_returns = (
-        load_fed_funds_returns()
-        if strategy.currency == Currency.USD
-        else load_sgd_interest_rates_returns()
-    ).pipe(resample_bme)
-    cpi = load_cpi(strategy.currency)
-
-    df = (
-        strategy_series.rename({"price": "strategy"})
-        .join(
-            cash_returns.rename({"price": "cash"}),
-            on="date",
-            coalesce=True,
-            maintain_order="left",
-        )
-        .join(cpi, on="date", coalesce=True, maintain_order="left")
-    )
-
-    portfolio_values = (
-        pl.from_numpy(
-            calculate_dca_portfolio_value_with_fees_and_interest_vector(
-                df.get_column("strategy").pct_change().to_numpy(),
-                strategy.dca_duration,
-                strategy.dca_interval,
-                strategy.strategy_horizon,
-                strategy.investment_amount,
-                strategy.monthly_investment,
-                strategy.adjust_monthly_investment_for_inflation,
-                strategy.variable_transaction_fees,
-                strategy.fixed_transaction_fees,
-                strategy.annualised_holding_fees,
-                strategy.adjust_portfolio_value_for_inflation,
-                df.get_column("cpi").to_numpy(),
-                df.get_column("cash").to_numpy(writable=True),
-            ),
-            schema=[str(i) for i in range(strategy.strategy_horizon + 1)],
-        )
-        .fill_nan(None)
-        .insert_column(0, df.get_column("date"))
-    )
-    return portfolio_values
-
-
-def simulate_backtest_withdrawal_strategy(strategy: WithdrawalBacktestStrategy):
-
-    strategy_series = strategy.strategy_portfolio.load_series(
-        Interval.MONTHLY,
-        strategy.currency,
-        False,
-    )
-    cpi = load_cpi(strategy.currency)
-
-    df = strategy_series.rename({"price": "strategy"}).join(
-        cpi, on="date", coalesce=True, maintain_order="left"
-    )
-
-    portfolio_values = (
-        pl.from_numpy(
-            calculate_withdrawal_portfolio_value_with_fees_vector(
-                df.get_column("strategy").pct_change().to_numpy(),
-                strategy.coast_duration,
-                strategy.strategy_horizon,
-                strategy.withdrawal_interval,
-                strategy.initial_capital,
-                strategy.monthly_withdrawal,
-                df.get_column("cpi").to_numpy(),
-                strategy.variable_transaction_fees,
-                strategy.fixed_transaction_fees,
-                strategy.annualised_holding_fees,
-                strategy.adjust_withdrawals_for_inflation,
-                strategy.adjust_portfolio_value_for_inflation,
-            ),
-            schema=[str(i) for i in range(strategy.strategy_horizon + 1)],
-        )
-        .fill_nan(None)
-        .insert_column(0, df.get_column("date"))
-    )
-    return portfolio_values
-
-
-def simulate_backtest_strategy(
-    strategy: BacktestStrategy,
-):
-    if isinstance(strategy, AccumulationBacktestStrategy):
-        return simulate_backtest_accumulation_strategy(strategy)
-    if isinstance(strategy, WithdrawalBacktestStrategy):
-        return simulate_backtest_withdrawal_strategy(strategy)
-    raise ValueError("Invalid strategy type")
-
-
 def update_backtest_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
@@ -1145,7 +1038,7 @@ def update_backtest_strategy_graph(
         strategy: BacktestStrategy = TypeAdapter(BacktestStrategy).validate_json(
             strategy_str
         )
-        portfolio_values = simulate_backtest_strategy(strategy)
+        portfolio_values = strategy.simulate()
         if index_by_start_date:
             portfolio_values = portfolio_values.with_columns(
                 pl.all().exclude("date").shift(-strategy.strategy_horizon)
@@ -1255,7 +1148,7 @@ def show_backtest_strategy_modal(
         strategy: BacktestStrategy = TypeAdapter(BacktestStrategy).validate_json(
             strategy_str
         )
-        portfolio_values = simulate_backtest_strategy(strategy)
+        portfolio_values = strategy.simulate()
         portfolio_values = portfolio_values.filter(
             pl.any_horizontal(pl.all().exclude("date").is_not_null())
         )
@@ -1562,114 +1455,6 @@ def _build_quantile_fan_traces(
     return traces
 
 
-def simulate_bootstrap_accumulation_strategy(strategy: AccumulationBootstrapStrategy):
-    strategy_series = strategy.strategy_portfolio.load_series(
-        Interval.MONTHLY,
-        strategy.currency,
-        False,
-    )
-    cash_returns = (
-        load_fed_funds_returns()
-        if strategy.currency == Currency.USD
-        else load_sgd_interest_rates_returns()
-    ).pipe(resample_bme)
-    cpi = load_cpi(strategy.currency)
-
-    df = (
-        strategy_series.rename({"price": "strategy"})
-        .join(
-            cash_returns.rename({"price": "cash"}),
-            on="date",
-            coalesce=True,
-            maintain_order="left",
-        )
-        .join(cpi, on="date", coalesce=True, maintain_order="left")
-        .with_columns(pl.all().exclude("date").pct_change())
-        .drop_nulls()
-    )
-
-    strategy_series = df.get_column("strategy").to_numpy()
-    cpi = df.get_column("cpi").to_numpy()
-    cash_returns = df.get_column("cash").to_numpy()
-
-    n_data = len(strategy_series)
-    sample_length = strategy.strategy_horizon + 1
-    indices = generate_bootstrap_indices(
-        strategy.num_bootstrap_samples, sample_length, n_data, strategy.avg_block_length
-    )
-    portfolio_values = simulate_bootstrap_accumulation(
-        strategy_series,
-        cpi,
-        cash_returns,
-        indices,
-        strategy.dca_duration,
-        strategy.dca_interval,
-        strategy.strategy_horizon,
-        strategy.investment_amount,
-        strategy.monthly_investment,
-        strategy.adjust_monthly_investment_for_inflation,
-        strategy.variable_transaction_fees,
-        strategy.fixed_transaction_fees,
-        strategy.annualised_holding_fees,
-        strategy.adjust_portfolio_value_for_inflation,
-    )
-    return portfolio_values
-
-
-def simulate_bootstrap_withdrawal_strategy(
-    strategy: WithdrawalBootstrapStrategy,
-):
-
-    strategy_series = strategy.strategy_portfolio.load_series(
-        Interval.MONTHLY,
-        strategy.currency,
-        False,
-    )
-    cpi = load_cpi(strategy.currency)
-
-    df = strategy_series.rename({"price": "strategy"}).join(
-        cpi, on="date", coalesce=True, maintain_order="left"
-    )
-
-    monthly_returns = df.get_column("strategy").pct_change().to_numpy()[1:]
-    cpi = df.get_column("cpi").pct_change().to_numpy()[1:]
-
-    n_data = len(monthly_returns)
-    sample_length = strategy.strategy_horizon + 1
-    indices = generate_bootstrap_indices(
-        strategy.num_bootstrap_samples,
-        sample_length,
-        n_data,
-        strategy.avg_block_length,
-    )
-    portfolio_values = simulate_bootstrap_withdrawal(
-        monthly_returns,
-        cpi,
-        indices,
-        strategy.coast_duration,
-        strategy.strategy_horizon,
-        strategy.withdrawal_interval,
-        strategy.initial_capital,
-        strategy.monthly_withdrawal,
-        strategy.variable_transaction_fees,
-        strategy.fixed_transaction_fees,
-        strategy.annualised_holding_fees,
-        strategy.adjust_withdrawals_for_inflation,
-        strategy.adjust_portfolio_value_for_inflation,
-    )
-    return portfolio_values
-
-
-def simulate_bootstrap_strategy(
-    strategy: BootstrapStrategy,
-):
-    if isinstance(strategy, AccumulationBootstrapStrategy):
-        return simulate_bootstrap_accumulation_strategy(strategy)
-    if isinstance(strategy, WithdrawalBootstrapStrategy):
-        return simulate_bootstrap_withdrawal_strategy(strategy)
-    raise ValueError("Invalid strategy type")
-
-
 @callback(
     Output("bootstrap-accumulation-strategies", "value"),
     Output("bootstrap-accumulation-strategies", "options"),
@@ -1765,7 +1550,7 @@ def update_bootstrap_strategy_graph(
         strategy: BootstrapStrategy = TypeAdapter(BootstrapStrategy).validate_json(
             strategy_str
         )
-        portfolio_values = simulate_bootstrap_strategy(strategy)
+        portfolio_values = strategy.simulate()
         months = np.arange(strategy.strategy_horizon + 1)
         if y_var == BootstrapYVar.PORTFOLIO_VALUES:
             values = portfolio_values
