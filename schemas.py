@@ -6,13 +6,6 @@ from typing import Annotated, Generic, Literal, TypeVar
 
 import numpy as np
 import polars as pl
-from funcs.calcs_numpy import (
-    calculate_dca_portfolio_value_with_fees_and_interest_vector,
-    calculate_withdrawal_portfolio_value_with_fees_vector,
-    generate_bootstrap_indices,
-    simulate_bootstrap_accumulation,
-    simulate_bootstrap_withdrawal,
-)
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -25,6 +18,13 @@ from pydantic import (
     model_validator,
 )
 
+from funcs.calcs_numpy import (
+    calculate_dca_portfolio_value_with_fees_and_interest_vector,
+    calculate_withdrawal_portfolio_value_with_fees_vector,
+    generate_bootstrap_indices,
+    simulate_bootstrap_accumulation,
+    simulate_bootstrap_withdrawal,
+)
 from funcs.loaders_pl import (
     fast_bday_downsample,
     fast_bday_upsample,
