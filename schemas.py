@@ -26,6 +26,7 @@ from funcs.calcs_numpy import (
     simulate_bootstrap_withdrawal,
 )
 from funcs.loaders_pl import (
+    download_yf_data,
     fast_bday_downsample,
     fast_bday_upsample,
     load_cpi,
@@ -37,7 +38,6 @@ from funcs.loaders_pl import (
     load_sgs_returns,
     load_us_treasury_returns_async,
     load_usdsgd,
-    load_yf_data,
     pchip_daily_upsample,
     read_ft_data,
     read_greatlink_data,
@@ -371,7 +371,18 @@ class YfSecurity(BaseSecurity):
         return f"yfinance: {self.ticker} {self.tax_treatment.label}"
 
     def load_data(self, interval: Interval):
-        df = load_yf_data(self.ticker, self.tax_treatment)
+        df = download_yf_data(self.ticker)
+        if self.tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
+            price = (
+                (pl.col("Close") + pl.col("Dividends") * 0.7)
+                .truediv(pl.col("Close").shift(1))
+                .fill_null(1)
+                .cum_prod()
+            )
+            price = price.truediv(price.last()).mul(pl.col("Adj Close").last())
+        else:
+            price = pl.col("Adj Close")
+        df = df.select(date=pl.col("Date"), price=price)
         if interval == Interval.MONTHLY:
             df = df.pipe(resample_bme)
         return df

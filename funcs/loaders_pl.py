@@ -15,8 +15,6 @@ import yfinance as yf
 from bs4 import BeautifulSoup
 from scipy.interpolate import pchip_interpolate
 
-from models import TaxTreatment
-
 
 def fast_bday_upsample(df: pl.DataFrame) -> pl.DataFrame:
     return (
@@ -1129,21 +1127,6 @@ def download_yf_data(ticker_str: str) -> pl.DataFrame:
     )
 
 
-def load_yf_data(ticker_str: str, tax_treatment: TaxTreatment) -> pl.DataFrame:
-    df = download_yf_data(ticker_str)
-    if tax_treatment == TaxTreatment.NET and "Dividends" in df.columns:
-        price = (
-            (pl.col("Close") + pl.col("Dividends") * 0.7)
-            .truediv(pl.col("Close").shift(1))
-            .fill_null(1)
-            .cum_prod()
-        )
-        price = price.truediv(price.last()).mul(pl.col("Adj Close").last())
-    else:
-        price = pl.col("Adj Close")
-    return df.select(date=pl.col("Date"), price=price)
-
-
 __all__ = [
     "fast_bday_upsample",
     "fast_bday_downsample",
@@ -1173,5 +1156,4 @@ __all__ = [
     "download_ft_data",
     "get_sgx_dividends",
     "validate_yf_ticker",
-    "load_yf_data",
 ]
