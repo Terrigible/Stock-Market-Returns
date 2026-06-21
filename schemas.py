@@ -617,12 +617,12 @@ class BaseAccumulationStrategy(BaseModel):
     def label(self) -> str:
         return (
             f"{self.strategy_portfolio.label} {self.currency}\n"
-            f"${self.investment_amount:,.0f} initial capital\n"
-            f"${self.monthly_investment:,.0f} invested monthly"
+            f"${self.investment_amount:,.2f} initial capital\n"
+            f"${self.monthly_investment:,.2f} invested monthly"
             f"{', inflation adjusted' if self.adjust_monthly_investment_for_inflation else ''}\n"
             f"for {self.dca_duration} months every {self.dca_interval} months\n"
             f"coast for {self.coast_duration} months\n"
-            f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
+            f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees:,.2f} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
             f"Portfolio value {'' if self.adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
         )
@@ -771,12 +771,12 @@ class BaseWithdrawalStrategy(BaseModel):
     def label(self) -> str:
         return (
             f"{self.strategy_portfolio.label} {self.currency}\n"
-            f"${self.initial_capital:,.0f} initial capital\n"
+            f"${self.initial_capital:,.2f} initial capital\n"
             f"coast for {self.coast_duration} months\n"
-            f"${self.monthly_withdrawal:,.0f} withdrawn monthly"
+            f"${self.monthly_withdrawal:,.2f} withdrawn monthly"
             f"{', inflation adjusted' if self.adjust_withdrawals_for_inflation else ''}\n"
             f"every {self.withdrawal_interval} months for {self.withdrawal_duration} months\n"
-            f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees} Fee\n"
+            f"{self.variable_transaction_fees:.2%} + ${self.fixed_transaction_fees:,.2f} Fee\n"
             f"{self.annualised_holding_fees:.2%} p.a. Holding Fees\n"
             f"Portfolio value {'' if self.adjust_portfolio_value_for_inflation else 'not '}adjusted for inflation"
         )
