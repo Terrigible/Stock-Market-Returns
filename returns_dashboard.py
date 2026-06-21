@@ -386,14 +386,11 @@ def add_ft_security(
 
     ft_valid_ticker_store[ft_security] = symbol_info["basic"]["symbol"]
 
-    dividends = ft_security.upper().endswith(":SES")
-
     new_ft_security = FtSecurity(
         ticker=symbol_info["basic"]["symbol"],
         currency=symbol_info["basic"]["currency"],
         issue_type=symbol_info["details"]["issueType"],
         inception_date=symbol_info["details"]["inceptionDate"],
-        dividends=dividends,
     )
     new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
     ft_ticker_info_store[symbol_info["basic"]["symbol"]] = new_ft_security_str

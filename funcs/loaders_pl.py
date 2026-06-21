@@ -4,12 +4,10 @@ import json
 import os
 import re
 from functools import lru_cache
-from io import StringIO
 from json import JSONDecodeError
 from typing import TypedDict
 
 import httpx
-import pandas as pd
 import polars as pl
 import yfinance as yf
 from bs4 import BeautifulSoup
@@ -1051,52 +1049,6 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.Da
         return df
 
 
-@lru_cache
-def get_sgx_dividends(ticker: str) -> pl.DataFrame:
-    res = httpx.get(f"https://www.dividends.sg/view/{ticker}")
-    df_pd = pd.read_html(StringIO(res.content.decode()))[0][["Ex Date", "Amount"]]
-    df = (
-        pl.from_pandas(df_pd)
-        .select(date="Ex Date", dividends="Amount")
-        .filter(pl.col("dividends").str.contains("SGD"))
-        .with_columns(
-            pl.col("date").str.to_date(),
-            pl.col("dividends").str.strip_prefix("SGD").cast(pl.Float64),
-        )
-        .group_by("date")
-        .agg(pl.col("dividends").sum())
-        .sort("date")
-    )
-    return df
-
-
-def load_ft_data(
-    symbol: str, issue_type: str, inception_date: str, dividends: bool
-) -> pl.DataFrame:
-    df = download_ft_data(symbol, issue_type, inception_date)
-    if not dividends:
-        return df
-
-    dividends_df = get_sgx_dividends(symbol.removesuffix(":SES"))
-    return (
-        df.join(dividends_df, on="date", how="left", maintain_order="left")
-        .with_columns(pl.col("dividends").fill_null(0))
-        .with_columns(
-            manually_adjusted=pl.col("price")
-            .add(pl.col("dividends"))
-            .truediv(pl.col("price").shift())
-            .fill_null(1)
-            .cum_prod()
-        )
-        .select(
-            "date",
-            price=pl.col("manually_adjusted")
-            .truediv(pl.last("manually_adjusted"))
-            .mul(pl.last("price")),
-        )
-    )
-
-
 def validate_yf_ticker(
     input_ticker: str,
 ) -> tuple[
@@ -1157,6 +1109,5 @@ __all__ = [
     "get_ft_api_key",
     "download_ft_data",
     "download_yf_data",
-    "get_sgx_dividends",
     "validate_yf_ticker",
 ]

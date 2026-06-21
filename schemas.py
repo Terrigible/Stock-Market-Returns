@@ -26,13 +26,13 @@ from funcs.calcs_numpy import (
     simulate_bootstrap_withdrawal,
 )
 from funcs.loaders_pl import (
+    download_ft_data,
     download_yf_data,
     fast_bday_downsample,
     fast_bday_upsample,
     load_cpi,
     load_fed_funds_returns,
     load_fred_usd_fx_async,
-    load_ft_data,
     load_mas_sgd_fx,
     load_sgd_interest_rates_returns,
     load_sgs_returns,
@@ -394,16 +394,13 @@ class FtSecurity(BaseSecurity):
     currency: str
     issue_type: str
     inception_date: str
-    dividends: bool
 
     @property
     def label(self) -> str:
-        return f"FT: {self.ticker} {('(With Dividends)') * self.dividends}"
+        return f"FT: {self.ticker}"
 
     def load_data(self, interval: Interval):
-        df = load_ft_data(
-            self.ticker, self.issue_type, self.inception_date, self.dividends
-        )
+        df = download_ft_data(self.ticker, self.issue_type, self.inception_date)
         if interval == Interval.MONTHLY:
             df = df.pipe(resample_bme)
         return df
