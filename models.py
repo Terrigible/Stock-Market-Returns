@@ -66,7 +66,7 @@ class MSCICountryIndex(Option):
 
 
 class MSCIIndexType(Option):
-    indexes: type[Option]
+    indexes: type[MSCIRegionalIndex | MSCICountryIndex]
 
     REGIONAL = ("Regional", "Regional", MSCIRegionalIndex)
     COUNTRY = ("Country", "Country", MSCICountryIndex)
