@@ -151,14 +151,14 @@ def update_price_graph(
         layout.update(yaxis_tickformat="+.2~%")
 
         df = df.with_columns(
-            pl.col(col)
-            .truediv(
-                pl.col(col)
-                .filter(filter_start_date(start_date))
-                .first(ignore_nulls=True)
+            pl.all()
+            .exclude("date")
+            .pipe(
+                lambda col: col.truediv(
+                    col.filter(filter_start_date(start_date)).first(ignore_nulls=True)
+                )
             )
             .sub(1)
-            for col in df.drop("date").columns
         )
 
         if log_scale:
@@ -236,11 +236,10 @@ def update_price_graph(
     prev_zoom_df = prev_zoom_df.with_columns(
         pl.all()
         .exclude("date")
-        .truediv(
-            pl.all()
-            .exclude("date")
-            .filter(pl.col("date") >= prev_start_date)
-            .first(ignore_nulls=True)
+        .pipe(
+            lambda col: col.truediv(
+                col.filter(pl.col("date") >= prev_start_date).first(ignore_nulls=True)
+            )
         )
         .sub(1)
     )
@@ -276,7 +275,7 @@ def update_drawdown_graph(
     layout: go.Layout,
 ):
     df = df.with_columns(
-        pl.all().exclude("date").truediv(pl.all().exclude("date").cum_max()).sub(1)
+        pl.all().exclude("date").pipe(lambda col: col.truediv(col.cum_max()).sub(1))
     )
 
     layout.update(
