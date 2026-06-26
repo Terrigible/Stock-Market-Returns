@@ -501,8 +501,7 @@ def update_calendar_returns_graph(
         .group_by_dynamic("date", every=return_interval, label="right")
         .agg(
             pl.col("date").filter(pl.col(c).is_not_null()).last().alias(c)
-            for c in df.columns
-            if c != "date"
+            for c in df.drop("date").columns
         )
         .with_columns(pl.col("date").pipe(add_bmonth_end, -1))
         .with_columns(
