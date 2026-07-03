@@ -723,9 +723,9 @@ class AccumulationBootstrapStrategy(BaseAccumulationStrategy):
             .drop_nulls()
         )
 
-        strategy_series = df.get_column("strategy").to_numpy()
-        cpi = df.get_column("cpi").to_numpy()
-        cash_returns = df.get_column("cash").to_numpy()
+        strategy_series = df.get_column("strategy").to_numpy(writable=True)
+        cpi = df.get_column("cpi").to_numpy(writable=True)
+        cash_returns = df.get_column("cash").to_numpy(writable=True)
 
         n_data = len(strategy_series)
         sample_length = self.strategy_horizon + 1
