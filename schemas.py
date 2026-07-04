@@ -528,11 +528,12 @@ class Portfolio(BaseModel):
         else:
             self.allocations.append(new_allocation)
 
-    def to_plotly_options(self) -> dict[str, str]:
-        return {
+    def to_plotly_options(self) -> tuple[list[str], dict[str, str]]:
+        d = {
             allocation.model_dump_json(exclude_none=True): allocation.label
             for allocation in self.allocations
         }
+        return list(d.keys()), d
 
     def load_series(
         self, interval: Interval, currency: Currency, adjust_for_inflation: bool

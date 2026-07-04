@@ -674,7 +674,7 @@ def add_allocation(
         )
     )
     if ctx.triggered_id == "portfolio-allocations":
-        return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
+        return portfolio.to_plotly_options()
 
     if weight is None:
         set_props("security-weight", {"required": True})
@@ -686,7 +686,7 @@ def add_allocation(
     if new_allocation in portfolio.allocations:
         return no_update
     portfolio.add_allocation(new_allocation=new_allocation)
-    return list(portfolio.to_plotly_options().keys()), portfolio.to_plotly_options()
+    return portfolio.to_plotly_options()
 
 
 clientside_callback(
@@ -1046,37 +1046,34 @@ def update_backtest_strategy_graph(
         dfs[strategy_str] = portfolio_values
 
     if y_var == BacktestYVar.ENDING_VALUES:
-        values = reduce(
-            lambda a, b: a.join(b, on="date", how="full", coalesce=True),
-            [df.select("date", pl.last().alias(name)) for name, df in dfs.items()],
-        )
+        transformed_dfs = [
+            df.select("date", pl.last().alias(name)) for name, df in dfs.items()
+        ]
     elif y_var == BacktestYVar.MAX_DRAWDOWN:
         if drawdown_type == DrawdownType.PERCENT:
-            values = reduce(
-                lambda a, b: a.join(b, on="date", how="full", coalesce=True),
-                [
-                    df.drop("date")
-                    .transpose()
-                    .select((pl.all() / pl.all().cum_max() - 1).min())
-                    .transpose(column_names=[name])
-                    .insert_column(0, df.get_column("date"))
-                    for name, df in dfs.items()
-                ],
-            )
+            transformed_dfs = [
+                df.drop("date")
+                .transpose()
+                .select((pl.all() / pl.all().cum_max() - 1).min())
+                .transpose(column_names=[name])
+                .insert_column(0, df.get_column("date"))
+                for name, df in dfs.items()
+            ]
         else:
-            values = reduce(
-                lambda a, b: a.join(b, on="date", how="full", coalesce=True),
-                [
-                    df.drop("date")
-                    .transpose()
-                    .select((pl.all() - pl.all().cum_max()).min())
-                    .transpose(column_names=[name])
-                    .insert_column(0, df.get_column("date"))
-                    for name, df in dfs.items()
-                ],
-            )
+            transformed_dfs = [
+                df.drop("date")
+                .transpose()
+                .select((pl.all() - pl.all().cum_max()).min())
+                .transpose(column_names=[name])
+                .insert_column(0, df.get_column("date"))
+                for name, df in dfs.items()
+            ]
     else:
         raise ValueError("Invalid y_var")
+
+    values = reduce(
+        lambda a, b: a.join(b, on="date", how="full", coalesce=True), transformed_dfs
+    )
 
     return {
         "data": [
