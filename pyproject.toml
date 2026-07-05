@@ -8,12 +8,10 @@ dependencies = [
     "dash-bootstrap-components>=2.0.4",
     "dash[compress]<4.2.0",
     "httpx>=0.28.1",
-    "pandas>=3.0.3",
     "plotly>=6.8.0",
     "scipy>=1.18.0",
     "yfinance>=1.5.1",
     "polars>=1.42.1",
-    "pyarrow>=24.0.0",
     "fastexcel>=0.20.2",
     "lxml>=6.1.1",
     "numba>=0.66.0",
@@ -24,15 +22,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "geckodriver>=0.0.1",
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.0",
     "nbformat>=5.10.4",
-    "pandas-stubs>=3.0.3.260530",
     "prek>=0.4.6",
     "pyright>=1.1.411",
     "ruff>=0.15.20",
-    "seaborn>=0.13.2",
     "selenium>=4.45.0",
     "snakeviz>=2.2.2",
 ]
