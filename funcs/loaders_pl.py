@@ -83,15 +83,15 @@ def resample_bme(df: pl.DataFrame) -> pl.DataFrame:
 def read_msci_data(filename_pattern: str):
     return pl.read_csv(
         filename_pattern,
-        try_parse_dates=True,
+        schema_overrides={"Date": pl.Date},
         new_columns=["date", "price"],
-    ).with_columns(pl.col("date").cast(pl.Date))
+    )
 
 
 def read_ft_data(filename: str):
-    df = pl.read_csv(f"data/FT/{filename}.csv", try_parse_dates=True).select(
-        pl.col("date"), pl.col("close").alias("price")
-    )
+    df = pl.read_csv(
+        f"data/FT/{filename}.csv", schema_overrides={"date": pl.Date}
+    ).select(pl.col("date"), pl.col("close").alias("price"))
     if filename == "S&P 500 USD Gross":
         df = df.with_columns(
             pl.when(pl.col("date") <= pl.date(1987, 12, 31))
@@ -161,7 +161,9 @@ def download_fed_funds_rate():
 
 
 def load_fed_funds_rate():
-    fed_funds_rate = pl.read_csv("data/fed_funds_rate.csv", try_parse_dates=True)
+    fed_funds_rate = pl.read_csv(
+        "data/fed_funds_rate.csv", schema_overrides={"date": pl.Date}
+    )
     if (
         fed_funds_rate.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -219,7 +221,11 @@ async def download_us_treasury_rates_async():
 
 
 async def load_us_treasury_rates_async():
-    treasury_rates = pl.read_csv("data/us_treasury.csv", use_pyarrow=True)
+    treasury_rates = pl.read_csv(
+        "data/us_treasury.csv",
+        infer_schema_length=11000,
+        schema_overrides={"date": pl.Date},
+    )
 
     if (
         treasury_rates.get_column("date")
@@ -396,7 +402,9 @@ def download_mas_sgd_fx():
 
 
 def load_mas_sgd_fx():
-    sgd_fx = pl.read_csv("data/sgd_fx.csv", use_pyarrow=True)
+    sgd_fx = pl.read_csv(
+        "data/sgd_fx.csv", infer_schema_length=3000, schema_overrides={"date": pl.Date}
+    )
     if (
         sgd_fx.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -473,7 +481,9 @@ async def download_fred_usd_fx_async():
 
 
 async def load_fred_usd_fx_async():
-    usd_fx = pl.read_csv("data/usd_fx.csv", use_pyarrow=True)
+    usd_fx = pl.read_csv(
+        "data/usd_fx.csv", infer_schema_length=10000, schema_overrides={"date": pl.Date}
+    )
     if (
         usd_fx.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -524,7 +534,9 @@ def load_worldbank_usdsgd():
 
 
 def load_usdsgd():
-    usdsgd = pl.read_csv("data/usdsgd.csv", use_pyarrow=True)
+    usdsgd = pl.read_csv(
+        "data/usdsgd.csv", schema={"date": pl.Date, "usdsgd": pl.Float64}
+    )
     if (
         usdsgd.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -555,7 +567,7 @@ def load_usdsgd():
 
 
 def load_mas_swap_points():
-    df = pl.read_csv("data/sgd_swap_points.csv", try_parse_dates=True)
+    df = pl.read_csv("data/sgd_swap_points.csv", schema_overrides={"date": pl.Date})
     if (
         df.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -591,7 +603,7 @@ def load_mas_swap_points():
 
 
 def load_sgd_neer():
-    df = pl.read_csv("data/sgd_neer.csv", try_parse_dates=True)
+    df = pl.read_csv("data/sgd_neer.csv", schema_overrides={"date": pl.Date})
     if (
         df.get_column("date")
         .dt.add_business_days(1, roll="forward")
@@ -667,8 +679,7 @@ def download_sgd_interest_rates():
 
 def load_sgd_interest_rates():
     cpf_oa_rate = (
-        pl.read_csv("data/cpf_oa_rate.csv", try_parse_dates=True)
-        .with_columns(pl.col("date").cast(pl.Date))
+        pl.read_csv("data/cpf_oa_rate.csv", schema_overrides={"date": pl.Date})
         .sort("date")
         .upsample("date", every="1d", maintain_order=True)
         .fill_null(strategy="forward")
@@ -846,7 +857,7 @@ def download_sg_cpi():
 
 
 def load_sg_cpi():
-    sg_cpi = pl.read_csv("data/sg_cpi.csv", use_pyarrow=True)
+    sg_cpi = pl.read_csv("data/sg_cpi.csv", schema={"date": pl.Date, "cpi": pl.Float64})
     if (
         sg_cpi.get_column("date")
         .dt.offset_by("1mo")
@@ -863,7 +874,7 @@ def load_sg_cpi():
 
 
 def load_us_cpi():
-    us_cpi = pl.read_csv("data/us_cpi.csv", try_parse_dates=True)
+    us_cpi = pl.read_csv("data/us_cpi.csv", schema={"date": pl.Date, "cpi": pl.Float64})
     if (
         us_cpi.get_column("date")
         .dt.offset_by("1mo")
