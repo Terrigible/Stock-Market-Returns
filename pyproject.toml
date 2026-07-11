@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = "==3.13.14"
 dependencies = [
     "dash-bootstrap-components>=2.0.4",
-    "dash[compress]<4.2.0",
+    "dash[compress]>=4.4.0",
     "httpx>=0.28.1",
-    "plotly>=6.8.0",
+    "plotly>=6.9.0",
     "scipy>=1.18.0",
     "yfinance>=1.5.1",
     "polars>=1.42.1",
@@ -25,9 +25,9 @@ dev = [
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.0",
     "nbformat>=5.10.4",
-    "prek>=0.4.6",
+    "prek>=0.4.8",
     "pyright>=1.1.411",
-    "ruff>=0.15.20",
+    "ruff>=0.15.21",
     "selenium>=4.45.0",
     "snakeviz>=2.2.2",
 ]
