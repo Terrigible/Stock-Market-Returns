@@ -1571,6 +1571,7 @@ app_layout = html.Div(
                 ),
             ),
         ],
+        active_tab="tab-0",
         style={
             "textWrap": "nowrap",
             "flexWrap": "nowrap",

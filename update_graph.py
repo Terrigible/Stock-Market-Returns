@@ -129,8 +129,8 @@ def update_price_graph(
     if log_scale:
         layout.update(yaxis_type="log")
 
-    start_date = None
-    end_date = None
+    start_date = str(df["date"].min())
+    end_date = str(df["date"].max())
 
     if (
         prev_layout
@@ -142,7 +142,7 @@ def update_price_graph(
         )
         end_date = relayout_data.get("xaxis.range[1]", prev_layout["xaxis"]["range"][1])
 
-        layout.update(xaxis_range=[start_date, end_date])
+    layout.update(xaxis_range=[start_date, end_date])
 
     prev_zoom_df = df
 
