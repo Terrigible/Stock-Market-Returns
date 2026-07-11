@@ -40,3 +40,7 @@ exclude-newer = "1 days"
 
 [tool.ruff.lint]
 extend-select = ["I"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
