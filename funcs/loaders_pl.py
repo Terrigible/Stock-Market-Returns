@@ -7,10 +7,10 @@ from functools import lru_cache
 from json import JSONDecodeError
 from typing import TypedDict
 
-import httpx
 import polars as pl
 import yfinance as yf
 from bs4 import BeautifulSoup
+from curl_cffi import requests
 from scipy.interpolate import pchip_interpolate
 
 
@@ -109,7 +109,7 @@ def read_ft_data(filename: str):
 
 
 def get_fred_series(series_id: str):
-    res = httpx.get(
+    res = requests.get(
         "https://api.stlouisfed.org/fred/series/observations",
         params={
             "series_id": series_id,
@@ -193,9 +193,9 @@ def load_fed_funds_returns():
 
 async def download_us_treasury_rates_async():
     durations = ["1MO", "3MO", "6MO", "1", "2", "3", "5", "7", "10", "20", "30"]
-    async with httpx.AsyncClient() as client:
+    async with requests.AsyncSession() as session:
         tasks = (
-            client.get(
+            session.get(
                 "https://api.stlouisfed.org/fred/series/observations",
                 params={
                     "series_id": f"DGS{duration}",
@@ -335,7 +335,7 @@ def read_shiller_sp500_data(tax_treatment: str):
 
 
 def download_mas_sgd_fx():
-    sgd_fx_response = httpx.get(
+    sgd_fx_response = requests.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily",
         headers={"keyid": os.environ["MAS_EXCHANGE_RATE_API_KEY"]},
         timeout=20,
@@ -445,9 +445,9 @@ async def download_fred_usd_fx_async():
         "GBP": "DEXUSUK",
         "1_CAD": "DEXCAUS",
     }
-    async with httpx.AsyncClient() as client:
+    async with requests.AsyncSession() as session:
         tasks = (
-            client.get(
+            session.get(
                 "https://api.stlouisfed.org/fred/series/observations",
                 params={
                     "series_id": series,
@@ -578,7 +578,7 @@ def load_mas_swap_points():
         .last()
     ):
         try:
-            res = httpx.get(
+            res = requests.get(
                 "https://www.mas.gov.sg/api/v1/MAS/chart/swappoint",
                 headers={
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
@@ -597,7 +597,7 @@ def load_mas_swap_points():
                 .reverse()
             )
             df.write_csv("data/sgd_swap_points.csv")
-        except httpx.HTTPError as e:
+        except requests.errors.RequestsError as e:
             print(f"Failed to fetch data: {e}")
     return df
 
@@ -614,7 +614,7 @@ def load_sgd_neer():
         .last()
     ):
         try:
-            res = httpx.get(
+            res = requests.get(
                 "https://www.mas.gov.sg/api/v1/MAS/chart/sneer",
                 headers={
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
@@ -633,13 +633,13 @@ def load_sgd_neer():
                 .reverse()
             )
             df.write_csv("data/sgd_neer.csv")
-        except httpx.HTTPError as e:
+        except requests.errors.RequestsError as e:
             print(f"Failed to fetch data: {e}")
     return df
 
 
 def download_sgd_interest_rates():
-    sgd_interest_rates_response = httpx.get(
+    sgd_interest_rates_response = requests.get(
         "https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily",
         params={"$select": "end_of_day,interbank_overnight,sora"},
         headers={"keyid": os.environ["MAS_INTEREST_RATE_API_KEY"]},
@@ -830,7 +830,7 @@ def load_sgs_returns():
 
 
 def download_sg_cpi():
-    sg_cpi_response = httpx.get(
+    sg_cpi_response = requests.get(
         "https://tablebuilder.singstat.gov.sg/api/table/tabledata/M213751",
         params={"seriesNoORrowNo": 1},
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
@@ -923,7 +923,7 @@ class FtSymbolInfo(TypedDict):
 
 @lru_cache
 def get_ft_api_key():
-    res = httpx.get("https://markets.ft.com/research/webservices/securities/v1/docs")
+    res = requests.get("https://markets.ft.com/research/webservices/securities/v1/docs")
     source = re.search("source=([0-9a-f]*)", res.content.decode())
     if not source:
         raise ValueError("API key not found in page")
@@ -935,8 +935,8 @@ def get_ft_api_key():
 
 def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
     api_key = get_ft_api_key()
-    with httpx.Client() as client:
-        details_response = client.get(
+    with requests.Session() as session:
+        details_response = session.get(
             "https://markets.ft.com/research/webservices/securities/v1/details",
             params={
                 "source": api_key,
@@ -944,13 +944,13 @@ def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
             },
         )
         if (
-            details_response.is_client_error
+            400 <= details_response.status_code < 500
             and details_response.json()["error"]["errors"][0]["reason"]
             == "MissingAPIKey"
         ):
             get_ft_api_key.cache_clear()
             api_key = get_ft_api_key()
-            details_response = client.get(
+            details_response = session.get(
                 "https://markets.ft.com/research/webservices/securities/v1/details",
                 params={
                     "source": api_key,
@@ -958,13 +958,13 @@ def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
                 },
             )
         if (
-            details_response.is_client_error
+            400 <= details_response.status_code < 500
             and details_response.json()["error"]["errors"][0]["reason"]
             == "InvalidParameter"
         ):
             return None
         details_response.raise_for_status()
-        response = client.get(
+        response = session.get(
             "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
             params={
                 "source": api_key,
@@ -987,9 +987,9 @@ def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
 @lru_cache
 def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.DataFrame:
     api_key = get_ft_api_key()
-    with httpx.Client() as client:
+    with requests.Session() as session:
         if issue_type == "OF":
-            historical_tearsheet_response = client.get(
+            historical_tearsheet_response = session.get(
                 "https://markets.ft.com/data/funds/tearsheet/historical",
                 params={"s": symbol},
                 headers={},
@@ -1014,7 +1014,7 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.Da
                     )
         else:
             start_date = datetime.datetime.strptime(inception_date, "%Y-%m-%dT00:00:00")
-        response = client.get(
+        response = session.get(
             "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
             params={
                 "source": api_key,
@@ -1023,12 +1023,12 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.Da
             },
         )
         if (
-            response.is_client_error
+            400 <= response.status_code < 500
             and response.json()["error"]["errors"][0]["reason"] == "MissingAPIKey"
         ):
             get_ft_api_key.cache_clear()
             api_key = get_ft_api_key()
-            response = client.get(
+            response = session.get(
                 "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
                 params={
                     "source": api_key,
