@@ -1080,9 +1080,16 @@ def validate_yf_ticker(
 @lru_cache
 def download_yf_data(ticker_str: str) -> pl.DataFrame:
     ticker = yf.Ticker(ticker_str)
-    df = ticker.history(period="max", auto_adjust=False).tz_localize(None).copy()
-    return pl.from_pandas(
-        df.reset_index(), include_index=True, schema_overrides={"Date": pl.Date}
+    df = (
+        ticker.history(period="max", auto_adjust=False)
+        .tz_localize(None)
+        .reset_index()
+        .assign(Date=lambda x: x["Date"].astype("datetime64[ms]").astype(int))
+        .copy()
+    )
+
+    return pl.from_pandas(df).with_columns(
+        pl.col("Date").cast(pl.Datetime("ms")).dt.date()
     )
 
 
