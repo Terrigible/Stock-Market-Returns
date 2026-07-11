@@ -26,6 +26,7 @@ from funcs.calcs_numpy import (
     simulate_bootstrap_withdrawal,
 )
 from funcs.loaders_pl import (
+    FtSymbolInfo,
     download_ft_data,
     download_yf_data,
     fast_bday_downsample,
@@ -394,6 +395,15 @@ class FtSecurity(BaseSecurity):
     currency: str
     issue_type: str
     inception_date: str
+
+    @classmethod
+    def from_ft_symbol_info(cls, symbol_info: FtSymbolInfo) -> "FtSecurity":
+        return cls(
+            ticker=symbol_info["basic"]["symbol"],
+            currency=symbol_info["basic"]["currency"],
+            issue_type=symbol_info["details"]["issueType"],
+            inception_date=symbol_info["details"]["inceptionDate"],
+        )
 
     @property
     def label(self) -> str:

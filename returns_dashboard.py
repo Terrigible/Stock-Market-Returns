@@ -352,9 +352,12 @@ def add_ft_security(
 ):
     if not ft_security:
         return no_update
+    if ft_security in ft_invalid_ticker_store:
+        set_props("toast-store", {"data": "The selected ticker is not available"})
+        return no_update
     if ft_security in ft_valid_ticker_store:
         ft_security = ft_valid_ticker_store[ft_security]
-    if ft_security in ft_valid_ticker_store.values():
+    if ft_security in ft_ticker_info_store:
         new_ft_security_str = ft_ticker_info_store[ft_security]
         if new_ft_security_str in selected_securities:
             return no_update
@@ -384,16 +387,12 @@ def add_ft_security(
         set_props("ft-invalid-securities-store", {"data": ft_invalid_ticker_store})
         return no_update
 
-    ft_valid_ticker_store[ft_security] = symbol_info["basic"]["symbol"]
+    new_ft_security = FtSecurity.from_ft_symbol_info(symbol_info)
 
-    new_ft_security = FtSecurity(
-        ticker=symbol_info["basic"]["symbol"],
-        currency=symbol_info["basic"]["currency"],
-        issue_type=symbol_info["details"]["issueType"],
-        inception_date=symbol_info["details"]["inceptionDate"],
-    )
+    ft_valid_ticker_store[ft_security] = new_ft_security.ticker
+
     new_ft_security_str = new_ft_security.model_dump_json(exclude_none=True)
-    ft_ticker_info_store[symbol_info["basic"]["symbol"]] = new_ft_security_str
+    ft_ticker_info_store[new_ft_security.ticker] = new_ft_security_str
     selected_securities.append(new_ft_security_str)
     selected_securities_options[new_ft_security_str] = new_ft_security.label
 
@@ -441,11 +440,10 @@ def add_fund(
         }
     )
     security_json = fund_security.model_dump_json(exclude_none=True)
-    security_name = fund_security.label
     if security_json in selected_securities:
         return no_update
     selected_securities.append(security_json)
-    selected_securities_options.update({security_json: security_name})
+    selected_securities_options.update({security_json: fund_security.label})
     return selected_securities, selected_securities_options
 
 
