@@ -983,7 +983,7 @@ def get_ft_symbol_info(symbol: str) -> FtSymbolInfo | None:
 @lru_cache
 def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.DataFrame:
     api_key = get_ft_api_key()
-    with requests.Session() as session:
+    with requests.Session(timeout=120) as session:
         if issue_type == "OF":
             historical_tearsheet_response = session.get(
                 "https://markets.ft.com/data/funds/tearsheet/historical",
