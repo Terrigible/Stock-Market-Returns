@@ -316,6 +316,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             multi=True,
                                             searchable=False,
                                             id="selected-securities",
@@ -495,6 +496,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             id="portfolio-allocations",
                                             multi=True,
                                             searchable=False,
@@ -515,6 +517,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             id="portfolios",
                                             multi=True,
                                             searchable=False,
@@ -810,6 +813,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             multi=True,
                                             searchable=False,
                                             id="backtest-accumulation-strategies",
@@ -1046,6 +1050,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             multi=True,
                                             searchable=False,
                                             id="backtest-withdrawal-strategies",
@@ -1304,6 +1309,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             multi=True,
                                             searchable=False,
                                             id="bootstrap-accumulation-strategies",
@@ -1524,6 +1530,7 @@ app_layout = html.Div(
                                     [
                                         dcc.Dropdown(
                                             {},
+                                            [],
                                             multi=True,
                                             searchable=False,
                                             id="bootstrap-withdrawal-strategies",

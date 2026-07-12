@@ -182,7 +182,7 @@ clientside_callback(
 )
 def add_index(
     _,
-    selected_securities: None | list[str],
+    selected_securities: list[str],
     selected_securities_options: dict[str, str],
     index_provider: IndexProvider,
     msci_base_index: MSCIRegionalIndex | MSCICountryIndex,
@@ -230,8 +230,6 @@ def add_index(
     index_json = model.model_dump_json(exclude_none=True)
     index_name = model.label
 
-    if selected_securities is None:
-        return [index_json], {index_json: index_name}
     if index_json in selected_securities:
         return no_update
     selected_securities.append(index_json)
@@ -409,9 +407,7 @@ def add_ft_security(
     Output("fund-selection", "value"),
     Input("fund-company-selection", "value"),
 )
-def update_fund_selection_options(fund_company: FundCompany | None):
-    if fund_company is None:
-        return {}, None
+def update_fund_selection_options(fund_company: FundCompany):
     fund_class = FundCompany(fund_company).funds
     return fund_class.to_dict(), list(fund_class)[0]
 
@@ -661,14 +657,14 @@ clientside_callback(
 )
 def add_allocation(
     _,
-    portfolio_allocation_strs: list[str] | None,
+    portfolio_allocation_strs: list[str],
     security_str: str,
     weight: float | int | None,
 ):
     set_props("security-weight", {"required": False})
     portfolio = Portfolio(
         allocations=TypeAdapter(list[Json[Allocation]]).validate_python(
-            portfolio_allocation_strs or []
+            portfolio_allocation_strs
         )
     )
     if ctx.triggered_id == "portfolio-allocations":
@@ -711,9 +707,9 @@ clientside_callback(
 )
 def add_portfolio(
     _,
-    portfolio_strs: list[str] | None,
+    portfolio_strs: list[str],
     portfolio_options: dict[str, str],
-    portfolio_allocation_strs: list[str] | None,
+    portfolio_allocation_strs: list[str],
 ):
     if not portfolio_allocation_strs:
         return no_update
@@ -725,8 +721,6 @@ def add_portfolio(
     if sum([allocation.weight for allocation in portfolio.allocations]) != Decimal(100):
         return no_update
     portfolio_str = portfolio.model_dump_json(exclude_none=True)
-    if portfolio_strs is None:
-        return ([portfolio_str], {portfolio_str: portfolio.label}, [], {})
     if portfolio_str in portfolio_strs:
         return no_update
     portfolio_strs.append(portfolio_str)
@@ -966,7 +960,7 @@ clientside_callback(
 )
 def update_backtest_accumulation_strategies(
     _,
-    strategies: list[str] | None,
+    strategies: list[str],
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
@@ -999,8 +993,6 @@ def update_backtest_accumulation_strategies(
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
 
-    if strategies is None:
-        return [strategy_str], {strategy_str: strategy_name}
     if strategy_str in strategies:
         return no_update
     strategies.append(strategy_str)
@@ -1267,7 +1259,7 @@ def show_backtest_accumulation_strategy_modal(
 )
 def update_backtest_withdrawal_strategies(
     _,
-    strategies: list[str] | None,
+    strategies: list[str],
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
@@ -1300,8 +1292,6 @@ def update_backtest_withdrawal_strategies(
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
 
-    if strategies is None:
-        return [strategy_str], {strategy_str: strategy_name}
     if strategy_str in strategies:
         return no_update
     strategies.append(strategy_str)
@@ -1475,7 +1465,7 @@ def _build_quantile_fan_traces(
 )
 def update_bootstrap_accumulation_strategies(
     _,
-    strategies: list[str] | None,
+    strategies: list[str],
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
@@ -1512,8 +1502,6 @@ def update_bootstrap_accumulation_strategies(
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
 
-    if strategies is None:
-        return [strategy_str], {strategy_str: strategy_name}
     if strategy_str in strategies:
         return no_update
     strategies.append(strategy_str)
@@ -1619,7 +1607,7 @@ def update_bootstrap_accumulation_graph(
 )
 def update_bootstrap_withdrawal_strategies(
     _,
-    strategies: list[str] | None,
+    strategies: list[str],
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
@@ -1656,8 +1644,6 @@ def update_bootstrap_withdrawal_strategies(
     strategy_str = strategy.model_dump_json()
     strategy_name = strategy.label
 
-    if strategies is None:
-        return [strategy_str], {strategy_str: strategy_name}
     if strategy_str in strategies:
         return no_update
     strategies.append(strategy_str)
