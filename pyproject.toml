@@ -25,10 +25,10 @@ dev = [
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.0",
     "nbformat>=5.10.4",
-    "prek>=0.4.8",
+    "prek>=0.4.9",
     "pyright>=1.1.411",
     "ruff>=0.15.21",
-    "selenium>=4.45.0",
+    "selenium>=4.46.0",
     "snakeviz>=2.2.2",
 ]
 prod = [
