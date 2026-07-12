@@ -10,7 +10,29 @@
             "request": "launch",
             "program": "${workspaceFolder}/returns_dashboard.py",
             "console": "integratedTerminal",
-            "env": {}
+            "env": {
+                "DASH_DEBUG": "false",
+                "DASH_HOT_RELOAD": "true"
+            }
+        },
+        {
+            "name": "Run without Debugging",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/returns_dashboard.py",
+            "console": "integratedTerminal",
+            "args": ["--mode", "production", "--verbose"],
+            "env": {
+                "DASH_HOT_RELOAD": "true"
+            }
+        },
+        {
+            "name": "Profile",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/profile_app.py",
+            "console": "integratedTerminal",
+            "env": { "DASH_HOT_RELOAD": "false" }
         }
     ]
 }
