@@ -116,6 +116,7 @@ def get_fred_series(series_id: str):
             "api_key": os.environ["FRED_API_KEY"],
             "file_type": "json",
         },
+        impersonate="chrome",
     )
     return (
         pl.read_json(res.content)["observations"]
@@ -202,6 +203,7 @@ async def download_us_treasury_rates_async():
                     "api_key": os.environ["FRED_API_KEY"],
                     "file_type": "json",
                 },
+                impersonate="chrome",
             )
             for duration in durations
         )
@@ -454,6 +456,7 @@ async def download_fred_usd_fx_async():
                     "api_key": os.environ["FRED_API_KEY"],
                     "file_type": "json",
                 },
+                impersonate="chrome",
             )
             for series in series.values()
         )
