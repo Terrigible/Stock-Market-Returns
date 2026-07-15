@@ -582,7 +582,7 @@ def load_mas_swap_points():
     ):
         try:
             res = requests.get(
-                "https://www.mas.gov.sg/api/v1/MAS/chart/swappoint",
+                "https://www.mas.gov.sg/api/v1/MAS/chart/rev/swappoint",
                 impersonate="firefox",
             )
             res.raise_for_status()
@@ -616,7 +616,7 @@ def load_sgd_neer():
     ):
         try:
             res = requests.get(
-                "https://www.mas.gov.sg/api/v1/MAS/chart/sneer",
+                "https://www.mas.gov.sg/api/v1/MAS/chart/rev/sneer",
                 impersonate="firefox",
             )
             res.raise_for_status()
