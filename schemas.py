@@ -687,7 +687,7 @@ class AccumulationBacktestStrategy(BaseAccumulationStrategy):
                     self.annualised_holding_fees,
                     self.adjust_portfolio_value_for_inflation,
                     df.get_column("cpi").to_numpy(),
-                    df.get_column("cash").to_numpy(writable=True),
+                    df.get_column("cash").pct_change().to_numpy(writable=True),
                 ),
                 schema=[str(i) for i in range(self.strategy_horizon + 1)],
             )
