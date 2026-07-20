@@ -23,11 +23,11 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ipykernel>=7.3.0",
-    "matplotlib>=3.11.0",
+    "matplotlib>=3.11.1",
     "nbformat>=5.10.4",
-    "prek>=0.4.9",
+    "prek>=0.4.10",
     "pyright>=1.1.411",
-    "ruff>=0.15.21",
+    "ruff>=0.15.22",
     "selenium>=4.46.0",
     "snakeviz>=2.2.2",
 ]
