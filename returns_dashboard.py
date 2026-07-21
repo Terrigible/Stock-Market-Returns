@@ -280,11 +280,11 @@ def add_yf_security(
             tax_treatment=tax_treatment,
         )
         new_yf_security_json = new_yf_security.model_dump_json(exclude_none=True)
-        if new_yf_security_json in selected_securities_options:
-            selected_securities.append(new_yf_security_json)
-            return selected_securities, no_update, no_update, no_update
+        if new_yf_security_json in selected_securities:
+            return no_update
         selected_securities.append(new_yf_security_json)
-        selected_securities_options[new_yf_security_json] = new_yf_security.label
+        if new_yf_security_json not in selected_securities_options:
+            selected_securities_options[new_yf_security_json] = new_yf_security.label
 
         return (selected_securities, selected_securities_options, no_update, no_update)
 
@@ -359,18 +359,10 @@ def add_ft_security(
         new_ft_security_str = ft_ticker_info_store[ft_security]
         if new_ft_security_str in selected_securities:
             return no_update
-        if new_ft_security_str in selected_securities_options:
-            selected_securities.append(new_ft_security_str)
-            return (
-                selected_securities,
-                selected_securities_options,
-                no_update,
-                no_update,
-            )
-
-        new_ft_security = FtSecurity.model_validate_json(new_ft_security_str)
         selected_securities.append(new_ft_security_str)
-        selected_securities_options[new_ft_security_str] = new_ft_security.label
+        if new_ft_security_str not in selected_securities_options:
+            new_ft_security = FtSecurity.model_validate_json(new_ft_security_str)
+            selected_securities_options[new_ft_security_str] = new_ft_security.label
         return (
             selected_securities,
             selected_securities_options,
