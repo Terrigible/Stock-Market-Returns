@@ -123,7 +123,7 @@ clientside_callback(
 )
 def update_msci_index_options(index_type: MSCIIndexType):
     options = MSCIIndexType(index_type).indexes
-    return options.to_dict(), list(options)[0]
+    return options.to_dict(), next(iter(options))
 
 
 clientside_callback(
@@ -401,7 +401,7 @@ def add_ft_security(
 )
 def update_fund_selection_options(fund_company: FundCompany):
     fund_class = FundCompany(fund_company).funds
-    return fund_class.to_dict(), list(fund_class)[0]
+    return fund_class.to_dict(), next(iter(fund_class))
 
 
 @callback(
@@ -561,7 +561,7 @@ def update_holding_graph(
     )
 
     data, layout = graph_params.update_graph()
-    return dict(data=data, layout=layout)
+    return {"data": data, "layout": layout}
 
 
 @callback(
@@ -651,7 +651,7 @@ def add_allocation(
     _,
     portfolio_allocation_strs: list[str],
     security_str: str,
-    weight: float | int | None,
+    weight: float | None,
 ):
     set_props("security-weight", {"required": False})
     portfolio = Portfolio(
@@ -956,15 +956,15 @@ def update_backtest_accumulation_strategies(
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
-    investment_amount: int | float,
-    monthly_investment: int | float,
+    investment_amount: float,
+    monthly_investment: float,
     adjust_monthly_investment_for_inflation: bool,
     coast_duration: int,
     dca_duration: int,
     dca_interval: int,
-    variable_transaction_fees: int | float,
-    fixed_transaction_fees: int | float,
-    annualised_holding_fees: int | float,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
     adjust_portfolio_value_for_inflation: bool,
 ):
     strategy = AccumulationBacktestStrategy(
@@ -1255,15 +1255,15 @@ def update_backtest_withdrawal_strategies(
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
-    initial_capital: int | float,
+    initial_capital: float,
     coast_duration: int,
-    monthly_withdrawal: int | float,
+    monthly_withdrawal: float,
     adjust_withdrawals_for_inflation: bool,
     withdrawal_duration: int,
     withdrawal_interval: int,
-    variable_transaction_fees: int | float,
-    fixed_transaction_fees: int | float,
-    annualised_holding_fees: int | float,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
     adjust_portfolio_value_for_inflation: bool,
 ):
     strategy = WithdrawalBacktestStrategy(
@@ -1375,7 +1375,7 @@ def _build_quantile_fan_traces(
                 x=months,
                 y=quantiles[lo],
                 mode="lines",
-                line=dict(width=0),
+                line={"width": 0},
                 legendgroup=strategy_name,
                 showlegend=False,
                 hoverinfo="skip",
@@ -1386,7 +1386,7 @@ def _build_quantile_fan_traces(
                 x=months,
                 y=quantiles[hi],
                 mode="lines",
-                line=dict(width=0),
+                line={"width": 0},
                 fill="tonexty",
                 fillcolor=color.replace("rgb(", "rgba(").rstrip(")") + f", {opacity})",
                 legendgroup=strategy_name,
@@ -1410,7 +1410,7 @@ def _build_quantile_fan_traces(
             x=months,
             y=quantiles[0.50],
             mode="lines",
-            line=dict(color=color, width=2),
+            line={"color": color, "width": 2},
             name=strategy_name.replace("\n", "<br>"),
             legendgroup=strategy_name,
             customdata=customdata,
@@ -1461,18 +1461,18 @@ def update_bootstrap_accumulation_strategies(
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
-    investment_amount: int | float,
-    monthly_investment: int | float,
+    investment_amount: float,
+    monthly_investment: float,
     adjust_monthly_investment_for_inflation: bool,
     coast_duration: int,
     dca_duration: int,
     dca_interval: int,
-    variable_transaction_fees: int | float,
-    fixed_transaction_fees: int | float,
-    annualised_holding_fees: int | float,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
     adjust_portfolio_value_for_inflation: bool,
     num_samples: int,
-    avg_block_len: int | float,
+    avg_block_len: float,
 ):
     strategy = AccumulationBootstrapStrategy(
         strategy_portfolio=Portfolio.model_validate_json(strategy_portfolio),
@@ -1603,17 +1603,17 @@ def update_bootstrap_withdrawal_strategies(
     strategy_options: dict[str, str],
     strategy_portfolio: str,
     currency: Currency,
-    initial_capital: int | float,
+    initial_capital: float,
     coast_duration: int,
-    monthly_withdrawal: int | float,
+    monthly_withdrawal: float,
     adjust_withdrawals_for_inflation: bool,
     withdrawal_duration: int,
     withdrawal_interval: int,
-    variable_transaction_fees: int | float,
-    fixed_transaction_fees: int | float,
-    annualised_holding_fees: int | float,
+    variable_transaction_fees: float,
+    fixed_transaction_fees: float,
+    annualised_holding_fees: float,
     num_samples: int,
-    avg_block_len: int | float,
+    avg_block_len: float,
     adjust_portfolio_value_for_inflation: bool,
 ):
     strategy = WithdrawalBootstrapStrategy(

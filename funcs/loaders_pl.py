@@ -171,7 +171,7 @@ def load_fed_funds_rate():
         .dt.month_end()
         .dt.add_business_days(1, roll="backward")
         .dt.offset_by("1d")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -235,7 +235,7 @@ async def load_us_treasury_rates_async():
         .dt.month_end()
         .dt.add_business_days(1, roll="backward")
         .dt.offset_by("1d")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -311,7 +311,7 @@ def read_shiller_sp500_data(tax_treatment: str):
             "data/ie_data.xls",
             sheet_name="Data",
             columns=["Date", "P", "D"],
-            read_options=dict(header_row=7),
+            read_options={"header_row": 7},
             schema_overrides={"Date": pl.String},
         )
         .head(-1)
@@ -413,7 +413,7 @@ def load_mas_sgd_fx():
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
         .dt.offset_by("1d")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
     ):
@@ -493,7 +493,7 @@ async def load_fred_usd_fx_async():
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
         .dt.offset_by(pl.format("{}d", pl.lit(9) - pl.col("date").dt.weekday()))
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -546,7 +546,7 @@ def load_usdsgd():
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
         .dt.offset_by("1d")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "FRED_API_KEY" in os.environ
         and "MAS_EXCHANGE_RATE_API_KEY" in os.environ
@@ -577,7 +577,7 @@ def load_mas_swap_points():
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
         .dt.offset_by(pl.format("{}d", pl.lit(8) - pl.col("date").dt.weekday()))
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
     ):
         try:
@@ -611,7 +611,7 @@ def load_sgd_neer():
         .dt.month_end()
         .dt.add_business_days(0, roll="backward")
         .dt.offset_by(pl.format("{}d", pl.lit(12) - pl.col("date").dt.weekday()))
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
     ):
         try:
@@ -697,7 +697,7 @@ def load_sgd_interest_rates():
         .dt.add_business_days(1, roll="forward")
         .dt.month_end()
         .dt.add_business_days(1, roll="backward")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "MAS_INTEREST_RATE_API_KEY" in os.environ
     ):
@@ -862,7 +862,7 @@ def load_sg_cpi():
         .dt.offset_by("1mo")
         .dt.month_end()
         .dt.offset_by("23d")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
     ):
         try:
@@ -879,7 +879,7 @@ def load_us_cpi():
         .dt.offset_by("1mo")
         .dt.month_end()
         .dt.offset_by("15d")
-        .lt(datetime.date.today())
+        .lt(datetime.datetime.now(tz=datetime.UTC).date())
         .last()
         and "FRED_API_KEY" in os.environ
     ):
@@ -1000,7 +1000,7 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.Da
             if historical_prices_mod is None:
                 start_date = datetime.datetime.strptime(
                     inception_date, "%Y-%m-%dT00:00:00"
-                )
+                ).replace(tzinfo=datetime.UTC)
             else:
                 data_mod_config = historical_prices_mod["data-mod-config"]
                 if isinstance(data_mod_config, str) and "inception" in data_mod_config:
@@ -1010,15 +1010,19 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.Da
                 else:
                     start_date = datetime.datetime.strptime(
                         inception_date, "%Y-%m-%dT00:00:00"
-                    )
+                    ).replace(tzinfo=datetime.UTC)
         else:
-            start_date = datetime.datetime.strptime(inception_date, "%Y-%m-%dT00:00:00")
+            start_date = datetime.datetime.strptime(
+                inception_date, "%Y-%m-%dT00:00:00"
+            ).replace(tzinfo=datetime.UTC)
         response = session.get(
             "https://markets.ft.com/research/webservices/securities/v1/historical-series-quotes",
             params={
                 "source": api_key,
                 "symbols": symbol,
-                "dayCount": (datetime.date.today() - start_date.date()).days,
+                "dayCount": (
+                    datetime.datetime.now(tz=datetime.UTC).date() - start_date.date()
+                ).days,
             },
         )
         if (
@@ -1032,7 +1036,10 @@ def download_ft_data(symbol: str, issue_type: str, inception_date: str) -> pl.Da
                 params={
                     "source": api_key,
                     "symbols": symbol,
-                    "dayCount": (datetime.date.today() - start_date.date()).days,
+                    "dayCount": (
+                        datetime.datetime.now(tz=datetime.UTC).date()
+                        - start_date.date()
+                    ).days,
                 },
             )
         response.raise_for_status()
@@ -1097,34 +1104,34 @@ def download_yf_data(ticker_str: str) -> pl.DataFrame:
 
 
 __all__ = [
-    "fast_bday_upsample",
-    "fast_bday_downsample",
     "add_bmonth_end",
-    "pchip_daily_upsample",
-    "resample_bme",
-    "read_msci_data",
-    "load_fed_funds_rate",
-    "load_fed_funds_returns",
-    "load_us_treasury_rates_async",
-    "load_us_treasury_returns_async",
-    "read_shiller_sp500_data",
-    "load_usdsgd",
-    "load_mas_sgd_fx",
-    "load_fred_usd_fx_async",
-    "load_mas_swap_points",
-    "load_sgd_neer",
-    "load_sgd_interest_rates",
-    "load_sgd_interest_rates_returns",
-    "load_sgs_rates",
-    "load_sgs_returns",
-    "load_sg_cpi",
-    "load_us_cpi",
-    "load_cpi",
-    "read_greatlink_data",
-    "get_ft_symbol_info",
-    "read_ft_data",
-    "get_ft_api_key",
     "download_ft_data",
     "download_yf_data",
+    "fast_bday_downsample",
+    "fast_bday_upsample",
+    "get_ft_api_key",
+    "get_ft_symbol_info",
+    "load_cpi",
+    "load_fed_funds_rate",
+    "load_fed_funds_returns",
+    "load_fred_usd_fx_async",
+    "load_mas_sgd_fx",
+    "load_mas_swap_points",
+    "load_sg_cpi",
+    "load_sgd_interest_rates",
+    "load_sgd_interest_rates_returns",
+    "load_sgd_neer",
+    "load_sgs_rates",
+    "load_sgs_returns",
+    "load_us_cpi",
+    "load_us_treasury_rates_async",
+    "load_us_treasury_returns_async",
+    "load_usdsgd",
+    "pchip_daily_upsample",
+    "read_ft_data",
+    "read_greatlink_data",
+    "read_msci_data",
+    "read_shiller_sp500_data",
+    "resample_bme",
     "validate_yf_ticker",
 ]

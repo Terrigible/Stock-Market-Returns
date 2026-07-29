@@ -2,7 +2,7 @@ import asyncio
 from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache, reduce
 from glob import glob
-from typing import Annotated, Generic, Literal, TypeVar
+from typing import Annotated, Literal
 
 import numpy as np
 import polars as pl
@@ -303,10 +303,7 @@ type MasSecurity = Annotated[
 ]
 
 
-OthersIndexT = TypeVar("OthersIndexT", bound=OthersIndex)
-
-
-class BaseOthersIndexSecurity(BaseSecurity, Generic[OthersIndexT]):
+class BaseOthersIndexSecurity[OthersIndexT: OthersIndex](BaseSecurity):
     source: Literal["Others"] = "Others"
     others_index: OthersIndexT
     others_tax_treatment: TaxTreatment
@@ -504,7 +501,7 @@ type Security = Annotated[
 
 class Allocation(BaseModel):
     security: Security
-    weight: Decimal = Field(ge=Decimal("0.01"), le=Decimal("100"))
+    weight: Decimal = Field(ge=Decimal("0.01"), le=Decimal(100))
 
     @field_validator("weight", mode="after")
     @classmethod

@@ -1,6 +1,6 @@
 import math
 from functools import cached_property
-from typing import Annotated, Generic, Literal, NotRequired, TypedDict, TypeVar
+from typing import Annotated, Literal, NotRequired, TypedDict
 
 import numpy as np
 import plotly.graph_objects as go
@@ -171,7 +171,7 @@ def update_price_graph(
                 .item()
             )
             if max_val < 3:
-                ytickvals = [n / 10 for n in range(0, 20)] + [2, 2.2, 2.5, 3]
+                ytickvals = [n / 10 for n in range(20)] + [2, 2.2, 2.5, 3]
             else:
                 ytickvals = [0.1, 0.5, 0.8, 1, 1.2, 1.5, 2] + [
                     base * 10**exp + 1
@@ -563,10 +563,7 @@ def update_calendar_returns_graph(
     return data, layout
 
 
-GraphTypeT = TypeVar("GraphTypeT", bound=YVar)
-
-
-class BaseGraphParam(BaseModel, Generic[GraphTypeT]):
+class BaseGraphParam[GraphTypeT: YVar](BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: pl.DataFrame
