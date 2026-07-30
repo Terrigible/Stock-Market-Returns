@@ -148,15 +148,12 @@ def generate_bootstrap_indices(
     res = np.empty((num_samples, sample_length), dtype=np.int64)
     p = 1.0 / avg_block_length
     log_1_minus_p = np.log(1.0 - p)
-    tiny = np.finfo(np.float64).tiny
     for s in range(num_samples):
         pos = 0
         while pos < sample_length:
             i = np.random.randint(0, n_data)
-            u = max(np.random.random(), tiny)
-            block_len = min(
-                int(np.ceil(np.log(u) / log_1_minus_p)), sample_length - pos
-            )
+            u = 1 - np.random.random()
+            block_len = min(int(np.log(u) / log_1_minus_p) + 1, sample_length - pos)
             for j in range(block_len):
                 res[s, pos + j] = (i + j) % n_data
             pos += block_len
