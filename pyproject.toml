@@ -27,7 +27,7 @@ dev = [
     "nbformat>=5.10.4",
     "prek>=0.4.11",
     "pyright>=1.1.411",
-    "ruff>=0.16.0",
+    "ruff>=0.16.1",
     "selenium>=4.46.0",
     "snakeviz>=2.2.2",
 ]
