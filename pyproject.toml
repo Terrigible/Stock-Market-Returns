@@ -7,15 +7,15 @@ requires-python = "==3.13.14"
 dependencies = [
     "dash-bootstrap-components>=2.0.4",
     "dash[compress]>=4.4.1",
-    "curl-cffi>=0.15.0",
+    "curl-cffi>=0.16.2",
     "plotly>=6.9.0",
-    "scipy>=1.18.0",
-    "yfinance>=1.5.2",
-    "polars>=1.43.1",
-    "fastexcel>=0.20.2",
-    "lxml>=6.1.1",
-    "numba>=0.66.0",
-    "orjson>=3.11.9",
+    "scipy>=1.18.1",
+    "yfinance>=1.6.0",
+    "polars>=1.44.0",
+    "fastexcel>=0.21.0",
+    "lxml>=6.1.2",
+    "numba>=0.67.0",
+    "orjson>=3.12.0",
     "pydantic>=2.13.4",
     "beautifulsoup4>=4.15.0",
 ]
@@ -24,19 +24,16 @@ dependencies = [
 dev = [
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.1",
-    "nbformat>=5.10.4",
-    "prek>=0.4.11",
+    "nbformat>=5.11.1",
+    "prek>=0.4.14",
     "pyright>=1.1.411",
-    "ruff>=0.16.1",
-    "selenium>=4.46.0",
+    "ruff>=0.16.4",
+    "selenium>=4.47.0",
     "snakeviz>=2.2.2",
 ]
 prod = [
     "gunicorn>=26.0.0",
 ]
-
-[tool.uv]
-exclude-newer = "1 days"
 
 [tool.ruff.lint]
 extend-select = ["I"]
