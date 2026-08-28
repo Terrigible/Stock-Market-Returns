@@ -521,7 +521,7 @@ def update_holding_graph(
     ]
     df = reduce(
         lambda left, right: left.join(right, on="date", how="full", coalesce=True), dfs
-    )
+    ).sort("date")
 
     uirevision = (
         currency
@@ -1055,7 +1055,7 @@ def update_backtest_strategy_graph(
 
     values = reduce(
         lambda a, b: a.join(b, on="date", how="full", coalesce=True), transformed_dfs
-    )
+    ).sort("date")
 
     return {
         "data": [

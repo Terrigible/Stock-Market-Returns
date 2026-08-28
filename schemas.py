@@ -554,7 +554,7 @@ class Portfolio(BaseModel):
         portfolio_df = reduce(
             lambda left, right: left.join(right, on="date", how="full", coalesce=True),
             dfs,
-        )
+        ).sort("date")
         portfolio_series = (
             portfolio_df.with_columns(
                 pl.col(allocation.security.model_dump_json())
