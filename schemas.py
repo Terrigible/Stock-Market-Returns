@@ -624,6 +624,11 @@ class BaseAccumulationStrategy(BaseModel):
         float, AfterValidator(convert_percent_to_decimal)
     ] = Field(default=0, ge=0)
 
+    @field_serializer("variable_transaction_fees", "annualised_holding_fees")
+    def serialize_fee_percent(self, value: float) -> float:
+        # Serialized strategies use the same percentage units as form inputs.
+        return value * 100
+
     @computed_field
     @property
     def strategy_horizon(self) -> int:
@@ -683,7 +688,7 @@ class AccumulationBacktestStrategy(BaseAccumulationStrategy):
                     self.fixed_transaction_fees,
                     self.annualised_holding_fees,
                     self.adjust_portfolio_value_for_inflation,
-                    df.get_column("cpi").to_numpy(),
+                    df.get_column("cpi").to_numpy(writable=True),
                     df.get_column("cash").pct_change().to_numpy(writable=True),
                 ),
                 schema=[str(i) for i in range(self.strategy_horizon + 1)],
@@ -778,6 +783,11 @@ class BaseWithdrawalStrategy(BaseModel):
         float, AfterValidator(convert_percent_to_decimal)
     ] = Field(default=0, ge=0)
 
+    @field_serializer("variable_transaction_fees", "annualised_holding_fees")
+    def serialize_fee_percent(self, value: float) -> float:
+        # Serialized strategies use the same percentage units as form inputs.
+        return value * 100
+
     @computed_field
     @property
     def strategy_horizon(self) -> int:
@@ -820,7 +830,7 @@ class WithdrawalBacktestStrategy(BaseWithdrawalStrategy):
                     self.withdrawal_interval,
                     self.initial_capital,
                     self.monthly_withdrawal,
-                    df.get_column("cpi").to_numpy(),
+                    df.get_column("cpi").to_numpy(writable=True),
                     self.variable_transaction_fees,
                     self.fixed_transaction_fees,
                     self.annualised_holding_fees,
