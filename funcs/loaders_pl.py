@@ -440,7 +440,7 @@ async def download_fred_usd_fx_async():
         "1_SGD": "DEXSIUS",
         "EUR": "DEXUSEU",
         "1_NOK": "DEXNOUS",
-        "1_NZD": "DEXUSNZ",
+        "NZD": "DEXUSNZ",  # FRED quotes USD per NZD, like AUD, EUR, and GBP.
         "1_SEK": "DEXSDUS",
         "1_DKK": "DEXDNUS",
         "1_JPY": "DEXJPUS",
