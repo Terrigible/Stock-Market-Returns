@@ -477,7 +477,7 @@ async def download_fred_usd_fx_async():
             ],
             how="align",
         )
-        .with_columns(pl.col("^1_.*$").pow(-1).name.map(lambda s: s.lstrip("1_")))
+        .with_columns(pl.col("^1_.*$").pow(-1).name.map(lambda s: s.removeprefix("1_")))
         .select(pl.all().exclude("^1_.*$"))
         .sort("date")
     )
