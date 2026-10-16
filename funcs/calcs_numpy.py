@@ -56,10 +56,11 @@ def calculate_dca_portfolio_value_with_fees_and_interest_vector(
                 monthly_amount *= sample_cpi_mom[j]
             funds_to_invest += monthly_amount
             if (j % dca_interval == 0) or (j == dca_duration):
-                share_value += (
-                    funds_to_invest * (1 - variable_transaction_fees)
-                    - fixed_transaction_fees
-                )
+                if funds_to_invest > 0:
+                    share_value += (
+                        funds_to_invest * (1 - variable_transaction_fees)
+                        - fixed_transaction_fees
+                    )
                 funds_to_invest = 0
             else:
                 funds_to_invest *= 1 + sample_cash_returns[j]
@@ -216,10 +217,11 @@ def simulate_bootstrap_accumulation(
                 monthly_amount *= 1 + boot_cpi[t]
             funds_to_invest += monthly_amount
             if (t % dca_interval == 0) or (t == dca_duration):
-                share_value += (
-                    funds_to_invest * (1.0 - variable_transaction_fees)
-                    - fixed_transaction_fees
-                )
+                if funds_to_invest > 0:
+                    share_value += (
+                        funds_to_invest * (1.0 - variable_transaction_fees)
+                        - fixed_transaction_fees
+                    )
                 funds_to_invest = 0.0
             else:
                 funds_to_invest *= 1.0 + boot_cash[t]
