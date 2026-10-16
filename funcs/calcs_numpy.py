@@ -126,9 +126,11 @@ def calculate_withdrawal_portfolio_value_with_fees_vector(
             if adjust_withdrawals_for_inflation:
                 withdrawal_amount *= sample_cpi_mom[j]
             if index % withdrawal_interval == 0:
+                months_left = strategy_horizon - j + 1
+                batch_months = min(withdrawal_interval, months_left)
+                amount = withdrawal_amount * batch_months / withdrawal_interval
                 share_value -= (
-                    withdrawal_amount * (1 + variable_transaction_fees)
-                    + fixed_transaction_fees
+                    amount * (1 + variable_transaction_fees) + fixed_transaction_fees
                 )
                 if share_value <= 0:
                     res[i, j:] = 0
@@ -291,9 +293,11 @@ def simulate_bootstrap_withdrawal(
             if adjust_withdrawals_for_inflation:
                 withdrawal_amount *= 1 + boot_cpi[t]
             if index % withdrawal_interval == 0:
+                months_left = strategy_horizon - t + 1
+                batch_months = min(withdrawal_interval, months_left)
+                amount = withdrawal_amount * batch_months / withdrawal_interval
                 share_value -= (
-                    withdrawal_amount * (1 + variable_transaction_fees)
-                    + fixed_transaction_fees
+                    amount * (1 + variable_transaction_fees) + fixed_transaction_fees
                 )
                 if share_value <= 0.0:
                     res[s, t:] = 0.0
