@@ -83,7 +83,7 @@ def resample_bme(df: pl.DataFrame) -> pl.DataFrame:
 def read_msci_data(filename_pattern: str):
     return pl.read_csv(
         filename_pattern,
-        schema_overrides={"Date": pl.Date},
+        schema_overrides={"date": pl.Date},
         new_columns=["date", "price"],
     )
 
@@ -594,7 +594,7 @@ def load_mas_swap_points():
                     ["dy", "month1", "month3", "month6"],
                 )
                 .select(
-                    pl.col("dy").cast(pl.Date).alias("date"),
+                    pl.col("dy").str.to_date().alias("date"),
                     pl.all().exclude("dy"),
                 )
                 .reverse()
@@ -628,7 +628,7 @@ def load_sgd_neer():
                     ["date", "value"],
                 )
                 .select(
-                    pl.col("date").cast(pl.Date),
+                    pl.col("date").str.to_date(),
                     pl.col("value").cast(pl.Float64).alias("sgd_neer"),
                 )
                 .reverse()
