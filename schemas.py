@@ -605,6 +605,32 @@ def convert_percent_to_decimal(v: float) -> float:
     return v / 100
 
 
+def _load_strategy_history(
+    portfolio: Portfolio,
+    currency: Currency,
+    *,
+    needs_cpi: bool,
+    needs_cash: bool = False,
+) -> pl.DataFrame:
+    df = portfolio.load_series(Interval.MONTHLY, currency, False).rename(
+        {"price": "strategy"}
+    )
+    if needs_cpi:
+        df = df.join(load_cpi(currency), on="date", maintain_order="left")
+    else:
+        df = df.with_columns(cpi=pl.lit(1.0))
+    if needs_cash:
+        cash = (
+            load_fed_funds_returns()
+            if currency == Currency.USD
+            else load_sgd_interest_rates_returns()
+        ).pipe(resample_bme)
+        df = df.join(cash.rename({"price": "cash"}), on="date", maintain_order="left")
+    else:
+        df = df.with_columns(cash=pl.lit(1.0))
+    return df
+
+
 class BaseAccumulationStrategy(BaseModel):
     strategy_phase: Literal["Accumulation"] = "Accumulation"
     strategy_portfolio: Portfolio
@@ -651,27 +677,14 @@ class BaseAccumulationStrategy(BaseModel):
 
 class AccumulationBacktestStrategy(BaseAccumulationStrategy):
     def simulate(self) -> pl.DataFrame:
-        strategy_series = self.strategy_portfolio.load_series(
-            Interval.MONTHLY,
+        df = _load_strategy_history(
+            self.strategy_portfolio,
             self.currency,
-            False,
-        )
-        cash_returns = (
-            load_fed_funds_returns()
-            if self.currency == Currency.USD
-            else load_sgd_interest_rates_returns()
-        ).pipe(resample_bme)
-        cpi = load_cpi(self.currency)
-
-        df = (
-            strategy_series.rename({"price": "strategy"})
-            .join(
-                cash_returns.rename({"price": "cash"}),
-                on="date",
-                coalesce=True,
-                maintain_order="left",
-            )
-            .join(cpi, on="date", coalesce=True, maintain_order="left")
+            needs_cpi=self.adjust_monthly_investment_for_inflation
+            or self.adjust_portfolio_value_for_inflation,
+            needs_cash=self.monthly_investment > 0
+            and self.dca_duration > 1
+            and self.dca_interval > 1,
         )
 
         portfolio_values = (
@@ -711,27 +724,16 @@ class AccumulationBootstrapStrategy(BaseAccumulationStrategy):
         )
 
     def simulate(self) -> np.ndarray:
-        strategy_series = self.strategy_portfolio.load_series(
-            Interval.MONTHLY,
-            self.currency,
-            False,
-        )
-        cash_returns = (
-            load_fed_funds_returns()
-            if self.currency == Currency.USD
-            else load_sgd_interest_rates_returns()
-        ).pipe(resample_bme)
-        cpi = load_cpi(self.currency)
-
         df = (
-            strategy_series.rename({"price": "strategy"})
-            .join(
-                cash_returns.rename({"price": "cash"}),
-                on="date",
-                coalesce=True,
-                maintain_order="left",
+            _load_strategy_history(
+                self.strategy_portfolio,
+                self.currency,
+                needs_cpi=self.adjust_monthly_investment_for_inflation
+                or self.adjust_portfolio_value_for_inflation,
+                needs_cash=self.monthly_investment > 0
+                and self.dca_duration > 1
+                and self.dca_interval > 1,
             )
-            .join(cpi, on="date", coalesce=True, maintain_order="left")
             .with_columns(pl.all().exclude("date").pct_change())
             .drop_nulls()
         )
@@ -810,15 +812,11 @@ class BaseWithdrawalStrategy(BaseModel):
 
 class WithdrawalBacktestStrategy(BaseWithdrawalStrategy):
     def simulate(self) -> pl.DataFrame:
-        strategy_series = self.strategy_portfolio.load_series(
-            Interval.MONTHLY,
+        df = _load_strategy_history(
+            self.strategy_portfolio,
             self.currency,
-            False,
-        )
-        cpi = load_cpi(self.currency)
-
-        df = strategy_series.rename({"price": "strategy"}).join(
-            cpi, on="date", coalesce=True, maintain_order="left"
+            needs_cpi=self.adjust_withdrawals_for_inflation
+            or self.adjust_portfolio_value_for_inflation,
         )
 
         portfolio_values = (
@@ -857,15 +855,11 @@ class WithdrawalBootstrapStrategy(BaseWithdrawalStrategy):
         )
 
     def simulate(self) -> np.ndarray:
-        strategy_series = self.strategy_portfolio.load_series(
-            Interval.MONTHLY,
+        df = _load_strategy_history(
+            self.strategy_portfolio,
             self.currency,
-            False,
-        )
-        cpi = load_cpi(self.currency)
-
-        df = strategy_series.rename({"price": "strategy"}).join(
-            cpi, on="date", coalesce=True, maintain_order="left"
+            needs_cpi=self.adjust_withdrawals_for_inflation
+            or self.adjust_portfolio_value_for_inflation,
         )
 
         monthly_returns = df.get_column("strategy").pct_change().to_numpy()[1:]
