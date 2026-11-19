@@ -1501,6 +1501,16 @@ def update_bootstrap_accumulation_strategies(
     return strategies, strategy_options
 
 
+for phase in ("accumulation", "withdrawal"):
+    clientside_callback(
+        """function(yVar) {
+            return {display: yVar === 'max_drawdown' ? 'none' : 'block'};
+        }""",
+        Output(f"bootstrap-{phase}-log-scale-switch", "style"),
+        Input(f"bootstrap-{phase}-y-var-selection", "value"),
+    )
+
+
 def update_bootstrap_strategy_graph(
     strategy_strs: list[str],
     strategy_options: dict[str, str],
@@ -1550,7 +1560,9 @@ def update_bootstrap_strategy_graph(
             showlegend=True,
             legend=go.layout.Legend(x=0, valign="top", bgcolor="rgba(255,255,255,0.5)"),
             yaxis_side="right",
-            yaxis_type="log" if log_scale else "linear",
+            yaxis_type="log"
+            if log_scale and y_var == BootstrapYVar.PORTFOLIO_VALUES
+            else "linear",
             margin=go.layout.Margin(t=90, b=30, l=10, r=90, autoexpand=True),
         ),
     }
