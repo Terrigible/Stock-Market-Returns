@@ -1139,7 +1139,7 @@ def show_backtest_strategy_modal(
 
         dates = (
             pl.DataFrame()
-            .with_columns(
+            .select(
                 add_bmonth_end(
                     end_date_expr, pl.int_range(-strategy.strategy_horizon, 1)
                 ).alias("date")
